@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "flow",
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": [
+        "dev.mjs"
+      ],
+      "port": 5180,
+      "autoPort": true
+    }
+  ]
+}

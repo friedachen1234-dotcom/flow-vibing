@@ -1,0 +1,22 @@
+{
+  "name": "flow",
+  "private": true,
+  "version": "0.1.0",
+  "description": "FLOW: canvas-based prototyping where every prototype is also a flow",
+  "scripts": {
+    "dev": "node dev.mjs",
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test"
+  },
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@anthropic-ai/claude-agent-sdk"
+    ]
+  }
+}

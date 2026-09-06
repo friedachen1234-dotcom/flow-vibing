@@ -1,0 +1,7 @@
+{
+  "name": "@flow/runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototype runtime shell: stitches one-HTML-per-screen prototypes into a single navigable app",
+  "scripts": { "typecheck": "echo skip" }
+}

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FLOW prototype</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #fff; overflow: hidden; }
+  #stage { position: relative; width: 100%; height: 100%; overflow: hidden; background: #fff; }
+  #stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+  #stage iframe.enter-push { animation: push-in var(--flow-anim, 240ms) cubic-bezier(.2,.7,.2,1) both; }
+  #stage iframe.leave-push { animation: push-out var(--flow-anim, 240ms) cubic-bezier(.2,.7,.2,1) both; }
+  #stage iframe.enter-pop { animation: pop-in var(--flow-anim, 240ms) cubic-bezier(.2,.7,.2,1) both; }
+  #stage iframe.leave-pop { animation: pop-out var(--flow-anim, 240ms) cubic-bezier(.2,.7,.2,1) both; }
+  #stage iframe.enter-fade { animation: fade-in var(--flow-anim, 200ms) ease both; }
+  #stage iframe.leave-fade { animation: fade-out var(--flow-anim, 200ms) ease both; }
+  #stage iframe.enter-modal { animation: modal-in var(--flow-anim, 260ms) cubic-bezier(.2,.7,.2,1) both; }
+  #stage iframe.leave-modal { animation: modal-out var(--flow-anim, 220ms) ease both; }
+  @keyframes push-in { from { transform: translateX(100%); } to { transform: none; } }
+  @keyframes push-out { from { transform: none; } to { transform: translateX(-30%); opacity: .6; } }
+  @keyframes pop-in { from { transform: translateX(-30%); opacity: .6; } to { transform: none; opacity: 1; } }
+  @keyframes pop-out { from { transform: none; } to { transform: translateX(100%); } }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes modal-in { from { transform: translateY(100%); } to { transform: none; } }
+  @keyframes modal-out { from { transform: none; } to { transform: translateY(100%); } }
+  @media (prefers-reduced-motion: reduce) { #stage iframe { animation: none !important; } }
+  #missing { position: absolute; inset: 0; display: none; place-items: center; font: 14px system-ui; color: #888; text-align: center; padding: 24px; }
+  #missing.show { display: grid; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="missing"></div>
+<script src="./shell.js"></script>
+</body>
+</html>
