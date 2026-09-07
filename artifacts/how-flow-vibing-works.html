@@ -1,0 +1,707 @@
+<title>Flow Vibing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap">
+<style>
+  /* This artifact commits to the portfolio's light paper world, so it paints its own ground
+     rather than inheriting the host theme. */
+  body { background: #ffffff; color: #17191c; margin: 0; }
+  #root { padding: 28px 24px 40px; }
+  @media (max-width: 560px) { #root { padding: 18px 16px 32px; } }
+  button:focus-visible, [role="img"]:focus-visible { outline: 2px solid #4f4566; outline-offset: 2px; border-radius: 6px; }
+</style>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useRef, useEffect } = React;
+
+const C = {
+  bg: "#ffffff",        // paper white canvas
+  mist: "#f2f2f3",      // neutral card / example box surface
+  fog: "#fafafb",       // subtle alt band
+  ink: "#17191c",       // primary text, filled pill background
+  muted: "#777b86",     // helper text, descriptions
+  ash: "#979799",       // ghost typographic tags
+  smoke: "#a3a6af",     // placeholders, de-emphasised code
+  line: "#ececec",      // hairline borders
+  peach: "#e9e5f1",     // the one accent surface
+  sienna: "#4f4566",    // ink on peach
+};
+const serif = "Georgia, 'Times New Roman', ui-serif, serif";
+const sans = "'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif";
+const mono = "ui-monospace, Menlo, Monaco, 'Courier New', monospace";
+
+// The only shadow allowed in the system — floating white artifact cards.
+const CARD_SHADOW = "0 0 0 1px rgba(4,23,43,0.05), 0 8px 10px -6px rgba(0,0,0,0.1)";
+
+const STEPS = [
+  {
+    pill: "One brief",
+    title: "One brief, two artifacts",
+    body:
+      "Claude answers a brief by writing a Design Spec and the screens together, in one pass. The spec is the flow chart. The screens are the prototype. Neither is generated from the other, so they cannot drift apart.",
+  },
+  {
+    pill: "The contract",
+    title: "Four attributes make it runnable",
+    body:
+      "Screens are ordinary standalone HTML with four attributes the runtime depends on. That contract is the whole integration surface, and a validator rejects a run that breaks it.",
+  },
+  {
+    pill: "Two views",
+    title: "Two views of the same file",
+    body:
+      "Prototype and flow are two readings of one flow.json. Walking the prototype and clicking through the graph move the same cursor, because both are driven by the same transitions.",
+  },
+  {
+    pill: "Regenerate",
+    title: "Regenerate only what changed",
+    body:
+      "Editing the flow queues structured change requests. Applying them rewrites just the screens those changes touch; everything else is passed to Claude as keep-as-is and checked byte for byte.",
+  },
+];
+
+// The Lumen Bank example that ships in examples/ — real screen and transition ids.
+const SCREENS = [
+  {
+    id: "home", name: "Home", x: 8, y: 104, states: ["loading", "offline"],
+    els: [{ id: "balance-card" }, { id: "send-button", tap: "home-to-transfer" }, { id: "recent-contacts" }],
+  },
+  {
+    id: "transfer", name: "Send", x: 180, y: 104, states: ["invalid"],
+    els: [{ id: "recipient-picker" }, { id: "amount-field" }, { id: "continue-button", tap: "transfer-to-review" }],
+  },
+  {
+    id: "review", name: "Review", x: 352, y: 104, states: ["sending", "failed"],
+    els: [{ id: "summary-card" }, { id: "from-account" }, { id: "confirm-button", tap: "review-to-success" }],
+  },
+  {
+    id: "success", name: "Sent", x: 524, y: 104, states: [],
+    els: [{ id: "receipt-card" }, { id: "done-button", tap: "success-to-home" }],
+  },
+  {
+    id: "activity", name: "Activity", x: 8, y: 208, states: ["empty"],
+    els: [{ id: "filter-bar" }, { id: "transaction-list" }, { id: "back-button", tap: "activity-back" }],
+  },
+];
+
+const TRANSITIONS = [
+  { id: "home-to-transfer", from: "home", to: "transfer", trigger: "Send money" },
+  { id: "transfer-to-review", from: "transfer", to: "review", trigger: "Continue", cond: "amount within balance" },
+  { id: "transfer-invalid", from: "transfer", to: "transfer", state: "invalid", trigger: "Continue", cond: "amount exceeds balance" },
+  { id: "review-to-success", from: "review", to: "success", trigger: "Confirm", cond: "bank accepts" },
+  { id: "review-declined", from: "review", to: "review", state: "failed", trigger: "Confirm", cond: "bank declines" },
+  { id: "success-to-home", from: "success", to: "home", trigger: "Done" },
+  { id: "home-to-activity", from: "home", to: "activity", trigger: "See all" },
+  { id: "activity-back", from: "activity", to: "home", trigger: "Back" },
+];
+
+// Step 2: one real fragment of screens/home.html, segmented so each attribute can be lit on its own.
+const CODE = [
+  [{ t: "<html lang=\"en\" " }, { t: "data-flow-screen=\"home\"", a: "screen" }, { t: ">" }],
+  [{ t: "  <link rel=\"stylesheet\" href=\"../tokens.css\">" }],
+  [{ t: "  <style>" }],
+  [{ t: "    " }, { t: "html[data-flow-state=\"offline\"]", a: "state" }, { t: " .banner { display: flex }" }],
+  [{ t: "  </style>" }],
+  [{ t: "" }],
+  [{ t: "  <button " }, { t: "data-flow-el=\"send-button\"", a: "el" }],
+  [{ t: "          " }, { t: "data-flow-transition=\"home-to-transfer\"", a: "trans" }, { t: ">" }],
+  [{ t: "    Send money" }],
+  [{ t: "  </button>" }],
+];
+
+const CONTRACT = [
+  {
+    key: "screen",
+    attr: "data-flow-screen",
+    label: "Which screen this is",
+    body:
+      "Sits on the root element and names the screen. The shell matches it to the spec entry, so a file always knows which node on the canvas it is.",
+  },
+  {
+    key: "el",
+    attr: "data-flow-el",
+    label: "An addressable region",
+    body:
+      "Marks a part of the screen the tools can talk about. The inspector lists it, the picker selects it by clicking it in the running prototype, and a variant can replace this one element without touching the rest of the file.",
+  },
+  {
+    key: "trans",
+    attr: "data-flow-transition",
+    label: "Where a tap goes",
+    body:
+      "Carries one or more transition ids. A tap posts them to the shell, which looks them up in the spec and navigates. Two ids on one element is a branch, so the shell asks which condition applies instead of guessing.",
+  },
+  {
+    key: "state",
+    attr: "data-flow-state",
+    label: "Every state in one file",
+    body:
+      "States are styled with a root selector rather than kept as separate files. The default renders with no attribute set, and the shell sets the attribute to show loading, empty, or error without leaving the screen.",
+  },
+];
+
+// Step 4: change requests, each naming the screens a run would have to rewrite.
+const CHANGES = [
+  { id: "cr-1", kind: "edit", label: "Rename Send money to Send", detail: "home · send-button", hits: ["home"] },
+  { id: "cr-2", kind: "state", label: "Add a scheduled state to Review", detail: "review · new state", hits: ["review"] },
+  { id: "cr-3", kind: "screen", label: "Insert Confirm PIN before Review", detail: "new screen · retargets 2 transitions", hits: ["transfer", "review"] },
+];
+
+function ArtifactMark({ size = 46 }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: size * 0.28, background: "#f1eef7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <svg width={size * 0.62} height={size * 0.62} viewBox="0 0 46 46">
+        <rect x="5" y="8" width="14" height="18" rx="3" fill="none" stroke={C.ink} strokeWidth="1.7" />
+        <rect x="27" y="8" width="14" height="18" rx="3" fill="#cbbfe4" stroke={C.sienna} strokeWidth="1" />
+        <line x1="19" y1="17" x2="27" y2="17" stroke={C.ink} strokeWidth="1.5" />
+        <circle cx="12" cy="36" r="4.5" fill={C.ink} />
+        <circle cx="34" cy="36" r="4.5" fill="none" stroke={C.ink} strokeWidth="1.6" />
+        <line x1="16.5" y1="36" x2="29.5" y2="36" stroke={C.ink} strokeWidth="1.5" strokeDasharray="2.5 2.5" />
+      </svg>
+    </div>
+  );
+}
+
+function Mono({ children, tone = C.ink, size = 11.5 }) {
+  return <span style={{ fontFamily: mono, fontSize: size, color: tone, letterSpacing: 0.2 }}>{children}</span>;
+}
+
+function Kicker({ children }) {
+  return (
+    <div style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: 1, color: C.smoke, textTransform: "uppercase", marginBottom: 8 }}>
+      {children}
+    </div>
+  );
+}
+
+/** Step 1 — the folder Claude writes, and what each half becomes. */
+function StepBrief() {
+  const files = [
+    { name: "flow.json", note: "5 screens · 8 transitions · 12 states · 5 edge cases · tokens", accent: true },
+    { name: "screens/home.html", note: "standalone document" },
+    { name: "screens/transfer.html", note: "standalone document" },
+    { name: "screens/review.html", note: "standalone document" },
+    { name: "tokens.css", note: "shared custom properties" },
+  ];
+  return (
+    <div>
+      <div style={{ background: C.mist, borderRadius: 14, padding: "14px 16px", marginBottom: 14 }}>
+        <Kicker>The brief</Kicker>
+        <div style={{ fontFamily: serif, fontSize: 16, lineHeight: 1.45, color: C.ink }}>
+          “A mobile banking app for people who move money between friends. Send a transfer in under twenty seconds
+          without ever feeling unsure about what happened.”
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: 3, marginBottom: 16 }}>
+        {files.map((f) => (
+          <div
+            key={f.name}
+            style={{
+              display: "flex", alignItems: "baseline", gap: 10, padding: "7px 12px", borderRadius: 8,
+              background: f.accent ? C.peach : C.fog, border: `1px solid ${f.accent ? "transparent" : C.line}`,
+            }}
+          >
+            <Mono tone={f.accent ? C.sienna : C.ink}>{f.name}</Mono>
+            <span style={{ fontSize: 11.5, color: f.accent ? C.sienna : C.muted, marginLeft: "auto", textAlign: "right" }}>{f.note}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {[
+          { h: "The spec renders as the flow", b: "Screens, states, transitions and edge cases become the nodes and edges on the canvas." },
+          { h: "The screens run as the prototype", b: "The same files are mounted by a runtime shell that reads its navigation from the spec." },
+        ].map((x) => (
+          <div key={x.h} style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px" }}>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 5, color: C.ink }}>{x.h}</div>
+            <div style={{ fontSize: 12.5, lineHeight: 1.5, color: C.muted }}>{x.b}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Step 2 — the four attributes, lit one at a time inside a real fragment. */
+function StepContract() {
+  const [sel, setSel] = useState("trans");
+  const chosen = CONTRACT.find((c) => c.key === sel);
+  return (
+    <div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 12 }}>
+        {CONTRACT.map((c) => {
+          const on = c.key === sel;
+          return (
+            <button
+              key={c.key}
+              onClick={() => setSel(c.key)}
+              className={on ? undefined : "fvChip"}
+              style={{
+                border: `1px solid ${on ? "transparent" : C.line}`, background: on ? C.peach : "transparent",
+                color: on ? C.sienna : C.muted, borderRadius: 9999, padding: "4px 11px",
+                fontFamily: mono, fontSize: 11, cursor: "pointer", letterSpacing: 0.2,
+              }}
+            >
+              {c.attr}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ background: "#fbfbfc", border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 15px", overflowX: "auto", marginBottom: 12 }}>
+        <div style={{ fontFamily: mono, fontSize: 11.5, lineHeight: 1.85, whiteSpace: "pre" }}>
+          {CODE.map((segs, i) => (
+            <div key={i}>
+              {segs.map((s, j) => {
+                if (!s.a) return <span key={j} style={{ color: C.muted }}>{s.t}</span>;
+                const on = s.a === sel;
+                return (
+                  <span
+                    key={j}
+                    style={{
+                      background: on ? C.peach : "transparent",
+                      color: on ? C.sienna : "#b0b3bb",
+                      borderRadius: 4, padding: on ? "1.5px 3px" : 0,
+                      transition: "background 140ms, color 140ms",
+                    }}
+                  >
+                    {s.t}
+                  </span>
+                );
+              })}
+              {segs.length === 0 ? " " : null}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+        <div style={{ width: 3, alignSelf: "stretch", background: C.peach, borderRadius: 2, flexShrink: 0 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: C.ink, marginBottom: 4 }}>{chosen.label}</div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.55, color: C.muted }}>{chosen.body}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Step 3 — prototype and flow, both reading the same transitions. */
+function StepViews() {
+  const [view, setView] = useState("flow");
+  const [at, setAt] = useState("home");
+  const [fired, setFired] = useState(null);
+  const screen = SCREENS.find((s) => s.id === at);
+  const out = TRANSITIONS.filter((t) => t.from === at);
+
+  const go = (t) => {
+    setFired(t.id);
+    setAt(t.to);
+  };
+
+  const NODE_W = 96;
+  const NODE_H = 44;
+  const edge = (t) => {
+    const a = SCREENS.find((s) => s.id === t.from);
+    const b = SCREENS.find((s) => s.id === t.to);
+    if (t.from === t.to) {
+      // Self-transition: a small arc over the node, which is how a state change reads on the graph.
+      const cx = a.x + NODE_W / 2;
+      return { d: `M ${cx - 20} ${a.y} C ${cx - 16} ${a.y - 26}, ${cx + 16} ${a.y - 26}, ${cx + 20} ${a.y}`, lx: cx, ly: a.y - 24 };
+    }
+    if (a.y === b.y) {
+      const y = a.y + NODE_H / 2;
+      if (b.x > a.x) return { d: `M ${a.x + NODE_W} ${y} L ${b.x - 6} ${y}`, lx: (a.x + NODE_W + b.x) / 2, ly: y - 8 };
+      // Returning leftwards along the same row: arc over the top so the line never crosses the nodes between.
+      const ax = a.x + NODE_W / 2, bx = b.x + NODE_W / 2;
+      return { d: `M ${ax} ${a.y} C ${ax} 44, ${bx} 44, ${bx} ${b.y - 6}`, lx: (ax + bx) / 2, ly: 50 };
+    }
+    const x = a.x + NODE_W / 2;
+    // The pair between two rows runs in both directions, so each leg gets its own lane.
+    if (b.y > a.y) {
+      const lane = x - 14;
+      return { d: `M ${lane} ${a.y + NODE_H} L ${lane} ${b.y - 6}`, lx: lane - 5, ly: (a.y + NODE_H + b.y) / 2, anchor: "end" };
+    }
+    const lane = x + 14;
+    return { d: `M ${lane} ${a.y} L ${lane} ${b.y + NODE_H + 6}`, lx: lane + 5, ly: (a.y + b.y + NODE_H) / 2, anchor: "start" };
+  };
+
+  const toggle = (
+    <div style={{ display: "inline-flex", border: `1px solid ${C.line}`, borderRadius: 9999, padding: 2, marginBottom: 12 }}>
+      {[["flow", "Flow"], ["prototype", "Prototype"]].map(([k, label]) => (
+        <button
+          key={k}
+          onClick={() => setView(k)}
+          style={{
+            border: "none", background: view === k ? C.ink : "transparent", color: view === k ? "#fff" : C.muted,
+            borderRadius: 9999, padding: "4px 14px", fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+          }}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        {toggle}
+        <div style={{ marginLeft: "auto", marginBottom: 12, fontSize: 11.5, color: C.muted }}>
+          at <Mono tone={C.ink}>{at}</Mono>
+          {fired ? <> · via <Mono tone={C.sienna}>{fired}</Mono></> : null}
+        </div>
+      </div>
+
+      {view === "flow" ? (
+        <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, background: C.fog, padding: 8, overflowX: "auto" }}>
+          <svg viewBox="0 0 640 268" style={{ width: "100%", minWidth: 520, display: "block" }} role="img" aria-label="Flow graph of the five screens">
+            <defs>
+              <marker id="fvArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill={C.smoke} />
+              </marker>
+              <marker id="fvArrowOn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill={C.sienna} />
+              </marker>
+            </defs>
+            {TRANSITIONS.map((t) => {
+              const e = edge(t);
+              const on = t.from === at;
+              return (
+                <g key={t.id}>
+                  <path d={e.d} fill="none" stroke={on ? C.sienna : "#d8dade"} strokeWidth={on ? 1.6 : 1.2} markerEnd={`url(#${on ? "fvArrowOn" : "fvArrow"})`} />
+                  <text x={e.lx} y={e.ly} textAnchor={e.anchor || "middle"} style={{ fontFamily: sans, fontSize: 9.5, fill: on ? C.sienna : C.smoke }}>
+                    {t.trigger}
+                  </text>
+                </g>
+              );
+            })}
+            {SCREENS.map((s) => {
+              const on = s.id === at;
+              return (
+                <g key={s.id} onClick={() => { setAt(s.id); setFired(null); }} style={{ cursor: "pointer" }}>
+                  <rect x={s.x} y={s.y} width={NODE_W} height={NODE_H} rx="9"
+                    fill={on ? C.peach : "#ffffff"} stroke={on ? C.sienna : C.line} strokeWidth={on ? 1.4 : 1} />
+                  <text x={s.x + 12} y={s.y + 19} style={{ fontFamily: sans, fontSize: 12, fontWeight: 500, fill: on ? C.sienna : C.ink }}>{s.name}</text>
+                  <text x={s.x + 12} y={s.y + 33} style={{ fontFamily: mono, fontSize: 9, fill: on ? C.sienna : C.smoke }}>
+                    {s.states.length ? `+${s.states.length} state${s.states.length > 1 ? "s" : ""}` : "1 state"}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div style={{ width: 186, flexShrink: 0, border: `1px solid ${C.line}`, borderRadius: 18, padding: 10, background: C.bg, boxShadow: CARD_SHADOW }}>
+            <div style={{ height: 4, width: 40, borderRadius: 2, background: C.line, margin: "2px auto 10px" }} />
+            <div style={{ fontFamily: serif, fontSize: 17, marginBottom: 2 }}>{screen.name}</div>
+            <div style={{ fontFamily: mono, fontSize: 9, color: C.smoke, marginBottom: 10 }}>{screen.id}.html</div>
+            <div style={{ display: "grid", gap: 5 }}>
+              {screen.els.map((el) => {
+                const live = el.tap ? TRANSITIONS.find((t) => t.id === el.tap) : null;
+                return (
+                  <button
+                    key={el.id}
+                    onClick={() => live && go(live)}
+                    className={live ? "fvTap" : undefined}
+                    title={live ? `data-flow-transition="${live.id}"` : "no transition on this element"}
+                    style={{
+                      textAlign: "left", border: `1px solid ${live ? "transparent" : C.line}`,
+                      background: live ? C.ink : C.fog, color: live ? "#fff" : C.muted,
+                      borderRadius: 8, padding: "9px 10px", fontFamily: mono, fontSize: 10,
+                      cursor: live ? "pointer" : "default",
+                    }}
+                  >
+                    {el.id}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div style={{ flex: 1, minWidth: 190 }}>
+            <Kicker>Outgoing transitions</Kicker>
+            <div style={{ display: "grid", gap: 4 }}>
+              {out.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => go(t)}
+                  className="fvChip"
+                  style={{
+                    textAlign: "left", border: `1px solid ${C.line}`, background: C.bg, borderRadius: 9,
+                    padding: "8px 10px", cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  <div style={{ fontFamily: mono, fontSize: 10.5, color: C.sienna }}>{t.id}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                    {t.trigger}{t.cond ? ` · ${t.cond}` : ""}{t.state ? ` · sets ${t.state}` : ""}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ fontSize: 12, lineHeight: 1.55, color: C.muted, marginTop: 12 }}>
+        Both views are reading the same <Mono tone={C.ink}>flow.json</Mono>. Two ids on one element is a branch, which is
+        why the prototype asks which condition applies rather than picking one.
+      </div>
+    </div>
+  );
+}
+
+/** Step 4 — which screens a set of changes actually rewrites. */
+function StepRegenerate() {
+  const [on, setOn] = useState(["cr-1"]);
+  const picked = CHANGES.filter((c) => on.includes(c.id));
+  const hit = new Set(picked.flatMap((c) => c.hits));
+  const addsScreen = picked.some((c) => c.kind === "screen");
+  const toggle = (id) => setOn((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  return (
+    <div>
+      <Kicker>Queued on the flow</Kicker>
+      <div style={{ display: "grid", gap: 4, marginBottom: 16 }}>
+        {CHANGES.map((c) => {
+          const active = on.includes(c.id);
+          return (
+            <button
+              key={c.id}
+              onClick={() => toggle(c.id)}
+              className="fvChip"
+              style={{
+                display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer",
+                border: `1px solid ${active ? "transparent" : C.line}`, background: active ? C.peach : C.bg,
+                borderRadius: 10, padding: "9px 11px", fontFamily: "inherit",
+              }}
+            >
+              <span
+                style={{
+                  width: 15, height: 15, borderRadius: 4, flexShrink: 0, display: "grid", placeItems: "center",
+                  border: `1.5px solid ${active ? C.sienna : "#cfd2d8"}`, background: active ? C.sienna : "transparent",
+                }}
+              >
+                {active ? (
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                ) : null}
+              </span>
+              <span style={{ flex: 1 }}>
+                <span style={{ display: "block", fontSize: 13, color: active ? C.sienna : C.ink }}>{c.label}</span>
+                <span style={{ display: "block", fontFamily: mono, fontSize: 10, color: active ? C.sienna : C.smoke, marginTop: 2 }}>{c.detail}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <Kicker>What the run does</Kicker>
+      <div style={{ display: "grid", gap: 3, marginBottom: 14 }}>
+        {SCREENS.map((s) => {
+          const rewrite = hit.has(s.id);
+          return (
+            <div
+              key={s.id}
+              style={{
+                display: "flex", alignItems: "center", gap: 10, padding: "7px 11px", borderRadius: 8,
+                background: rewrite ? C.peach : C.fog, border: `1px solid ${rewrite ? "transparent" : C.line}`,
+              }}
+            >
+              <Mono tone={rewrite ? C.sienna : C.smoke} size={11}>screens/{s.id}.html</Mono>
+              <span
+                style={{
+                  marginLeft: "auto", fontFamily: mono, fontSize: 9.5, letterSpacing: 0.6, textTransform: "uppercase",
+                  color: rewrite ? C.sienna : C.ash,
+                }}
+              >
+                {rewrite ? "rewrite" : "keep as is"}
+              </span>
+            </div>
+          );
+        })}
+        {addsScreen ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 11px", borderRadius: 8, background: C.peach, border: "1px dashed " + C.sienna }}>
+            <Mono tone={C.sienna} size={11}>screens/confirm-pin.html</Mono>
+            <span style={{ marginLeft: "auto", fontFamily: mono, fontSize: 9.5, letterSpacing: 0.6, textTransform: "uppercase", color: C.sienna }}>new</span>
+          </div>
+        ) : null}
+      </div>
+
+      <div style={{ background: C.mist, borderRadius: 12, padding: "12px 14px" }}>
+        <Kicker>Committed as a version</Kicker>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <Mono tone={C.sienna} size={11}>{picked.length ? "generate" : "no-op"}</Mono>
+          <span style={{ fontSize: 13, color: C.ink }}>
+            {picked.length === 0
+              ? "Nothing queued, so nothing to run."
+              : `Applied ${picked.length} change${picked.length > 1 ? "s" : ""} · ${[...hit].join(", ")}${addsScreen ? ", confirm-pin" : ""}`}
+          </span>
+        </div>
+        <div style={{ fontSize: 12, lineHeight: 1.55, color: C.muted, marginTop: 8 }}>
+          Screens marked keep-as-is are passed to Claude untouched, and the run is rejected if a single byte of them
+          changes. Every apply lands as a git commit in the project folder, which is what the version bar lists.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PANELS = [StepBrief, StepContract, StepViews, StepRegenerate];
+
+function Main() {
+  const [step, setStep] = useState(0);
+  const [wide, setWide] = useState(true);
+  const rootRef = useRef(null);
+  const active = STEPS[step];
+  const Panel = PANELS[step];
+
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined" || !rootRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) setWide(entry.contentRect.width >= 560);
+    });
+    ro.observe(rootRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  const caret = (dir) => {
+    const next = step + dir;
+    const disabled = next < 0 || next >= STEPS.length;
+    return (
+      <button
+        onClick={() => !disabled && setStep(next)}
+        disabled={disabled}
+        aria-label={dir < 0 ? "Previous step" : "Next step"}
+        style={{
+          width: 26, height: 26, borderRadius: 9999, border: `1px solid ${C.line}`, background: C.bg,
+          color: disabled ? "#d3d5da" : C.muted, cursor: disabled ? "default" : "pointer",
+          fontSize: 14, lineHeight: 1, display: "grid", placeItems: "center", fontFamily: "inherit",
+        }}
+      >
+        {dir < 0 ? "‹" : "›"}
+      </button>
+    );
+  };
+
+  const pills = (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 16 }}>
+      {STEPS.map((sd, i) => {
+        const on = i === step;
+        return (
+          <button
+            key={i}
+            onClick={() => setStep(i)}
+            className={on ? undefined : "fvChip"}
+            style={{
+              border: "none", background: on ? C.ink : "transparent", color: on ? "#fff" : C.muted,
+              borderRadius: 9999, padding: "5px 12px", fontSize: 12.5, cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            {i + 1} {sd.pill}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const stepList = (
+    <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 2 }}>
+      {STEPS.map((sd, i) => {
+        const on = i === step;
+        return (
+          <button
+            key={i}
+            onClick={() => setStep(i)}
+            className={on ? undefined : "fvChip"}
+            style={{
+              display: "flex", alignItems: "center", gap: 12, border: "none", background: "transparent",
+              borderLeft: `2px solid ${on ? C.ink : "transparent"}`, padding: "5px 0 5px 11px",
+              fontSize: 13.5, fontWeight: on ? 500 : 400, color: on ? C.ink : C.muted,
+              cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+            }}
+          >
+            <span style={{ flex: 1 }}>{sd.pill}</span>
+            <span style={{ fontFamily: mono, fontSize: 11, color: on ? C.ink : C.smoke, letterSpacing: 0.5 }}>
+              {String(i + 1).padStart(2, "0")}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const stepContent = (
+    <div key={"step-" + step}>
+      <div style={{ marginBottom: 13 }}>
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 3 }}>Step {step + 1} of {STEPS.length}</div>
+        <div style={{ fontFamily: serif, fontSize: 21, lineHeight: 1.25, letterSpacing: "-0.01em", color: C.ink }}>
+          {active.title}
+        </div>
+        <div style={{ fontSize: 13, lineHeight: 1.55, color: C.muted, marginTop: 7, maxWidth: "62ch" }}>{active.body}</div>
+      </div>
+      <Panel />
+    </div>
+  );
+
+  return (
+    <div ref={rootRef} style={{ fontFamily: sans, color: C.ink, maxWidth: 1080, boxSizing: "border-box" }}>
+      <style>{`
+        .fvChip:hover { color: #17191c !important; }
+        .fvTap:hover { opacity: 0.86; }
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+      `}</style>
+      {wide ? (
+        <div style={{ display: "flex", gap: 48, alignItems: "flex-start" }}>
+          <div style={{ width: 300, flexShrink: 0 }}>
+            <ArtifactMark size={48} />
+            <div style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: 1, color: C.smoke, margin: "16px 0 7px" }}>
+              DESIGN SPEC · FOUR STEPS
+            </div>
+            <div style={{ fontFamily: serif, fontSize: 32, fontWeight: 400, lineHeight: 1.18, letterSpacing: "-0.012em" }}>
+              Flow Vibing
+            </div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: C.muted, marginTop: 10 }}>
+              Every prototype is also a flow.
+            </div>
+            {stepList}
+          </div>
+          <div style={{ flex: 1, minWidth: 0, maxWidth: 660, background: C.bg, border: `1px solid ${C.line}`, borderRadius: 20, padding: "20px 24px", boxSizing: "border-box", position: "relative" }}>
+            <div style={{ position: "absolute", top: 18, right: 20, display: "flex", gap: 6 }}>
+              {caret(-1)}
+              {caret(1)}
+            </div>
+            {stepContent}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14 }}>
+            <ArtifactMark size={40} />
+            <div>
+              <div style={{ fontFamily: serif, fontSize: 21, fontWeight: 400, lineHeight: 1.25, letterSpacing: "-0.01em" }}>Flow Vibing</div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Every prototype is also a flow.</div>
+            </div>
+          </div>
+          <div style={{ background: C.bg, border: `1px solid ${C.line}`, borderRadius: 18, padding: 16 }}>
+            {pills}
+            {stepContent}
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, gap: 6 }}>
+            {caret(-1)}
+            {caret(1)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Main />);
+</script>
