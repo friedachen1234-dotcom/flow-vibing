@@ -1,13 +1,18 @@
-import { simpleGit, type SimpleGit } from "simple-git";
+import { CheckRepoActions, simpleGit, type SimpleGit } from "simple-git";
 import { decodeVersionMessage, encodeVersionMessage, type Version, type VersionKind } from "@flow/shared";
 
 function git(dir: string): SimpleGit {
   return simpleGit({ baseDir: dir, config: ["user.name=FLOW", "user.email=flow@local", "commit.gpgsign=false"] });
 }
 
+/**
+ * Each project is its own repository. The check must be for the repo *root*: the default "tree" check also passes when the
+ * project folder merely sits inside another repository (projects/ under a cloned Flow Vibing checkout, say), and every
+ * version would then be committed to that outer repository instead.
+ */
 export async function initRepo(dir: string): Promise<void> {
   const g = git(dir);
-  if (!(await g.checkIsRepo())) await g.init();
+  if (!(await g.checkIsRepo(CheckRepoActions.IS_REPO_ROOT))) await g.init();
 }
 
 export async function commitVersion(dir: string, v: { kind: VersionKind; summary: string; screens: string[]; pinned: boolean; label?: string }): Promise<Version | null> {
@@ -30,7 +35,7 @@ export async function commitVersion(dir: string, v: { kind: VersionKind; summary
 
 export async function listVersions(dir: string): Promise<Version[]> {
   const g = git(dir);
-  if (!(await g.checkIsRepo())) return [];
+  if (!(await g.checkIsRepo(CheckRepoActions.IS_REPO_ROOT))) return [];
   const raw = await g.raw(["log", "--format=%H%x1f%aI%x1f%B%x1e"]).catch(() => "");
   const out: Version[] = [];
   for (const chunk of raw.split("\x1e")) {
