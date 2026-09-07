@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en" data-flow-screen="ticket">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ticket</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body { font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg, #F7F7F5); color: var(--color-ink, #1B1B1F); font-size: 13px; -webkit-font-smoothing: antialiased; display: grid; grid-template-columns: var(--space-sidebar, 232px) 1fr 300px; height: 100vh; overflow: hidden; }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      aside { background: var(--color-surface, #fff); border-right: 1px solid var(--color-line, #E6E6E3); display: flex; flex-direction: column; padding: 14px 12px; gap: 6px; }
+      .ws { display: flex; align-items: center; gap: 10px; padding: 6px 8px 14px; font-weight: 700; font-size: 14px; }
+      .ws .logo { width: 26px; height: 26px; border-radius: 7px; background: var(--color-accent, #0F766E); color: #fff; display: grid; place-items: center; font-size: 13px; }
+      .nav-h { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted, #6B6B76); padding: 10px 8px 4px; }
+      .nav { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: var(--radius-control, 8px); border: 0; background: none; width: 100%; text-align: left; font-weight: 500; }
+      .nav.on { background: var(--color-accent-soft, #E1F3F0); color: var(--color-accent, #0F766E); font-weight: 600; }
+      .nav svg { width: 16px; height: 16px; flex: none; }
+      .nav .count { margin-left: auto; font-size: 11.5px; color: var(--color-muted, #6B6B76); }
+      .nav.on .count { color: inherit; }
+      .me { margin-top: auto; display: flex; align-items: center; gap: 9px; padding: 8px; border-top: 1px solid var(--color-line, #E6E6E3); }
+      .avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; font-weight: 700; flex: none; }
+      .me b { display: block; font-size: 12.5px; } .me span { font-size: 11px; color: var(--color-muted, #6B6B76); }
+      /* Centre */
+      main { display: flex; flex-direction: column; min-width: 0; background: var(--color-surface, #fff); border-right: 1px solid var(--color-line, #E6E6E3); }
+      .head { padding: 12px var(--space-gutter, 24px) 12px 16px; border-bottom: 1px solid var(--color-line, #E6E6E3); display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+      .iconbtn { width: 32px; height: 32px; border: 1px solid var(--color-line, #E6E6E3); border-radius: var(--radius-control, 8px); background: var(--color-surface, #fff); display: grid; place-items: center; }
+      .iconbtn svg { width: 16px; height: 16px; }
+      .head h1 { margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px; min-width: 0; }
+      .head h1 .id { font: 500 12px var(--font-mono, monospace); color: var(--color-muted, #6B6B76); }
+      .head .sub { margin-top: 3px; font-size: 12px; color: var(--color-muted, #6B6B76); display: flex; gap: 10px; align-items: center; }
+      .badge { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--radius-pill, 999px); font-size: 11.5px; font-weight: 600; }
+      .badge.open { background: var(--color-accent-soft, #E1F3F0); color: var(--color-accent, #0F766E); }
+      .badge.waiting { background: var(--color-info-soft, #E0F2FE); color: var(--color-info, #075985); }
+      .badge.escalated { background: var(--color-warning-soft, #FEF3C7); color: var(--color-warning, #92400E); }
+      .badge.resolved { background: #DCFCE7; color: #166534; }
+      .badge.waiting, .badge.escalated, .badge.resolved { display: none; }
+      .actions { display: flex; gap: 8px; }
+      .btn { height: 32px; padding: 0 12px; border-radius: var(--radius-control, 8px); border: 1px solid var(--color-line, #E6E6E3); background: var(--color-surface, #fff); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+      .btn.primary { background: var(--color-accent, #0F766E); border-color: var(--color-accent, #0F766E); color: var(--color-accent-ink, #fff); }
+      .btn.warn { color: var(--color-warning, #92400E); }
+      .btn svg { width: 14px; height: 14px; }
+      .banner { display: none; margin: 12px 24px 0; padding: 10px 14px; border-radius: var(--radius-control, 8px); background: var(--color-warning-soft, #FEF3C7); color: var(--color-warning, #92400E); font-weight: 600; align-items: center; gap: 8px; }
+      .banner.ok { background: #DCFCE7; color: #166534; }
+      .banner svg { width: 16px; height: 16px; }
+      .thread { flex: 1; overflow-y: auto; padding: 18px 24px; display: flex; flex-direction: column; gap: 16px; }
+      .msg { display: grid; grid-template-columns: 30px 1fr; gap: 10px; }
+      .msg .avatar { width: 30px; height: 30px; font-size: 11px; }
+      .msg .who { display: flex; align-items: baseline; gap: 8px; }
+      .msg .who b { font-size: 13px; }
+      .msg .who span { font-size: 11.5px; color: var(--color-muted, #6B6B76); }
+      .msg .who .int { font-size: 10.5px; font-weight: 700; color: var(--color-warning, #92400E); background: var(--color-warning-soft, #FEF3C7); padding: 1px 6px; border-radius: 999px; }
+      .msg .body { margin-top: 5px; padding: 10px 12px; background: var(--color-bg, #F7F7F5); border-radius: 0 10px 10px 10px; line-height: 1.5; max-width: 620px; }
+      .msg.agent .body { background: var(--color-accent-soft, #E1F3F0); }
+      .msg.internal .body { background: var(--color-warning-soft, #FEF3C7); }
+      .msg .att { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 9px; border: 1px solid var(--color-line, #E6E6E3); background: #fff; border-radius: 6px; font-size: 12px; font-weight: 500; }
+      .msg .att i { width: 22px; height: 22px; border-radius: 4px; background: linear-gradient(135deg, #FDE68A, #F59E0B); }
+      .msg.new { display: none; }
+      .divider { display: none; align-items: center; gap: 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-accent, #0F766E); }
+      .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--color-accent, #0F766E); opacity: 0.4; }
+      .composer { border-top: 1px solid var(--color-line, #E6E6E3); padding: 12px 24px 16px; }
+      .composer .tabs { display: flex; gap: 14px; font-weight: 600; font-size: 12.5px; margin-bottom: 8px; }
+      .composer .tabs span { padding-bottom: 6px; border-bottom: 2px solid transparent; color: var(--color-muted, #6B6B76); }
+      .composer .tabs span.on { color: var(--color-ink, #1B1B1F); border-color: var(--color-accent, #0F766E); }
+      .composer .box { border: 1px solid var(--color-line, #E6E6E3); border-radius: var(--radius-card, 10px); padding: 10px 12px; min-height: 92px; line-height: 1.5; background: #fff; }
+      .composer .box .ph { color: var(--color-muted, #6B6B76); }
+      .composer .bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+      .composer .bar .hint { color: var(--color-muted, #6B6B76); font-size: 12px; }
+      .composer .bar .btn { margin-left: auto; }
+      .reopen { display: none; border-top: 1px solid var(--color-line, #E6E6E3); padding: 16px 24px; align-items: center; gap: 12px; color: var(--color-muted, #6B6B76); }
+      .reopen .btn { margin-left: auto; }
+      /* Right panel */
+      .side { padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+      .card { background: var(--color-surface, #fff); border: 1px solid var(--color-line, #E6E6E3); border-radius: var(--radius-card, 10px); padding: 14px; }
+      .card h3 { margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted, #6B6B76); }
+      .cust { display: flex; align-items: center; gap: 10px; }
+      .cust .avatar { width: 38px; height: 38px; font-size: 13px; }
+      .cust b { display: block; font-size: 14px; } .cust span { font-size: 12px; color: var(--color-muted, #6B6B76); }
+      .kv { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; font-size: 12.5px; }
+      .kv .k { color: var(--color-muted, #6B6B76); } .kv .v { font-weight: 600; text-align: right; }
+      .kv .v.mono { font-family: var(--font-mono, monospace); font-weight: 500; font-size: 12px; }
+      .orders .o { display: flex; justify-content: space-between; padding: 7px 0; border-top: 1px solid var(--color-line, #E6E6E3); font-size: 12.5px; }
+      .orders .o:first-of-type { border-top: 0; }
+      .orders .o span:last-child { font-weight: 600; font-variant-numeric: tabular-nums; }
+      .assignee { display: flex; align-items: center; gap: 8px; }
+      .assignee.t2 { display: none; }
+
+      html[data-flow-state="replied"] .badge.open { display: none; }
+      html[data-flow-state="replied"] .badge.waiting { display: inline-flex; }
+      html[data-flow-state="replied"] .msg.new, html[data-flow-state="replied"] .divider { display: grid; }
+      html[data-flow-state="replied"] .divider { display: flex; }
+      html[data-flow-state="replied"] .banner.ok { display: flex; }
+      html[data-flow-state="replied"] .composer .box .ph::before { content: "Reply sent. "; color: var(--color-accent, #0F766E); font-weight: 600; }
+
+      html[data-flow-state="escalated"] .badge.open { display: none; }
+      html[data-flow-state="escalated"] .badge.escalated { display: inline-flex; }
+      html[data-flow-state="escalated"] .banner.esc { display: flex; }
+      html[data-flow-state="escalated"] .composer .tabs span.on { color: var(--color-muted, #6B6B76); border-color: transparent; }
+      html[data-flow-state="escalated"] .composer .tabs span.note { color: var(--color-ink, #1B1B1F); border-color: var(--color-warning, #92400E); }
+      html[data-flow-state="escalated"] .composer .box { background: var(--color-warning-soft, #FEF3C7); border-color: #F5D58A; }
+      html[data-flow-state="escalated"] .composer .box .ph::before { content: "Add a note for Tier 2 (required): "; color: var(--color-warning, #92400E); font-weight: 600; }
+      html[data-flow-state="escalated"] .assignee.t1 { display: none; }
+      html[data-flow-state="escalated"] .assignee.t2 { display: flex; }
+      html[data-flow-state="escalated"] .btn.warn { display: none; }
+
+      html[data-flow-state="resolved"] .badge.open { display: none; }
+      html[data-flow-state="resolved"] .badge.resolved { display: inline-flex; }
+      html[data-flow-state="resolved"] .composer, html[data-flow-state="resolved"] .actions .btn { display: none; }
+      html[data-flow-state="resolved"] .reopen { display: flex; }
+      html[data-flow-state="resolved"] .thread { opacity: 0.75; }
+    </style>
+  </head>
+  <body>
+    <aside data-flow-el="sidebar">
+      <div class="ws"><span class="logo">R</span>Relay Desk</div>
+      <div class="nav-h">Views</div>
+      <button class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l3-7h12l3 7v7H3z"/><path d="M3 12h5l2 3h4l2-3h5"/></svg>Inbox<span class="count">24</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Unassigned<span class="count">6</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>Mine<span class="count">9</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6zM10 20a2 2 0 0 0 4 0"/></svg>Snoozed<span class="count">3</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>Resolved</button>
+      <div class="nav-h">Workspace</div>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2l.4 2.6h4.4l.4-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>Settings</button>
+      <div class="me"><span class="avatar" style="background:#DBEAFE;color:#1D4ED8">JW</span><div><b>Jordan Wu</b><span>Tier 1 · Online</span></div></div>
+    </aside>
+
+    <main>
+      <div class="head" data-flow-el="ticket-header">
+        <button class="iconbtn" aria-label="Back to inbox" data-flow-el="back-button" data-flow-transition="ticket-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div style="min-width:0">
+          <h1><span class="id">#48213</span>Order arrived damaged, need replacement</h1>
+          <div class="sub"><span class="badge open">Open</span><span class="badge waiting">Waiting on customer</span><span class="badge escalated">Escalated · Tier 2</span><span class="badge resolved">Resolved</span><span>Shipping · High priority · Opened 4 min ago</span></div>
+        </div>
+        <div class="actions">
+          <button class="btn warn" data-flow-el="escalate-button" data-flow-transition="ticket-escalate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Escalate</button>
+          <button class="btn" data-flow-el="resolve-button" data-flow-transition="ticket-resolve"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Resolve</button>
+        </div>
+      </div>
+      <div class="banner esc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Escalated to Tier 2. Add a note explaining what you've tried before they pick it up.</div>
+      <div class="banner ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Reply sent to nadia@aziz.me. Status set to Waiting on customer.</div>
+
+      <div class="thread" data-flow-el="thread">
+        <div class="msg"><span class="avatar" style="background:#FCE7F3;color:#BE185D">NA</span><div><div class="who"><b>Nadia Aziz</b><span>Today 09:37 · via email</span></div><div class="body">Hi, the box for order #48213 arrived this morning completely crushed on one side. Two of the four glasses are broken. I've attached photos. I'd like replacements for the two, or a refund for those if that's easier.<br><br>Thanks,<br>Nadia<div class="att"><i></i>IMG_2231.jpg · 1.4 MB</div></div></div></div>
+        <div class="msg internal"><span class="avatar" style="background:#DBEAFE;color:#1D4ED8">JW</span><div><div class="who"><b>Jordan Wu</b><span class="int">Internal note</span><span>09:39</span></div><div class="body">Checked the carrier scan: handled at Leeds depot with a “damaged in transit” flag. Warehouse has stock of the tumblers (SKU GL-TMB-4). Should be a straight replacement.</div></div></div>
+        <div class="divider">New</div>
+        <div class="msg agent new"><span class="avatar" style="background:#DBEAFE;color:#1D4ED8">JW</span><div><div class="who"><b>Jordan Wu</b><span>Just now · to nadia@aziz.me</span></div><div class="body">Hi Nadia, so sorry about that. I've sent two replacement glasses on next-day delivery at no cost, and there's no need to return the broken ones. You'll get a tracking email within the hour. Let me know if anything else turns up damaged.</div></div></div>
+      </div>
+
+      <div class="composer" data-flow-el="reply-composer">
+        <div class="tabs"><span class="on">Reply to customer</span><span class="note">Internal note</span></div>
+        <div class="box"><span class="ph">Hi Nadia, so sorry about that. I've sent two replacement glasses on next-day delivery at no cost…</span></div>
+        <div class="bar">
+          <button class="btn" style="height:28px;padding:0 9px">Aa</button><button class="btn" style="height:28px;padding:0 9px">Attach</button><button class="btn" style="height:28px;padding:0 9px">Macro</button>
+          <span class="hint">⌘⏎ to send</span>
+          <button class="btn primary" data-flow-el="send-reply-button" data-flow-transition="ticket-reply">Send reply</button>
+        </div>
+      </div>
+      <div class="reopen">This ticket was resolved by Jordan Wu just now. The customer can reply to reopen it.<button class="btn">Reopen</button></div>
+    </main>
+
+    <div class="side" data-flow-el="customer-panel">
+      <div class="card cust"><span class="avatar" style="background:#FCE7F3;color:#BE185D">NA</span><div><b>Nadia Aziz</b><span>nadia@aziz.me · Customer since 2024</span></div></div>
+      <div class="card"><h3>Assignee</h3>
+        <div class="assignee t1"><span class="avatar" style="background:#DBEAFE;color:#1D4ED8">JW</span><b>Jordan Wu</b><span style="color:var(--color-muted,#6B6B76)">· Tier 1</span></div>
+        <div class="assignee t2"><span class="avatar" style="background:#FEF3C7;color:#B45309">T2</span><b>Tier 2 queue</b><span style="color:var(--color-muted,#6B6B76)">· unassigned</span></div>
+      </div>
+      <div class="card"><h3>Details</h3><div class="kv"><span class="k">Order</span><span class="v mono">#48213</span><span class="k">Carrier</span><span class="v">Evri · damaged flag</span><span class="k">Channel</span><span class="v">Email</span><span class="k">First response</span><span class="v">2m · on target</span><span class="k">Language</span><span class="v">English</span></div></div>
+      <div class="card orders"><h3>Recent orders</h3><div class="o"><span>#48213 · Tumbler set ×4</span><span>£64.00</span></div><div class="o"><span>#47102 · Linen napkins</span><span>£28.00</span></div><div class="o"><span>#45891 · Ceramic bowl</span><span>£42.00</span></div></div>
+    </div>
+  </body>
+</html>

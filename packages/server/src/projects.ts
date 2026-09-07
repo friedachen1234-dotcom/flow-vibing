@@ -6,7 +6,7 @@ import {
   CanvasDoc, DesignSpec, DEVICE_PRESETS, PROJECT_FILES, emptyCanvas, emptySpec, reconcileCanvas, tokensCss, demoSpec, demoScreenHtml,
   type DeviceKind, type ProjectBundle, type ProjectMeta
 } from "@flow/shared";
-import { PROJECTS_ROOT } from "./config.js";
+import { EXAMPLES_DIR, PROJECTS_ROOT } from "./config.js";
 import { commitVersion, fileAtVersion, firstApplyCommit, initRepo, listVersions } from "./versions.js";
 import { extractElement } from "./html.js";
 
@@ -175,6 +175,47 @@ export async function createDemoProject(): Promise<ProjectBundle> {
   await scaffold(id, spec, reconcileCanvas(spec, canvas).canvas);
   for (const s of spec.screens) await fs.writeFile(safeJoin(id, s.file), demoScreenHtml(spec, s.id));
   await commitVersion(projectDir(id), { kind: "generate", summary: "Demo project with three placeholder screens", screens: spec.screens.map((s) => s.id), pinned: false });
+  return loadProject(id);
+}
+
+export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; screenCount: number };
+
+/** Sample projects shipped in the repo's examples/ folder. */
+export async function listExamples(): Promise<ExampleMeta[]> {
+  if (!(await exists(EXAMPLES_DIR))) return [];
+  const entries = await fs.readdir(EXAMPLES_DIR, { withFileTypes: true });
+  const out: ExampleMeta[] = [];
+  for (const e of entries) {
+    if (!e.isDirectory() || !SAFE_ID.test(e.name)) continue;
+    try {
+      const spec = DesignSpec.parse(JSON.parse(await fs.readFile(path.join(EXAMPLES_DIR, e.name, PROJECT_FILES.spec), "utf8")));
+      out.push({ id: e.name, name: spec.name, brief: spec.brief, device: spec.device.kind, screenCount: spec.screens.length });
+    } catch { /* skip malformed */ }
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Copies an example into a fresh project folder with its own git history. */
+export async function createProjectFromExample(exampleId: string): Promise<ProjectBundle> {
+  if (!SAFE_ID.test(exampleId)) throw Object.assign(new Error(`bad example id "${exampleId}"`), { statusCode: 400 });
+  const src = path.join(EXAMPLES_DIR, exampleId);
+  if (!(await exists(path.join(src, PROJECT_FILES.spec)))) throw Object.assign(new Error(`example "${exampleId}" not found`), { statusCode: 404 });
+  await fs.mkdir(PROJECTS_ROOT, { recursive: true });
+  const id = await uniqueId(exampleId);
+  const raw = DesignSpec.parse(JSON.parse(await fs.readFile(path.join(src, PROJECT_FILES.spec), "utf8")));
+  const spec: DesignSpec = { ...raw, id };
+  const canvas = emptyCanvas();
+  canvas.nodes.push({ id: "brief", type: "prompt", kind: "brief", text: spec.brief, position: { x: -420, y: 0 }, width: 320 });
+  canvas.nodes.push({ id: "note-" + nanoid(6), type: "note", text: `Example project "${spec.name}". Hand-built screens that follow the runtime contract, so the prototype, flow view, states, picker, and change requests all work without Claude.`, position: { x: -420, y: 220 }, width: 320 });
+  await scaffold(id, spec, reconcileCanvas(spec, canvas).canvas);
+  for (const s of spec.screens) {
+    const from = path.join(src, s.file);
+    await fs.mkdir(path.dirname(safeJoin(id, s.file)), { recursive: true });
+    await fs.copyFile(from, safeJoin(id, s.file));
+  }
+  const tokens = path.join(src, PROJECT_FILES.tokens);
+  if (await exists(tokens)) await fs.copyFile(tokens, safeJoin(id, PROJECT_FILES.tokens));
+  await commitVersion(projectDir(id), { kind: "generate", summary: `Loaded example "${spec.name}" with ${spec.screens.length} screens`, screens: spec.screens.map((s) => s.id), pinned: false });
   return loadProject(id);
 }
 

@@ -25,6 +25,7 @@ packages/
   runtime/   The prototype shell: stitches one-HTML-per-screen prototypes into a navigable app; injected screen agent for states and element picking.
 dev.mjs      Starts server and web together.
 scripts/     run-agent.mjs: headless end-to-end generate for testing.
+examples/    Hand-built sample projects (flow.json, tokens.css, screens/) loadable from the home screen.
 ```
 
 ## The idea in one paragraph
@@ -56,6 +57,14 @@ The runtime depends on these, and the validator checks them:
 ## Testing without Claude
 
 Open the demo project from the home screen. Its placeholder screens follow the contract, so navigation, states, the picker, magic lines, and change requests all work offline.
+
+For something closer to real output, load one of the example prototypes from the home screen. They live in `examples/` and are copied into `projects/` as a fresh project with its own history:
+
+- **Lumen Bank** (mobile): send-money flow with loading, offline, invalid-amount, sending, and declined states, plus branching on Continue and Confirm.
+- **Relay Desk** (desktop): support inbox with a ticket thread, a modal new-ticket form, and a reports page. Same-screen transitions flip the ticket to replied, escalated, or resolved.
+- **Plated** (tablet): recipe browser, recipe page, step-by-step cook mode with a timer state and a finish overlay, and an aisle-grouped shopping list.
+
+Each example is checked by `packages/server/src/examples.test.ts`: the spec lints clean, every declared element and transition exists in the markup, every non-default state has styling, and `tokens.css` matches the spec tokens. To add one, create `examples/<id>/` with `flow.json` (its `id` must match the folder), `screens/`, and a `tokens.css` generated from the spec, then run `pnpm test`.
 
 Headless end-to-end generate (needs the dev server running):
 

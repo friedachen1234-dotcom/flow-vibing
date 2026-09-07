@@ -6,5 +6,7 @@ export const REPO_ROOT = path.resolve(here, "../../..");
 export const PORT = Number(process.env.FLOW_PORT ?? 5191);
 export const PROJECTS_ROOT = process.env.FLOW_PROJECTS ? path.resolve(process.env.FLOW_PROJECTS) : path.join(REPO_ROOT, "projects");
 export const RUNTIME_DIR = path.join(REPO_ROOT, "packages", "runtime");
+/** Hand-built sample projects that load without Claude. Each folder holds flow.json, tokens.css, and screens/. */
+export const EXAMPLES_DIR = path.join(REPO_ROOT, "examples");
 export const DEFAULT_MODEL = process.env.FLOW_MODEL ?? "claude-opus-5";
 export const DEFAULT_EFFORT = (process.env.FLOW_EFFORT ?? "high") as "low" | "medium" | "high" | "xhigh" | "max";

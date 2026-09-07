@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en" data-flow-screen="activity">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Activity</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body { font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg, #F4F6FB); color: var(--color-ink, #101828); -webkit-font-smoothing: antialiased; min-height: 100vh; padding-bottom: 40px; }
+      button { font: inherit; color: inherit; }
+      .status { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px 0; font-size: 15px; font-weight: 600; }
+      .status .pills { display: flex; gap: 5px; align-items: center; }
+      .status .bar { width: 3px; background: currentColor; border-radius: 1px; }
+      .status .batt { width: 24px; height: 11px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+      .status .batt::after { content: ""; position: absolute; inset: 2px; right: 4px; background: currentColor; border-radius: 1px; }
+      .top { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 10px 12px 4px; }
+      .top h1 { margin: 0; text-align: center; font-size: 17px; font-weight: 700; }
+      .iconbtn { width: 44px; height: 44px; border: 0; background: none; display: grid; place-items: center; border-radius: 50%; cursor: pointer; }
+      .iconbtn svg { width: 22px; height: 22px; }
+      .search { margin: 8px var(--space-page, 20px) 0; height: 42px; border-radius: var(--radius-control, 12px); background: var(--color-surface, #fff); border: 1px solid var(--color-line, #E4E7EC); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--color-muted, #667085); font-size: 14px; }
+      .search svg { width: 18px; height: 18px; }
+      .filters { display: flex; gap: 8px; padding: 12px var(--space-page, 20px) 4px; overflow-x: auto; scrollbar-width: none; }
+      .filters::-webkit-scrollbar { display: none; }
+      .chip { flex: none; height: 34px; padding: 0 14px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--color-line, #E4E7EC); background: var(--color-surface, #fff); font-size: 13px; font-weight: 600; cursor: pointer; color: var(--color-muted, #667085); }
+      .chip.on { background: var(--color-ink, #101828); border-color: var(--color-ink, #101828); color: #fff; }
+      .list { padding: 8px var(--space-page, 20px) 0; display: grid; gap: 16px; }
+      .day h2 { margin: 0 0 8px 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted, #667085); display: flex; justify-content: space-between; }
+      .day h2 span { font-weight: 600; letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+      .group { background: var(--color-surface, #fff); border-radius: var(--radius-card, 18px); padding: 2px 16px; box-shadow: 0 1px 2px rgba(16,24,40,0.05); }
+      .row { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--color-line, #E4E7EC); }
+      .row:last-child { border-bottom: 0; }
+      .avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; }
+      .who { flex: 1; min-width: 0; }
+      .who b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .who span { display: block; font-size: 12px; color: var(--color-muted, #667085); margin-top: 1px; }
+      .amt { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+      .amt.in { color: var(--color-positive, #12925E); }
+      .amt.pending { color: var(--color-muted, #667085); font-weight: 600; }
+      .tag { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--color-warning-soft, #FFF4E5); color: var(--color-warning, #B54708); margin-left: 6px; vertical-align: 1px; }
+      .empty { display: none; padding: 70px 40px; text-align: center; }
+      .empty .art { width: 120px; height: 120px; margin: 0 auto 18px; border-radius: 32px; background: #E0E7FF; display: grid; place-items: center; color: var(--color-accent, #3B4FE4); }
+      .empty .art svg { width: 54px; height: 54px; }
+      .empty h3 { margin: 0; font-size: 18px; }
+      .empty p { margin: 8px 0 18px; color: var(--color-muted, #667085); font-size: 14px; line-height: 1.5; }
+      .empty button { height: 44px; padding: 0 22px; border: 0; border-radius: var(--radius-pill, 999px); background: var(--color-accent, #3B4FE4); color: #fff; font-weight: 700; cursor: pointer; }
+
+      html[data-flow-state="empty"] .list, html[data-flow-state="empty"] .filters { display: none; }
+      html[data-flow-state="empty"] .empty { display: block; }
+    </style>
+  </head>
+  <body>
+    <div class="status"><span>9:41</span><span class="pills"><span class="bar" style="height:4px"></span><span class="bar" style="height:6px"></span><span class="bar" style="height:8px"></span><span class="bar" style="height:10px"></span><span class="batt" style="margin-left:6px"></span></span></div>
+    <div class="top">
+      <button class="iconbtn" aria-label="Back" data-flow-el="back-button" data-flow-transition="activity-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h1>Activity</h1>
+      <span></span>
+    </div>
+    <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search payments</div>
+
+    <div class="filters" data-flow-el="filter-bar">
+      <button class="chip on">All</button><button class="chip">Money in</button><button class="chip">Money out</button><button class="chip">Pending</button><button class="chip">Cards</button>
+    </div>
+
+    <div class="list" data-flow-el="transaction-list">
+      <div class="day"><h2>Today <span>−£32.50</span></h2>
+        <div class="group">
+          <div class="row"><span class="avatar" style="background:#FCE7F3;color:#BE185D">SO</span><div class="who"><b>Sam Okafor</b><span>09:12 · Instant transfer</span></div><span class="amt">−£32.50</span></div>
+        </div>
+      </div>
+      <div class="day"><h2>Yesterday <span>+£2,915.40</span></h2>
+        <div class="group">
+          <div class="row"><span class="avatar" style="background:#E0F2FE;color:#0369A1">AC</span><div class="who"><b>Acme Payroll</b><span>Salary · September</span></div><span class="amt in">+£2,940.00</span></div>
+          <div class="row"><span class="avatar" style="background:#F1F5F9;color:#475569">TL</span><div class="who"><b>TfL Travel</b><span>Card •• 4821</span></div><span class="amt">−£7.20</span></div>
+          <div class="row"><span class="avatar" style="background:#FEF3C7;color:#B45309">CF</span><div class="who"><b>Corner Coffee <span class="tag">Pending</span></b><span>Card •• 4821</span></div><span class="amt pending">−£17.40</span></div>
+        </div>
+      </div>
+      <div class="day"><h2>Fri 4 Sep <span>−£241.00</span></h2>
+        <div class="group">
+          <div class="row"><span class="avatar" style="background:#DCFCE7;color:#15803D">PL</span><div class="who"><b>Priya Lal</b><span>Received · Rent split</span></div><span class="amt in">+£400.00</span></div>
+          <div class="row"><span class="avatar" style="background:#EDE9FE;color:#6D28D9">EN</span><div class="who"><b>Octopus Energy</b><span>Direct debit</span></div><span class="amt">−£96.00</span></div>
+          <div class="row"><span class="avatar" style="background:#FEE2E2;color:#B91C1C">HL</span><div class="who"><b>Hallow Lettings</b><span>Standing order</span></div><span class="amt">−£545.00</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty">
+      <div class="art"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h6"/><circle cx="18" cy="16" r="3"/></svg></div>
+      <h3>Nothing here yet</h3>
+      <p>Every payment in and out of your account will show up here, grouped by day.</p>
+      <button>Send your first payment</button>
+    </div>
+  </body>
+</html>

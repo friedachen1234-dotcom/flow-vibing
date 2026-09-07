@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en" data-flow-screen="new-ticket">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>New ticket</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body { font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg, #F7F7F5); color: var(--color-ink, #1B1B1F); font-size: 13px; -webkit-font-smoothing: antialiased; height: 100vh; overflow: hidden; position: relative; }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      /* Dimmed inbox behind the dialog, sketched with blocks so the modal reads as a layer. */
+      .behind { position: absolute; inset: 0; display: grid; grid-template-columns: var(--space-sidebar, 232px) 1fr; filter: blur(0); }
+      .behind .side { background: var(--color-surface, #fff); border-right: 1px solid var(--color-line, #E6E6E3); padding: 20px 12px; display: grid; gap: 10px; align-content: start; }
+      .behind .side i, .behind .main i { display: block; height: 12px; border-radius: 6px; background: #ECECE9; }
+      .behind .main { padding: 24px; display: grid; gap: 14px; align-content: start; }
+      .behind .main .tbl { background: var(--color-surface, #fff); border: 1px solid var(--color-line, #E6E6E3); border-radius: var(--radius-card, 10px); padding: 0 16px; }
+      .behind .main .tbl i { height: 10px; margin: 21px 0; }
+      .scrim { position: absolute; inset: 0; background: rgba(27,27,31,0.42); }
+      .dialog { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 560px; background: var(--color-surface, #fff); border-radius: 14px; box-shadow: 0 30px 70px rgba(0,0,0,0.3); overflow: hidden; }
+      .dialog .hd { display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--color-line, #E6E6E3); }
+      .dialog .hd h1 { margin: 0; font-size: 16px; }
+      .dialog .hd .x { margin-left: auto; width: 28px; height: 28px; border: 0; background: none; border-radius: 6px; color: var(--color-muted, #6B6B76); display: grid; place-items: center; }
+      .dialog .bd { padding: 18px 20px; display: grid; gap: 14px; }
+      .f label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; }
+      .f label em { font-style: normal; color: var(--color-danger, #C2410C); }
+      .f .in { height: 36px; border: 1px solid var(--color-line, #E6E6E3); border-radius: var(--radius-control, 8px); padding: 0 11px; display: flex; align-items: center; gap: 8px; background: #fff; }
+      .f .in.ta { height: 92px; align-items: flex-start; padding-top: 9px; }
+      .f .in .ph { color: var(--color-muted, #6B6B76); }
+      .f .in .caret { width: 1.5px; height: 16px; background: var(--color-ink, #1B1B1F); animation: blink 1s steps(2) infinite; }
+      @keyframes blink { to { visibility: hidden; } }
+      .f .in .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 4px; border-radius: 999px; background: var(--color-bg, #F7F7F5); border: 1px solid var(--color-line, #E6E6E3); font-weight: 600; }
+      .avatar { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 9px; font-weight: 700; }
+      .f .err { display: none; margin-top: 5px; font-size: 12px; color: var(--color-danger, #C2410C); font-weight: 600; }
+      .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--color-line, #E6E6E3); border-radius: var(--radius-control, 8px); overflow: hidden; height: 36px; }
+      .seg button { border: 0; background: #fff; font-weight: 600; color: var(--color-muted, #6B6B76); display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-right: 1px solid var(--color-line, #E6E6E3); }
+      .seg button:last-child { border-right: 0; }
+      .seg button.on { background: var(--color-ink, #1B1B1F); color: #fff; }
+      .seg .dot { width: 7px; height: 7px; border-radius: 50%; }
+      .ft { display: flex; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--color-line, #E6E6E3); background: #FBFBFA; }
+      .ft .hint { color: var(--color-muted, #6B6B76); font-size: 12px; }
+      .btn { height: 34px; padding: 0 14px; border-radius: var(--radius-control, 8px); border: 1px solid var(--color-line, #E6E6E3); background: var(--color-surface, #fff); font-weight: 600; }
+      .btn.primary { background: var(--color-accent, #0F766E); border-color: var(--color-accent, #0F766E); color: var(--color-accent-ink, #fff); }
+      .ft .btn.primary { margin-left: auto; }
+
+      html[data-flow-state="invalid"] .f.subject .in { border-color: var(--color-danger, #C2410C); box-shadow: 0 0 0 3px var(--color-danger-soft, #FEE9DF); }
+      html[data-flow-state="invalid"] .f.subject .err { display: block; }
+      html[data-flow-state="invalid"] .dialog { animation: shake 320ms ease; }
+      @keyframes shake { 20% { transform: translate(-50%, -50%) translateX(-6px); } 40% { transform: translate(-50%, -50%) translateX(6px); } 60% { transform: translate(-50%, -50%) translateX(-4px); } 80% { transform: translate(-50%, -50%) translateX(4px); } }
+    </style>
+  </head>
+  <body>
+    <div class="behind" aria-hidden="true">
+      <div class="side"><i style="width:120px;height:20px;margin-bottom:10px"></i><i style="width:80px"></i><i style="width:110px"></i><i style="width:70px"></i><i style="width:90px"></i><i style="width:100px"></i></div>
+      <div class="main"><i style="width:160px;height:18px"></i><div class="tbl"><i style="width:55%"></i><i style="width:45%"></i><i style="width:60%"></i><i style="width:40%"></i><i style="width:50%"></i><i style="width:58%"></i><i style="width:35%"></i><i style="width:48%"></i></div></div>
+    </div>
+    <div class="scrim"></div>
+
+    <div class="dialog" role="dialog" data-flow-el="dialog">
+      <div class="hd"><h1>New ticket</h1><button class="x" aria-label="Close" data-flow-transition="new-ticket-cancel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <div class="bd">
+        <div class="f" data-flow-el="customer-field"><label>Customer <em>*</em></label><div class="in"><span class="pill"><span class="avatar" style="background:#E0F2FE;color:#0369A1">LB</span>Liam Brennan</span><span class="ph">liam.brennan@fastmail.com</span></div></div>
+        <div class="f subject" data-flow-el="subject-field"><label>Subject <em>*</em></label><div class="in"><span class="caret"></span><span class="ph">One line the customer would recognise</span></div><div class="err">Add a subject so the team can find this ticket.</div></div>
+        <div class="two">
+          <div class="f"><label>Priority</label><div class="seg" data-flow-el="priority-picker"><button><span class="dot" style="background:#9CA3AF"></span>Low</button><button class="on"><span class="dot" style="background:#D97706"></span>Normal</button><button><span class="dot" style="background:#C2410C"></span>High</button></div></div>
+          <div class="f"><label>Tag</label><div class="in">Shipping<svg style="margin-left:auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div></div>
+        </div>
+        <div class="f"><label>Description</label><div class="in ta"><span class="ph">What happened, what they've tried, what they need. Phone calls: note the number you called back on.</span></div></div>
+      </div>
+      <div class="ft">
+        <span class="hint">Assigned to you · Opens in Inbox</span>
+        <button class="btn primary" data-flow-el="create-button" data-flow-transition="new-ticket-create new-ticket-invalid">Create ticket</button>
+        <button class="btn" data-flow-el="cancel-button" data-flow-transition="new-ticket-cancel">Cancel</button>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en" data-flow-screen="success">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sent</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body { font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg, #F4F6FB); color: var(--color-ink, #101828); -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; min-height: 100vh; }
+      button { font: inherit; color: inherit; }
+      .status { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px 0; font-size: 15px; font-weight: 600; }
+      .status .pills { display: flex; gap: 5px; align-items: center; }
+      .status .bar { width: 3px; background: currentColor; border-radius: 1px; }
+      .status .batt { width: 24px; height: 11px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+      .status .batt::after { content: ""; position: absolute; inset: 2px; right: 4px; background: currentColor; border-radius: 1px; }
+      main { flex: 1; display: grid; align-content: center; justify-items: center; gap: 22px; padding: 20px var(--space-page, 20px); text-align: center; }
+      .tick { width: 96px; height: 96px; border-radius: 50%; background: var(--color-positive, #12925E); color: #fff; display: grid; place-items: center; box-shadow: 0 16px 36px rgba(18,146,94,0.3); animation: pop var(--motion-base, 240ms) cubic-bezier(.2,.8,.2,1.4) both; }
+      .tick svg { width: 46px; height: 46px; }
+      @keyframes pop { from { transform: scale(0.6); opacity: 0; } }
+      h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+      h1 small { display: block; font-size: 15px; font-weight: 500; color: var(--color-muted, #667085); margin-top: 6px; letter-spacing: 0; }
+      .receipt { width: 100%; background: var(--color-surface, #fff); border-radius: var(--radius-card, 18px); padding: 6px 18px; box-shadow: 0 1px 2px rgba(16,24,40,0.05); position: relative; text-align: left; }
+      .receipt::before, .receipt::after { content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: var(--color-bg, #F4F6FB); top: 50%; margin-top: -8px; }
+      .receipt::before { left: -8px; } .receipt::after { right: -8px; }
+      .r { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px dashed var(--color-line, #E4E7EC); font-size: 13.5px; }
+      .r:last-child { border-bottom: 0; }
+      .r .k { color: var(--color-muted, #667085); }
+      .r .v { font-weight: 600; }
+      .r .v.mono { font-family: var(--font-mono, monospace); font-size: 12.5px; letter-spacing: 0.04em; }
+      .actions { width: 100%; display: grid; gap: 10px; padding: 0 var(--space-page, 20px) 28px; }
+      .cta { width: 100%; height: 54px; border: 0; border-radius: var(--radius-pill, 999px); background: var(--color-accent, #3B4FE4); color: var(--color-accent-ink, #fff); font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(59,79,228,0.28); }
+      .ghost { width: 100%; height: 50px; border: 1px solid var(--color-line, #E4E7EC); background: var(--color-surface, #fff); border-radius: var(--radius-pill, 999px); font-size: 15px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      .ghost svg { width: 18px; height: 18px; }
+    </style>
+  </head>
+  <body>
+    <div class="status"><span>9:41</span><span class="pills"><span class="bar" style="height:4px"></span><span class="bar" style="height:6px"></span><span class="bar" style="height:8px"></span><span class="bar" style="height:10px"></span><span class="batt" style="margin-left:6px"></span></span></div>
+    <main>
+      <div class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h1>£120.00 sent<small>Sam Okafor has it already</small></h1>
+      <div class="receipt" data-flow-el="receipt-card">
+        <div class="r"><span class="k">To</span><span class="v">Sam Okafor · •• 2093</span></div>
+        <div class="r"><span class="k">From</span><span class="v">Everyday •• 4821</span></div>
+        <div class="r"><span class="k">Reference</span><span class="v">Dinner on Friday</span></div>
+        <div class="r"><span class="k">When</span><span class="v">7 Sep 2026, 09:41</span></div>
+        <div class="r"><span class="k">Transfer ID</span><span class="v mono">LB-8F3K2Q-71</span></div>
+      </div>
+    </main>
+    <div class="actions">
+      <button class="ghost" data-flow-el="share-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>Share receipt</button>
+      <button class="cta" data-flow-el="done-button" data-flow-transition="success-to-home">Done</button>
+    </div>
+  </body>
+</html>

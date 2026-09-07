@@ -11,11 +11,14 @@ async function j<T>(res: Response): Promise<T> {
 const json = (body: unknown, method = "POST") => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 export type Bundle = ProjectBundle & { running: boolean };
+export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; screenCount: number };
 
 export const api = {
   listProjects: () => fetch("/api/projects").then((r) => j<ProjectMeta[]>(r)),
   createProject: (name: string, brief: string, deviceKind: DeviceKind) => fetch("/api/projects", json({ name, brief, deviceKind })).then((r) => j<ProjectBundle>(r)),
   createDemo: () => fetch("/api/projects/demo", { method: "POST" }).then((r) => j<ProjectBundle>(r)),
+  listExamples: () => fetch("/api/examples").then((r) => j<ExampleMeta[]>(r)),
+  createFromExample: (exampleId: string) => fetch(`/api/projects/examples/${exampleId}`, { method: "POST" }).then((r) => j<ProjectBundle>(r)),
   getProject: (id: string) => fetch(`/api/projects/${id}`).then((r) => j<Bundle>(r)),
   saveCanvas: (id: string, canvas: CanvasDoc) => fetch(`/api/projects/${id}/canvas`, json(canvas, "PUT")).then((r) => j<{ ok: true }>(r)),
   saveSpec: (id: string, spec: DesignSpec, summary: string) => fetch(`/api/projects/${id}/spec`, json({ spec, summary }, "PUT")).then((r) => j<{ ok: true; version: Version | null }>(r)),

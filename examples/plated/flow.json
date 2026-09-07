@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "id": "plated",
+  "name": "Plated",
+  "brief": "A tablet cooking companion that lives on the kitchen counter. Browse tonight's ideas, save what looks good, then cook step by step with big type you can read from a metre away and timers you can start with a wet finger. Warm, editorial, unfussy.",
+  "device": { "kind": "tablet", "width": 820, "height": 1180 },
+  "tokens": {
+    "colors": { "bg": "#FFFDF8", "ink": "#1F1A17", "muted": "#7A6F68", "accent": "#D9480F", "accent-ink": "#FFFFFF", "accent-soft": "#FDE8DE", "surface": "#FFFFFF", "line": "#EDE6DD", "green": "#2F7D4F", "green-soft": "#E3F3E8", "cream": "#F7F1E6" },
+    "type": { "display": "Georgia, 'Times New Roman', serif", "body": "system-ui, -apple-system, 'Segoe UI', sans-serif" },
+    "spacing": { "unit": "8px", "page": "32px" },
+    "radius": { "card": "20px", "control": "14px", "pill": "999px" },
+    "motion": { "fast": "160ms", "base": "260ms" }
+  },
+  "components": [
+    { "id": "recipe-card", "name": "Recipe card", "description": "Image block with a title, time, and difficulty underneath", "usedIn": ["discover"] },
+    { "id": "big-button", "name": "Big button", "description": "60px tall pill for kitchen use; usable with a knuckle", "usedIn": ["recipe", "cook", "shopping-list"] },
+    { "id": "step-card", "name": "Step card", "description": "One instruction in 28px type with an optional timer", "usedIn": ["cook"] }
+  ],
+  "screens": [
+    {
+      "id": "discover",
+      "name": "Discover",
+      "purpose": "Find something to cook tonight",
+      "file": "screens/discover.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Tonight's pick plus a grid of ideas", "isDefault": true },
+        { "id": "loading", "name": "Loading", "description": "Cards are placeholders while recipes load", "trigger": "app opened", "isDefault": false },
+        { "id": "no-results", "name": "No results", "description": "Search matched nothing; offer to clear it", "trigger": "search with no matches", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "search", "role": "input", "label": "Search" },
+        { "id": "shopping-list-button", "role": "button", "label": "Shopping list" },
+        { "id": "category-chips", "role": "nav", "label": "Category chips" },
+        { "id": "tonight-card", "role": "hero", "label": "Tonight's pick" },
+        { "id": "recipe-grid", "role": "list", "label": "Recipe grid" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "recipe",
+      "name": "Recipe",
+      "purpose": "Decide whether to cook this and get everything ready",
+      "file": "screens/recipe.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Recipe with ingredients and method", "isDefault": true },
+        { "id": "saved", "name": "Saved", "description": "Heart is filled and a toast confirms it's in your cookbook", "trigger": "tap Save", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "back-button", "role": "button", "label": "Back" },
+        { "id": "save-button", "role": "button", "label": "Save" },
+        { "id": "hero", "role": "hero", "label": "Recipe hero" },
+        { "id": "servings-stepper", "role": "segmented", "label": "Servings" },
+        { "id": "ingredients", "role": "list", "label": "Ingredients" },
+        { "id": "add-to-list-button", "role": "button", "label": "Add to shopping list" },
+        { "id": "start-cooking-button", "role": "button", "label": "Start cooking" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "cook",
+      "name": "Cook",
+      "purpose": "Follow one step at a time with hands-free-sized controls",
+      "file": "screens/cook.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Step 3 of 7 with its timer ready", "isDefault": true },
+        { "id": "timer-running", "name": "Timer running", "description": "Ring counts down; the step text stays put", "trigger": "tap Start timer", "isDefault": false },
+        { "id": "complete", "name": "Complete", "description": "All steps done; a full-screen finish with rating", "trigger": "tap Next on the last step", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "back-button", "role": "button", "label": "Exit cooking" },
+        { "id": "progress", "role": "nav", "label": "Step progress" },
+        { "id": "step-card", "role": "card", "label": "Current step" },
+        { "id": "timer-button", "role": "button", "label": "Start timer" },
+        { "id": "next-step-button", "role": "button", "label": "Next step" },
+        { "id": "done-button", "role": "button", "label": "Done" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "shopping-list",
+      "name": "Shopping list",
+      "purpose": "Tick off ingredients in the shop, grouped by aisle",
+      "file": "screens/shopping-list.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Items grouped by aisle, some already ticked", "isDefault": true },
+        { "id": "empty", "name": "Empty", "description": "Nothing on the list; nudge towards a recipe", "trigger": "list cleared", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "back-button", "role": "button", "label": "Back" },
+        { "id": "list", "role": "list", "label": "Items by aisle" },
+        { "id": "clear-checked-button", "role": "button", "label": "Clear ticked items" }
+      ],
+      "provenance": []
+    }
+  ],
+  "transitions": [
+    { "id": "discover-to-recipe", "from": { "screenId": "discover", "elementId": "recipe-grid" }, "to": { "screenId": "recipe" }, "trigger": "tap a recipe card", "animation": "push" },
+    { "id": "tonight-to-recipe", "from": { "screenId": "discover", "elementId": "tonight-card" }, "to": { "screenId": "recipe" }, "trigger": "tap tonight's pick", "animation": "push" },
+    { "id": "discover-to-shopping", "from": { "screenId": "discover", "elementId": "shopping-list-button" }, "to": { "screenId": "shopping-list" }, "trigger": "tap the basket", "animation": "modal" },
+    { "id": "recipe-back", "from": { "screenId": "recipe", "elementId": "back-button" }, "to": { "screenId": "discover" }, "trigger": "tap back", "animation": "pop" },
+    { "id": "recipe-save", "from": { "screenId": "recipe", "elementId": "save-button" }, "to": { "screenId": "recipe", "stateId": "saved" }, "trigger": "tap Save", "animation": "none" },
+    { "id": "recipe-add-to-list", "from": { "screenId": "recipe", "elementId": "add-to-list-button" }, "to": { "screenId": "shopping-list" }, "trigger": "tap Add to list", "animation": "modal" },
+    { "id": "recipe-to-cook", "from": { "screenId": "recipe", "elementId": "start-cooking-button" }, "to": { "screenId": "cook" }, "trigger": "tap Start cooking", "animation": "push" },
+    { "id": "cook-exit", "from": { "screenId": "cook", "elementId": "back-button" }, "to": { "screenId": "recipe" }, "trigger": "tap exit", "animation": "pop" },
+    { "id": "cook-start-timer", "from": { "screenId": "cook", "elementId": "timer-button" }, "to": { "screenId": "cook", "stateId": "timer-running" }, "trigger": "tap Start timer", "animation": "none" },
+    { "id": "cook-next-step", "from": { "screenId": "cook", "elementId": "next-step-button" }, "to": { "screenId": "cook" }, "trigger": "tap Next", "condition": "steps remain", "animation": "fade" },
+    { "id": "cook-finish", "from": { "screenId": "cook", "elementId": "next-step-button" }, "to": { "screenId": "cook", "stateId": "complete" }, "trigger": "tap Next", "condition": "last step", "animation": "none" },
+    { "id": "cook-done", "from": { "screenId": "cook", "elementId": "done-button" }, "to": { "screenId": "discover" }, "trigger": "tap Done", "animation": "pop" },
+    { "id": "shopping-back", "from": { "screenId": "shopping-list", "elementId": "back-button" }, "to": { "screenId": "discover" }, "trigger": "tap close", "animation": "pop" }
+  ],
+  "edgeCases": [
+    { "id": "search-no-results", "attachedTo": { "screenId": "discover" }, "scenario": "Search term matches nothing in the catalogue", "handling": "No-results state keeps the query visible and offers one tap to clear it", "severity": "low" },
+    { "id": "servings-rounding", "attachedTo": { "screenId": "recipe" }, "scenario": "Scaling servings produces awkward quantities like 0.33 eggs", "handling": "Round to kitchen units and show the rounding in muted text", "severity": "medium" },
+    { "id": "screen-lock-timer", "attachedTo": { "transitionId": "cook-start-timer" }, "scenario": "Tablet locks while a timer runs", "handling": "Keep the screen awake during Cook and finish the timer with a loud notification if it does lock", "severity": "high" },
+    { "id": "allergen", "attachedTo": { "transitionId": "recipe-to-cook" }, "scenario": "Recipe contains an allergen from the user's profile", "handling": "Interrupt with a warning sheet before entering Cook; list the ingredient and a swap", "severity": "high" },
+    { "id": "list-offline", "attachedTo": { "screenId": "shopping-list" }, "scenario": "No signal in the supermarket", "handling": "Ticks are stored locally and synced later; the list never shows a spinner", "severity": "medium" }
+  ]
+}

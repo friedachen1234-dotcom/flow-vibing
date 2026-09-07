@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en" data-flow-screen="recipe">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recipe</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body { font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg, #FFFDF8); color: var(--color-ink, #1F1A17); -webkit-font-smoothing: antialiased; padding-bottom: 120px; }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      .hero { height: 420px; position: relative; background: radial-gradient(circle at 70% 55%, #F5B27A 0, #E0713B 30%, #9F3F17 31%, #7A2E0F 58%, #3B1A0A 100%); color: #fff; }
+      .hero::before { content: ""; position: absolute; right: 16%; top: 48%; width: 260px; height: 260px; margin-top: -130px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #FFE7C2, #F6A45B 45%, #C7561E 75%, #8B3512); box-shadow: 0 0 0 16px rgba(255,255,255,0.9), 0 0 0 30px rgba(255,255,255,0.35), 0 30px 40px rgba(0,0,0,0.3); }
+      .bar { position: absolute; top: 24px; left: var(--space-page, 32px); right: var(--space-page, 32px); display: flex; justify-content: space-between; }
+      .round { width: 52px; height: 52px; border-radius: 50%; border: 0; background: rgba(255,255,255,0.92); color: var(--color-ink, #1F1A17); display: grid; place-items: center; box-shadow: 0 6px 16px rgba(0,0,0,0.18); }
+      .round svg { width: 22px; height: 22px; }
+      .round .fill { display: none; }
+      .hero .txt { position: absolute; left: 0; right: 0; bottom: 0; padding: 28px var(--space-page, 32px); background: linear-gradient(180deg, transparent, rgba(30,10,0,0.6)); }
+      .hero .kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.9; }
+      .hero h1 { font-family: var(--font-display, Georgia, serif); font-size: 44px; margin: 6px 0 0; line-height: 1.05; letter-spacing: -0.01em; max-width: 62%; }
+      .toast { display: none; position: fixed; top: 92px; left: 50%; transform: translateX(-50%); background: var(--color-ink, #1F1A17); color: #fff; padding: 12px 18px; border-radius: var(--radius-pill, 999px); font-size: 15px; font-weight: 600; box-shadow: 0 12px 30px rgba(0,0,0,0.25); align-items: center; gap: 8px; z-index: 5; }
+      .toast svg { width: 18px; height: 18px; color: #F4A9A0; }
+      .meta { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 var(--space-page, 32px); transform: translateY(-28px); background: var(--color-surface, #fff); border-radius: var(--radius-card, 20px); box-shadow: 0 16px 36px rgba(60,30,10,0.12); padding: 18px 8px; }
+      .meta div { text-align: center; border-right: 1px solid var(--color-line, #EDE6DD); }
+      .meta div:last-child { border-right: 0; }
+      .meta b { display: block; font-size: 20px; font-weight: 700; }
+      .meta span { font-size: 13px; color: var(--color-muted, #7A6F68); }
+      .body { display: grid; grid-template-columns: 300px 1fr; gap: 32px; padding: 0 var(--space-page, 32px); }
+      h2 { font-family: var(--font-display, Georgia, serif); font-size: 24px; margin: 0 0 14px; display: flex; align-items: center; justify-content: space-between; }
+      .stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--color-line, #EDE6DD); border-radius: var(--radius-pill, 999px); overflow: hidden; height: 40px; font-family: var(--font-body, system-ui, sans-serif); }
+      .stepper button { width: 40px; height: 100%; border: 0; background: var(--color-surface, #fff); font-size: 20px; }
+      .stepper span { padding: 0 10px; font-size: 14px; font-weight: 700; }
+      .ing { list-style: none; margin: 0; padding: 0; }
+      .ing li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--color-line, #EDE6DD); font-size: 16px; }
+      .ing li span:last-child { color: var(--color-muted, #7A6F68); font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .ing li em { font-style: normal; font-size: 12.5px; color: var(--color-muted, #7A6F68); display: block; }
+      .addlist { margin-top: 16px; width: 100%; height: 56px; border-radius: var(--radius-pill, 999px); border: 1.5px solid var(--color-ink, #1F1A17); background: var(--color-surface, #fff); font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      .addlist svg { width: 20px; height: 20px; }
+      .steps { counter-reset: s; }
+      .step { display: grid; grid-template-columns: 44px 1fr; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--color-line, #EDE6DD); font-size: 17px; line-height: 1.5; }
+      .step::before { counter-increment: s; content: counter(s); width: 36px; height: 36px; border-radius: 50%; background: var(--color-cream, #F7F1E6); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+      .step .t { font-size: 13px; font-weight: 700; color: var(--color-accent, #D9480F); margin-top: 6px; display: inline-flex; align-items: center; gap: 5px; }
+      .step .t svg { width: 14px; height: 14px; }
+      .intro { font-size: 17px; line-height: 1.55; color: #4A403B; margin: 0 0 22px; }
+      .cta { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px var(--space-page, 32px) 32px; background: linear-gradient(180deg, rgba(255,253,248,0), var(--color-bg, #FFFDF8) 40%); }
+      .cta button { width: 100%; height: 64px; border: 0; border-radius: var(--radius-pill, 999px); background: var(--color-accent, #D9480F); color: var(--color-accent-ink, #fff); font-size: 19px; font-weight: 700; box-shadow: 0 14px 30px rgba(217,72,15,0.32); display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+      .cta button svg { width: 22px; height: 22px; }
+
+      html[data-flow-state="saved"] .round.save { background: var(--color-accent, #D9480F); color: #fff; }
+      html[data-flow-state="saved"] .round.save .line { display: none; }
+      html[data-flow-state="saved"] .round.save .fill { display: block; }
+      html[data-flow-state="saved"] .toast { display: inline-flex; }
+    </style>
+  </head>
+  <body>
+    <div class="hero" data-flow-el="hero">
+      <div class="bar">
+        <button class="round" aria-label="Back" data-flow-el="back-button" data-flow-transition="recipe-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <button class="round save" aria-label="Save" data-flow-el="save-button" data-flow-transition="recipe-save"><svg class="line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><svg class="fill" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></button>
+      </div>
+      <div class="txt"><div class="kicker">Weeknight · One pan</div><h1>Harissa chicken with charred lemons</h1></div>
+    </div>
+    <div class="toast"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Saved to your cookbook</div>
+
+    <div class="meta"><div><b>35 min</b><span>Total</span></div><div><b>10 min</b><span>Prep</span></div><div><b>Easy</b><span>Difficulty</span></div><div><b>520</b><span>kcal / serving</span></div></div>
+
+    <div class="body">
+      <aside>
+        <h2>Ingredients <span class="stepper" data-flow-el="servings-stepper"><button>−</button><span>Serves 4</span><button>+</button></span></h2>
+        <ul class="ing" data-flow-el="ingredients">
+          <li><span>Chicken thighs, bone in</span><span>8</span></li>
+          <li><span>Rose harissa</span><span>3 tbsp</span></li>
+          <li><span>Lemons</span><span>2</span></li>
+          <li><span>Red onions</span><span>2</span></li>
+          <li><span>Baby potatoes<em>halved</em></span><span>600 g</span></li>
+          <li><span>Garlic cloves</span><span>4</span></li>
+          <li><span>Olive oil</span><span>2 tbsp</span></li>
+          <li><span>Greek yoghurt<em>to serve</em></span><span>150 g</span></li>
+          <li><span>Flat-leaf parsley</span><span>a handful</span></li>
+        </ul>
+        <button class="addlist" data-flow-el="add-to-list-button" data-flow-transition="recipe-add-to-list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add 9 items to list</button>
+      </aside>
+      <section>
+        <h2>Method</h2>
+        <p class="intro">Everything goes on one tray. The lemons char into something sweet and sticky while the harissa turns the pan juices into a sauce you'll want bread for.</p>
+        <div class="steps">
+          <div class="step"><div>Heat the oven to 220°C fan. Toss the potatoes and onions with half the oil on a large roasting tray.</div></div>
+          <div class="step"><div>Rub the chicken with harissa, the rest of the oil, and plenty of salt. Nestle among the vegetables, skin side up.</div></div>
+          <div class="step"><div>Halve the lemons, squeeze one over the tray, and tuck all four halves cut side down between the chicken.<span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>25 min roast</span></div></div>
+          <div class="step"><div>Roast until the skin is deep red and blistered and the potatoes are tender.</div></div>
+          <div class="step"><div>Rest for five minutes, then spoon over the pan juices and finish with yoghurt and parsley.</div></div>
+        </div>
+      </section>
+    </div>
+    <div class="cta"><button data-flow-el="start-cooking-button" data-flow-transition="recipe-to-cook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>Start cooking</button></div>
+  </body>
+</html>

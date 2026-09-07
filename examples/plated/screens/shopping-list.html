@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-flow-screen="shopping-list">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shopping list</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body { font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg, #FFFDF8); color: var(--color-ink, #1F1A17); -webkit-font-smoothing: antialiased; padding: 0 var(--space-page, 32px) 140px; }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      .top { display: flex; align-items: center; gap: 16px; padding: 24px 0 8px; }
+      .round { width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--color-line, #EDE6DD); background: var(--color-surface, #fff); display: grid; place-items: center; }
+      .round svg { width: 22px; height: 22px; }
+      h1 { font-family: var(--font-display, Georgia, serif); font-size: 34px; margin: 0; flex: 1; letter-spacing: -0.01em; }
+      h1 span { display: block; font-family: var(--font-body, system-ui, sans-serif); font-size: 14px; font-weight: 600; color: var(--color-muted, #7A6F68); margin-top: 2px; letter-spacing: 0; }
+      .recipes { display: flex; gap: 10px; padding: 14px 0 6px; }
+      .rc { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 6px; border-radius: var(--radius-pill, 999px); background: var(--color-surface, #fff); border: 1.5px solid var(--color-line, #EDE6DD); font-size: 14px; font-weight: 600; }
+      .rc i { width: 28px; height: 28px; border-radius: 50%; }
+      .aisle { margin-top: 22px; }
+      .aisle h2 { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted, #7A6F68); margin: 0 0 8px 4px; display: flex; justify-content: space-between; }
+      .aisle h2 span { letter-spacing: 0; text-transform: none; font-weight: 600; }
+      .group { background: var(--color-surface, #fff); border-radius: var(--radius-card, 20px); padding: 4px 8px; box-shadow: 0 1px 2px rgba(60,30,10,0.05); border: 1px solid var(--color-line, #EDE6DD); }
+      .item { display: flex; align-items: center; gap: 16px; padding: 14px 12px; border-bottom: 1px solid var(--color-line, #EDE6DD); font-size: 18px; }
+      .item:last-child { border-bottom: 0; }
+      .box { width: 30px; height: 30px; border-radius: 9px; border: 2px solid #CFC5B6; display: grid; place-items: center; flex: none; color: #fff; }
+      .box svg { width: 18px; height: 18px; display: none; }
+      .item.on .box { background: var(--color-green, #2F7D4F); border-color: var(--color-green, #2F7D4F); }
+      .item.on .box svg { display: block; }
+      .item.on .t { text-decoration: line-through; color: var(--color-muted, #7A6F68); }
+      .item .t { flex: 1; }
+      .item .t em { font-style: normal; font-size: 13px; color: var(--color-muted, #7A6F68); display: block; margin-top: 1px; }
+      .item .q { font-weight: 700; color: var(--color-muted, #7A6F68); font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .item.on .q { text-decoration: line-through; }
+      .cta { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px var(--space-page, 32px) 32px; background: linear-gradient(180deg, rgba(255,253,248,0), var(--color-bg, #FFFDF8) 40%); display: flex; gap: 12px; }
+      .cta button { flex: 1; height: 60px; border-radius: var(--radius-pill, 999px); font-size: 17px; font-weight: 700; border: 1.5px solid var(--color-line, #EDE6DD); background: var(--color-surface, #fff); }
+      .cta button.dark { background: var(--color-ink, #1F1A17); color: #fff; border-color: var(--color-ink, #1F1A17); }
+      .empty { display: none; text-align: center; padding: 120px 40px 0; }
+      .empty .art { width: 130px; height: 130px; border-radius: 50%; margin: 0 auto 22px; background: var(--color-cream, #F7F1E6); display: grid; place-items: center; color: var(--color-accent, #D9480F); }
+      .empty .art svg { width: 56px; height: 56px; }
+      .empty h3 { font-family: var(--font-display, Georgia, serif); font-size: 30px; margin: 0; }
+      .empty p { color: var(--color-muted, #7A6F68); font-size: 17px; margin: 10px auto 0; max-width: 380px; line-height: 1.5; }
+
+      html[data-flow-state="empty"] .recipes, html[data-flow-state="empty"] .aisles, html[data-flow-state="empty"] .cta { display: none; }
+      html[data-flow-state="empty"] .empty { display: block; }
+      html[data-flow-state="empty"] h1 span::before { content: "Nothing to buy"; }
+      html[data-flow-state="empty"] h1 span b { display: none; }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <button class="round" aria-label="Close" data-flow-el="back-button" data-flow-transition="shopping-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <h1>Shopping list<span><b>12 items · 4 ticked</b></span></h1>
+      <button class="round" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg></button>
+    </div>
+    <div class="recipes"><span class="rc"><i style="background:linear-gradient(135deg,#F6A45B,#8B3512)"></i>Harissa chicken</span><span class="rc"><i style="background:linear-gradient(135deg,#C6E39A,#4B7F33)"></i>Pea risotto</span></div>
+
+    <div class="aisles" data-flow-el="list">
+      <div class="aisle"><h2>Produce <span>5</span></h2><div class="group">
+        <div class="item on"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Lemons</span><span class="q">2</span></div>
+        <div class="item on"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Red onions</span><span class="q">2</span></div>
+        <div class="item"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Baby potatoes<em>Harissa chicken</em></span><span class="q">600 g</span></div>
+        <div class="item"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Flat-leaf parsley</span><span class="q">1 bunch</span></div>
+        <div class="item"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Fresh mint<em>Pea risotto</em></span><span class="q">1 bunch</span></div>
+      </div></div>
+      <div class="aisle"><h2>Meat &amp; dairy <span>3</span></h2><div class="group">
+        <div class="item"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Chicken thighs, bone in</span><span class="q">8</span></div>
+        <div class="item on"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Greek yoghurt</span><span class="q">150 g</span></div>
+        <div class="item"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Parmesan<em>Pea risotto</em></span><span class="q">60 g</span></div>
+      </div></div>
+      <div class="aisle"><h2>Cupboard <span>4</span></h2><div class="group">
+        <div class="item on"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Rose harissa</span><span class="q">1 jar</span></div>
+        <div class="item"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Arborio rice<em>Pea risotto</em></span><span class="q">300 g</span></div>
+        <div class="item"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Vegetable stock</span><span class="q">1 L</span></div>
+        <div class="item"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="t">Frozen peas</span><span class="q">400 g</span></div>
+      </div></div>
+    </div>
+
+    <div class="empty">
+      <div class="art"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-2 11H5z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg></div>
+      <h3>Your list is empty</h3>
+      <p>Open a recipe and tap “Add to list” to fill it. Items group themselves by aisle.</p>
+    </div>
+
+    <div class="cta"><button data-flow-el="clear-checked-button">Clear 4 ticked</button><button class="dark">Add an item</button></div>
+  </body>
+</html>

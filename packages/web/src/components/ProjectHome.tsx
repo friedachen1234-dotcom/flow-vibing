@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import type { DeviceKind, ProjectMeta } from "@flow/shared";
-import { api } from "../api";
+import { api, type ExampleMeta } from "../api";
 import { useFlow } from "../store";
+
+const DEVICE_LABEL: Record<DeviceKind, string> = { mobile: "Mobile", tablet: "Tablet", desktop: "Desktop" };
 
 export function ProjectHome() {
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
+  const [examples, setExamples] = useState<ExampleMeta[]>([]);
   const [name, setName] = useState("");
   const [brief, setBrief] = useState("");
   const [device, setDevice] = useState<DeviceKind>("mobile");
@@ -13,7 +16,10 @@ export function ProjectHome() {
   const showToast = useFlow((s) => s.showToast);
   const error = useFlow((s) => s.error);
 
-  useEffect(() => { api.listProjects().then(setProjects).catch((e) => showToast(e.message)); }, [showToast]);
+  useEffect(() => {
+    api.listProjects().then(setProjects).catch((e) => showToast(e.message));
+    api.listExamples().then(setExamples).catch(() => setExamples([]));
+  }, [showToast]);
 
   const create = async () => {
     if (!name.trim()) return;
@@ -25,6 +31,12 @@ export function ProjectHome() {
   const demo = async () => {
     setBusy(true);
     try { const b = await api.createDemo(); await openProject(b.meta.id); }
+    catch (e) { showToast((e as Error).message); }
+    finally { setBusy(false); }
+  };
+  const loadExample = async (id: string) => {
+    setBusy(true);
+    try { const b = await api.createFromExample(id); await openProject(b.meta.id); }
     catch (e) { showToast((e as Error).message); }
     finally { setBusy(false); }
   };
@@ -64,6 +76,24 @@ export function ProjectHome() {
               </div>
             ))}
           </div>
+          {examples.length > 0 && (
+            <div className="card examples">
+              <h2>Example prototypes</h2>
+              <div className="muted small" style={{ marginBottom: 10 }}>Hand-built prototypes that follow the screen contract. Load one to try navigation, states, branches, the picker, and change requests without Claude.</div>
+              <div className="ex-grid">
+                {examples.map((ex) => (
+                  <div key={ex.id} className="ex">
+                    <div className="ex-head">
+                      <div className="n">{ex.name}</div>
+                      <div className="m">{DEVICE_LABEL[ex.device]} · {ex.screenCount} screens</div>
+                    </div>
+                    <div className="ex-brief">{ex.brief}</div>
+                    <button className="btn sm" disabled={busy} onClick={() => loadExample(ex.id)}>Load example</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
