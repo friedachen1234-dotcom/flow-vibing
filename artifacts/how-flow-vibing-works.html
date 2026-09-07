@@ -139,6 +139,25 @@ function Thesis({ step }) {
       <p style={{ margin: "0 0 12px", fontSize: 13.5, lineHeight: 1.6, color: C.ink, maxWidth: "64ch" }}>{step.body}</p>
       <p style={{ margin: "0 0 18px", fontSize: 13.5, lineHeight: 1.6, color: C.muted, maxWidth: "64ch" }}>{step.body2}</p>
 
+      <a
+        href={DECK_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="fvCta"
+        style={{
+          display: "flex", alignItems: "center", gap: 14, margin: "4px 0 20px", textDecoration: "none",
+          background: C.ink, color: "#fff", borderRadius: 14, padding: "15px 16px",
+          boxShadow: "0 10px 22px -12px rgba(23,25,28,0.7)",
+        }}
+      >
+        <span style={{ width: 38, height: 38, borderRadius: 10, background: C.peach, color: C.sienna, display: "grid", placeItems: "center", fontSize: 15, fontWeight: 700, flexShrink: 0 }}>F</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>See the redesign challenge</span>
+          <span style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 3 }}>Figma deck · where this idea started</span>
+        </span>
+        <span className="fvArrow" style={{ width: 30, height: 30, borderRadius: 9999, background: "rgba(255,255,255,0.12)", display: "grid", placeItems: "center", fontSize: 14, flexShrink: 0, transition: "transform 140ms, background 140ms" }}>↗</span>
+      </a>
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1.35fr", gap: 12, alignItems: "stretch" }}>
         <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 14px", background: C.fog }}>
           <div style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: 1, color: C.smoke, textTransform: "uppercase", marginBottom: 12 }}>A thread</div>
@@ -152,12 +171,12 @@ function Thesis({ step }) {
           <div style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: 1, color: C.sienna, textTransform: "uppercase", marginBottom: 12 }}>A board</div>
           <svg viewBox="0 0 300 122" style={{ width: "100%", height: 122, display: "block" }} role="img" aria-label="References, screens and variants side by side on one board">
             <g stroke={C.sienna} strokeWidth="1" strokeDasharray="3 3" fill="none" opacity="0.7">
-              <path d="M34 44 L22 66" /><path d="M96 44 L58 66" /><path d="M78 92 L150 88" />
+              <path d="M30 44 L20 66" /><path d="M92 44 L56 66" /><path d="M74 98 L150 94" />
             </g>
             <text x="6" y="12" style={{ fontFamily: sans, fontSize: 8.5, fill: C.sienna }}>references</text>
             <rect x="6" y="18" width="56" height="24" rx="4" fill="#e4dff0" stroke={C.sienna} strokeWidth="0.8" />
             <rect x="70" y="18" width="44" height="24" rx="4" fill="#e4dff0" stroke={C.sienna} strokeWidth="0.8" />
-            <text x="6" y="60" style={{ fontFamily: sans, fontSize: 8.5, fill: C.smoke }}>screens</text>
+            <text x="80" y="76" style={{ fontFamily: sans, fontSize: 8.5, fill: C.smoke }}>screens</text>
             <rect x="6" y="66" width="30" height="50" rx="4" fill="#fff" stroke={C.ink} strokeWidth="1.2" />
             <rect x="42" y="66" width="30" height="50" rx="4" fill="#fff" stroke={C.line} strokeWidth="1" />
             <text x="150" y="60" style={{ fontFamily: sans, fontSize: 8.5, fill: C.smoke }}>variants of one element</text>
@@ -169,23 +188,6 @@ function Thesis({ step }) {
         </div>
       </div>
 
-      <a
-        href={DECK_URL}
-        target="_blank"
-        rel="noreferrer"
-        className="fvLink"
-        style={{
-          display: "inline-flex", alignItems: "center", gap: 9, marginTop: 18, textDecoration: "none",
-          border: `1px solid ${C.line}`, borderRadius: 10, padding: "10px 14px", color: C.ink, background: C.bg,
-        }}
-      >
-        <span style={{ width: 20, height: 20, borderRadius: 5, background: C.peach, color: C.sienna, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>F</span>
-        <span>
-          <span style={{ display: "block", fontSize: 12.5, fontWeight: 500 }}>The redesign challenge this came from</span>
-          <span style={{ display: "block", fontSize: 11, color: C.smoke, marginTop: 1 }}>Figma deck · Redesign Lovart</span>
-        </span>
-        <span style={{ color: C.smoke, fontSize: 14, marginLeft: 4 }}>↗</span>
-      </a>
     </div>
   );
 }
@@ -365,8 +367,9 @@ function Main() {
       <style>{`
         .fvChip:hover { color: #17191c !important; }
         .fvShot:hover .fvZoom { opacity: 1; }
-        .fvShot:focus-visible, .fvLink:focus-visible { outline: 2px solid ${C.sienna}; outline-offset: 2px; }
-        .fvLink:hover { border-color: #cfc7e0 !important; background: #fbfaff !important; }
+        .fvShot:focus-visible, .fvCta:focus-visible { outline: 2px solid ${C.sienna}; outline-offset: 3px; }
+        .fvCta:hover { background: #24272d !important; }
+        .fvCta:hover .fvArrow { transform: translate(2px, -2px); background: rgba(255,255,255,0.2); }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
       `}</style>
       {wide ? (
