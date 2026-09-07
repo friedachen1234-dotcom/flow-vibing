@@ -1,19 +1,19 @@
 {
   "title": "Flow Vibing: every prototype is also a flow",
-  "bodyText": "A canvas tool where Claude answers a brief by writing a Design Spec and the screens together, so the flow chart and the running prototype are two readings of the same files. Step through the four attributes that make a plain HTML screen runnable, flip between the two views, and see which screens a set of changes actually rewrites.",
-  "whatThisProves": "I design the contract a tool runs on, not just its screens — a four-attribute interface that lets a flow chart and a working prototype stay the same artifact.",
+  "bodyText": "A canvas tool I built where the prototype and the flow chart are the same artifact. Five steps through the real interface: HTML screens running as nodes, one toggle between flow and prototype, editing a screen without losing the flow around it, references and craft rules living on the board, and element variants generated from a reference wired in beside them.",
+  "whatThisProves": "I design the system a tool runs on, not just its screens — and I build it far enough to show the real interface doing the work.",
   "keywords": [
     "ai prototyping",
     "design tools",
+    "canvas",
     "flow chart",
     "prototype",
     "design spec",
     "claude agent sdk",
     "internal tools",
-    "design systems",
-    "state machines",
+    "moodboard",
+    "design variants",
     "design to code",
-    "versioning",
     "human ai collaboration"
   ],
   "hideTitle": true
