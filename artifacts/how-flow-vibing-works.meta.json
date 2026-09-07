@@ -1,7 +1,7 @@
 {
   "title": "Flow Vibing: every prototype is also a flow",
-  "bodyText": "A canvas tool I built where the prototype and the flow chart are the same artifact. Five steps through the real interface: HTML screens running as nodes, one toggle between flow and prototype, editing a screen without losing the flow around it, references and craft rules living on the board, and element variants generated from a reference wired in beside them.",
-  "whatThisProves": "I design the system a tool runs on, not just its screens — and I build it far enough to show the real interface doing the work.",
+  "bodyText": "A canvas tool I built where the prototype and the flow chart are the same artifact. It opens with the gap I found in a previous redesign challenge: designers work spatially, but AI tools iterate in a chat thread. Then five steps through the real interface, using a recovery-tracking app as the worked example.",
+  "whatThisProves": "I take a gap I found in one redesign challenge and build the answer far enough to show the real interface doing the work.",
   "keywords": [
     "ai prototyping",
     "design tools",
@@ -10,10 +10,10 @@
     "prototype",
     "design spec",
     "claude agent sdk",
-    "internal tools",
+    "vibe coding",
     "moodboard",
     "design variants",
-    "design to code",
+    "wearables",
     "human ai collaboration"
   ],
   "hideTitle": true

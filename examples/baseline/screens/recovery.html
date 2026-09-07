@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en" data-flow-screen="recovery">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recovery</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body { font-family: var(--font-body, system-ui); background: var(--color-bg, #0A0B0D); color: var(--color-ink, #fff); -webkit-font-smoothing: antialiased; padding-bottom: 40px; }
+      button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; text-align: left; }
+      .status { display: flex; justify-content: space-between; align-items: center; padding: 13px 22px 0; font-size: 14px; font-weight: 600; }
+      .status .bars { display: flex; gap: 4px; align-items: flex-end; }
+      .status i { width: 3px; background: #fff; border-radius: 1px; display: block; }
+      .status .batt { width: 22px; height: 11px; border: 1.5px solid #fff; border-radius: 3px; position: relative; margin-left: 5px; }
+      .status .batt::after { content: ""; position: absolute; inset: 2px; right: 5px; background: #fff; border-radius: 1px; }
+      .top { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: 8px 10px 0; }
+      .top h1 { margin: 0; text-align: center; font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+      .ic { width: 40px; height: 40px; display: grid; place-items: center; }
+      .ic svg { width: 20px; height: 20px; }
+      .hero { text-align: center; padding: 14px var(--space-page, 18px) 18px; }
+      .ring { position: relative; width: 176px; height: 176px; margin: 0 auto; }
+      .ring svg { transform: rotate(-90deg); display: block; }
+      .ring .mid { position: absolute; inset: 0; display: grid; place-content: center; }
+      .ring .pct { font-size: 48px; font-weight: 800; letter-spacing: -.045em; line-height: 1; font-variant-numeric: tabular-nums; }
+      .ring .pct sup { font-size: 19px; vertical-align: 20px; }
+      .band { display: inline-block; margin-top: 14px; font-size: 12px; font-weight: 700; letter-spacing: .06em; padding: 5px 13px; border-radius: 999px; background: rgba(22,236,6,.14); color: var(--color-high, #16EC06); }
+      .hero p { margin: 12px auto 0; font-size: 13.5px; line-height: 1.55; color: var(--color-muted, #8B9099); max-width: 32ch; }
+      .low-only { display: none; }
+      h2 { font-size: 9.5px; font-weight: 700; letter-spacing: .18em; color: var(--color-dim, #5A6069); text-transform: uppercase; margin: 22px var(--space-page, 18px) 9px; }
+      .list { margin: 0 var(--space-page, 18px); background: var(--color-surface, #141619); border: 1px solid var(--color-line, #24272D); border-radius: var(--radius-card, 16px); padding: 2px 14px; }
+      .row { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--color-line, #24272D); }
+      .row:last-child { border-bottom: 0; }
+      .row .n { flex: 1; }
+      .row .n b { display: block; font-size: 13.5px; font-weight: 600; }
+      .row .n span { display: block; font-size: 11.5px; color: var(--color-dim, #5A6069); margin-top: 2px; }
+      .row .val { text-align: right; }
+      .row .val b { display: block; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+      .row .val span { display: block; font-size: 11px; font-weight: 700; margin-top: 2px; }
+      .up { color: var(--color-high, #16EC06); } .down { color: var(--color-low, #FF3B30); } .flat { color: var(--color-muted, #8B9099); }
+      .contrib { width: 44px; height: 4px; border-radius: 2px; background: var(--color-surface-2, #1C1F24); overflow: hidden; }
+      .contrib i { display: block; height: 100%; background: var(--color-high, #16EC06); }
+      .chart { margin: 0 var(--space-page, 18px); background: var(--color-surface, #141619); border: 1px solid var(--color-line, #24272D); border-radius: var(--radius-card, 16px); padding: 15px 14px 12px; }
+      .bars { display: grid; grid-template-columns: repeat(14, 1fr); gap: 5px; align-items: end; height: 108px; }
+      .bars i { display: block; border-radius: 3px 3px 1px 1px; }
+      .xax { display: flex; justify-content: space-between; margin-top: 8px; font-size: 10px; color: var(--color-dim, #5A6069); font-variant-numeric: tabular-nums; }
+      .legend { display: flex; gap: 14px; margin-top: 12px; font-size: 10.5px; color: var(--color-muted, #8B9099); }
+      .legend span { display: inline-flex; align-items: center; gap: 5px; }
+      .legend i { width: 8px; height: 8px; border-radius: 2px; display: block; }
+
+      html[data-flow-state="low"] .ring .fill { stroke: var(--color-low, #FF3B30); stroke-dashoffset: 375; }
+      html[data-flow-state="low"] .ring .pct::before { content: "31"; }
+      html[data-flow-state="low"] .ring .pct .num { display: none; }
+      html[data-flow-state="low"] .band { background: rgba(255,59,48,.16); color: var(--color-low, #FF3B30); }
+      html[data-flow-state="low"] .band .t { display: none; }
+      html[data-flow-state="low"] .band::after { content: "TAKE IT EASY"; }
+      html[data-flow-state="low"] .hero p { display: none; }
+      html[data-flow-state="low"] .low-only { display: block; }
+      html[data-flow-state="low"] .contrib i { background: var(--color-low, #FF3B30); }
+      html[data-flow-state="low"] .row .val span.up { color: var(--color-low, #FF3B30); }
+    </style>
+  </head>
+  <body>
+    <div class="status"><span>6:42</span><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i><span class="batt"></span></span></div>
+    <div class="top">
+      <button class="ic" aria-label="Back" data-flow-el="back-button" data-flow-transition="recovery-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h1>RECOVERY</h1><span></span>
+    </div>
+
+    <div class="hero" data-flow-el="recovery-hero" data-flow-transition="recovery-low">
+      <div class="ring">
+        <svg width="176" height="176" viewBox="0 0 176 176">
+          <circle cx="88" cy="88" r="76" fill="none" stroke="#1C1F24" stroke-width="12" />
+          <circle class="fill" cx="88" cy="88" r="76" fill="none" stroke="#16EC06" stroke-width="12" stroke-linecap="round" stroke-dasharray="478" stroke-dashoffset="153" />
+        </svg>
+        <span class="mid"><span class="pct"><span class="num">68</span><sup>%</sup></span></span>
+      </div>
+      <span class="band"><span class="t">READY TO TRAIN</span></span>
+      <p>Your heart rate variability came in above baseline for a third night running. The body is absorbing load well.</p>
+      <p class="low-only">Two short nights and a late session have stacked up. Sleep is the lever today, not training.</p>
+    </div>
+
+    <h2>What drove it</h2>
+    <div class="list" data-flow-el="driver-list">
+      <div class="row"><span class="contrib"><i style="width:82%"></i></span><span class="n"><b>Heart rate variability</b><span>74 ms · baseline 68 ms</span></span><span class="val"><b>74</b><span class="up">+6 ms</span></span></div>
+      <div class="row"><span class="contrib"><i style="width:64%"></i></span><span class="n"><b>Resting heart rate</b><span>48 bpm · baseline 50 bpm</span></span><span class="val"><b>48</b><span class="up">−2 bpm</span></span></div>
+      <div class="row"><span class="contrib"><i style="width:71%"></i></span><span class="n"><b>Sleep performance</b><span>7h 42m against 8h 51m need</span></span><span class="val"><b>87%</b><span class="flat">−4%</span></span></div>
+      <div class="row"><span class="contrib"><i style="width:48%"></i></span><span class="n"><b>Respiratory rate</b><span>14.2 rpm · steady</span></span><span class="val"><b>14.2</b><span class="flat">no change</span></span></div>
+    </div>
+
+    <h2>Last fourteen days</h2>
+    <div class="chart" data-flow-el="trend-chart">
+      <div class="bars">
+        <i style="height:44%;background:#FFD500"></i><i style="height:31%;background:#FF3B30"></i><i style="height:58%;background:#FFD500"></i>
+        <i style="height:72%;background:#16EC06"></i><i style="height:66%;background:#FFD500"></i><i style="height:81%;background:#16EC06"></i>
+        <i style="height:77%;background:#16EC06"></i><i style="height:39%;background:#FF3B30"></i><i style="height:52%;background:#FFD500"></i>
+        <i style="height:69%;background:#16EC06"></i><i style="height:74%;background:#16EC06"></i><i style="height:61%;background:#FFD500"></i>
+        <i style="height:79%;background:#16EC06"></i><i style="height:68%;background:#16EC06"></i>
+      </div>
+      <div class="xax"><span>26 Aug</span><span>1 Sep</span><span>8 Sep</span></div>
+      <div class="legend"><span><i style="background:#16EC06"></i>Green 67+</span><span><i style="background:#FFD500"></i>Yellow 34–66</span><span><i style="background:#FF3B30"></i>Red under 34</span></div>
+    </div>
+  </body>
+</html>
