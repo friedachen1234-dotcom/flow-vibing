@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en" data-flow-screen="discover">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Discover</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body { font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg, #FFFDF8); color: var(--color-ink, #1F1A17); -webkit-font-smoothing: antialiased; padding: 0 var(--space-page, 32px) 48px; }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      .top { display: flex; align-items: center; gap: 16px; padding: 28px 0 8px; }
+      .logo { font-family: var(--font-display, Georgia, serif); font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+      .logo i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--color-accent, #D9480F); margin-left: 3px; }
+      .search { flex: 1; height: 52px; border-radius: var(--radius-pill, 999px); background: var(--color-surface, #fff); border: 1.5px solid var(--color-line, #EDE6DD); display: flex; align-items: center; gap: 10px; padding: 0 20px; font-size: 16px; color: var(--color-muted, #7A6F68); }
+      .search svg { width: 20px; height: 20px; }
+      .search .q { display: none; color: var(--color-ink, #1F1A17); font-weight: 600; }
+      .basket { width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--color-line, #EDE6DD); background: var(--color-surface, #fff); display: grid; place-items: center; position: relative; }
+      .basket svg { width: 22px; height: 22px; }
+      .basket .n { position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; border-radius: 11px; background: var(--color-accent, #D9480F); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; padding: 0 6px; }
+      .chips { display: flex; gap: 10px; padding: 14px 0 6px; overflow-x: auto; scrollbar-width: none; }
+      .chips::-webkit-scrollbar { display: none; }
+      .chip { flex: none; height: 40px; padding: 0 18px; border-radius: var(--radius-pill, 999px); border: 1.5px solid var(--color-line, #EDE6DD); background: var(--color-surface, #fff); font-size: 15px; font-weight: 600; color: var(--color-muted, #7A6F68); }
+      .chip.on { background: var(--color-ink, #1F1A17); border-color: var(--color-ink, #1F1A17); color: #fff; }
+      h2 { font-family: var(--font-display, Georgia, serif); font-size: 26px; font-weight: 700; margin: 26px 0 14px; letter-spacing: -0.01em; }
+      h2 span { font-family: var(--font-body, system-ui, sans-serif); font-size: 14px; font-weight: 500; color: var(--color-muted, #7A6F68); margin-left: 10px; letter-spacing: 0; }
+      .hero { border: 0; padding: 0; text-align: left; width: 100%; border-radius: var(--radius-card, 20px); overflow: hidden; position: relative; height: 300px; background: radial-gradient(circle at 78% 50%, #F5B27A 0, #E0713B 32%, #9F3F17 33%, #7A2E0F 60%, #3B1A0A 100%); color: #fff; box-shadow: 0 22px 44px rgba(90,40,10,0.22); display: flex; align-items: flex-end; }
+      .hero::before { content: ""; position: absolute; right: 12%; top: 50%; width: 220px; height: 220px; margin-top: -110px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #FFE7C2, #F6A45B 45%, #C7561E 75%, #8B3512); box-shadow: 0 0 0 14px rgba(255,255,255,0.9), 0 0 0 26px rgba(255,255,255,0.35), 0 30px 40px rgba(0,0,0,0.3); }
+      .hero .txt { position: relative; padding: 28px 30px; background: linear-gradient(180deg, transparent, rgba(30,10,0,0.55)); width: 100%; }
+      .hero .kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.9; }
+      .hero h3 { font-family: var(--font-display, Georgia, serif); font-size: 36px; margin: 6px 0 8px; letter-spacing: -0.01em; max-width: 60%; line-height: 1.1; }
+      .hero .meta { display: flex; gap: 16px; font-size: 14px; font-weight: 600; opacity: 0.95; }
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+      .card { border: 0; padding: 0; background: none; text-align: left; display: grid; gap: 10px; }
+      .card .img { height: 170px; border-radius: 16px; position: relative; overflow: hidden; }
+      .card .img::after { content: ""; position: absolute; left: 50%; top: 50%; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; box-shadow: 0 0 0 8px rgba(255,255,255,0.85), 0 14px 24px rgba(0,0,0,0.25); }
+      .card .img.a { background: linear-gradient(160deg, #E8F1E4, #B9D4B0); } .card .img.a::after { background: radial-gradient(circle at 40% 35%, #C6E39A, #6FA84E 60%, #4B7F33); }
+      .card .img.b { background: linear-gradient(160deg, #FCE9DF, #F1BFA6); } .card .img.b::after { background: radial-gradient(circle at 40% 35%, #FFD7B0, #E8874A 60%, #B0552A); }
+      .card .img.c { background: linear-gradient(160deg, #FBF0D2, #EBCF8C); } .card .img.c::after { background: radial-gradient(circle at 40% 35%, #FFF0B8, #E6B54C 60%, #A67A22); }
+      .card .img.d { background: linear-gradient(160deg, #F4E4EE, #DDB3CB); } .card .img.d::after { background: radial-gradient(circle at 40% 35%, #F3C0DA, #B7628F 60%, #7D3A62); }
+      .card .img.e { background: linear-gradient(160deg, #E4EEF6, #B2CBE0); } .card .img.e::after { background: radial-gradient(circle at 40% 35%, #DCEBF8, #6E9BC2 60%, #3F6C93); }
+      .card .img.f { background: linear-gradient(160deg, #F1E7DD, #D2B9A2); } .card .img.f::after { background: radial-gradient(circle at 40% 35%, #EED9C6, #A97A57 60%, #6F4A31); }
+      .card .tm { position: absolute; left: 12px; top: 12px; background: rgba(255,255,255,0.92); border-radius: 999px; padding: 5px 10px; font-size: 12.5px; font-weight: 700; }
+      .card h4 { margin: 0; font-family: var(--font-display, Georgia, serif); font-size: 19px; font-weight: 700; line-height: 1.2; }
+      .card p { margin: 0; font-size: 13.5px; color: var(--color-muted, #7A6F68); }
+      .card p b { color: var(--color-green, #2F7D4F); font-weight: 700; }
+      .sk, .none { display: none; }
+      .sk .card .img { background: #F1ECE3 !important; } .sk .card .img::after { display: none; }
+      .sk .card h4, .sk .card p { color: transparent; background: #F1ECE3; border-radius: 6px; }
+      .sk .card h4 { width: 70%; } .sk .card p { width: 45%; }
+      .none { text-align: center; padding: 90px 40px; }
+      .none .art { width: 110px; height: 110px; border-radius: 50%; margin: 0 auto 20px; background: var(--color-cream, #F7F1E6); display: grid; place-items: center; color: var(--color-accent, #D9480F); }
+      .none .art svg { width: 48px; height: 48px; }
+      .none h3 { font-family: var(--font-display, Georgia, serif); font-size: 28px; margin: 0; }
+      .none p { color: var(--color-muted, #7A6F68); font-size: 16px; margin: 8px 0 20px; }
+      .none button { height: 52px; padding: 0 26px; border: 0; border-radius: var(--radius-pill, 999px); background: var(--color-ink, #1F1A17); color: #fff; font-size: 16px; font-weight: 700; }
+
+      html[data-flow-state="loading"] .grid.live, html[data-flow-state="loading"] .hero { display: none; }
+      html[data-flow-state="loading"] .sk { display: grid; }
+      html[data-flow-state="no-results"] .grid.live, html[data-flow-state="no-results"] .hero, html[data-flow-state="no-results"] h2, html[data-flow-state="no-results"] .chips { display: none; }
+      html[data-flow-state="no-results"] .none { display: block; }
+      html[data-flow-state="no-results"] .search .ph { display: none; }
+      html[data-flow-state="no-results"] .search .q { display: inline; }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <div class="logo">Plated<i></i></div>
+      <div class="search" data-flow-el="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span class="ph">Search recipes, ingredients, cuisines</span><span class="q">“zucchini flowers”</span></div>
+      <button class="basket" aria-label="Shopping list" data-flow-el="shopping-list-button" data-flow-transition="discover-to-shopping"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-2 11H5z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg><span class="n">12</span></button>
+    </div>
+    <div class="chips" data-flow-el="category-chips">
+      <button class="chip on">Tonight</button><button class="chip">Under 30 min</button><button class="chip">Vegetarian</button><button class="chip">One pan</button><button class="chip">Bakes</button><button class="chip">Saved</button>
+    </div>
+
+    <h2>Tonight's pick <span>Tuesday</span></h2>
+    <button class="hero" data-flow-el="tonight-card" data-flow-transition="tonight-to-recipe">
+      <div class="txt"><div class="kicker">Weeknight · One pan</div><h3>Harissa chicken with charred lemons</h3><div class="meta"><span>35 min</span><span>Serves 4</span><span>Easy</span></div></div>
+    </button>
+
+    <h2>More ideas</h2>
+    <div class="grid live" data-flow-el="recipe-grid">
+      <button class="card" data-flow-transition="discover-to-recipe"><div class="img a"><span class="tm">20 min</span></div><h4>Green pea and mint risotto</h4><p>Vegetarian · <b>Easy</b></p></button>
+      <button class="card" data-flow-transition="discover-to-recipe"><div class="img b"><span class="tm">45 min</span></div><h4>Slow tomato and butter bean stew</h4><p>One pan · Medium</p></button>
+      <button class="card" data-flow-transition="discover-to-recipe"><div class="img c"><span class="tm">25 min</span></div><h4>Crispy halloumi grain bowl</h4><p>Vegetarian · <b>Easy</b></p></button>
+      <button class="card" data-flow-transition="discover-to-recipe"><div class="img d"><span class="tm">50 min</span></div><h4>Beetroot and feta galette</h4><p>Bake · Medium</p></button>
+      <button class="card" data-flow-transition="discover-to-recipe"><div class="img e"><span class="tm">15 min</span></div><h4>Miso noodle soup</h4><p>Under 30 · <b>Easy</b></p></button>
+      <button class="card" data-flow-transition="discover-to-recipe"><div class="img f"><span class="tm">1 h 10</span></div><h4>Mushroom and thyme pie</h4><p>Bake · Medium</p></button>
+    </div>
+    <div class="grid sk" aria-hidden="true">
+      <div class="card"><div class="img"></div><h4>&nbsp;</h4><p>&nbsp;</p></div><div class="card"><div class="img"></div><h4>&nbsp;</h4><p>&nbsp;</p></div><div class="card"><div class="img"></div><h4>&nbsp;</h4><p>&nbsp;</p></div>
+      <div class="card"><div class="img"></div><h4>&nbsp;</h4><p>&nbsp;</p></div><div class="card"><div class="img"></div><h4>&nbsp;</h4><p>&nbsp;</p></div><div class="card"><div class="img"></div><h4>&nbsp;</h4><p>&nbsp;</p></div>
+    </div>
+    <div class="none">
+      <div class="art"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5M8.5 11h5"/></svg></div>
+      <h3>Nothing for “zucchini flowers”</h3>
+      <p>We couldn't find that ingredient. Try “courgette”, or browse by category.</p>
+      <button>Clear search</button>
+    </div>
+  </body>
+</html>

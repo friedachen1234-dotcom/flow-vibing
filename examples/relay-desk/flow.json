@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "id": "relay-desk",
+  "name": "Relay Desk",
+  "brief": "A desktop support inbox for a ten-person customer team. Agents triage incoming tickets, reply in a shared thread, and escalate the ones they can't solve. Dense but calm: everything on one screen, keyboard-friendly, no modal soup.",
+  "device": { "kind": "desktop", "width": 1280, "height": 800 },
+  "tokens": {
+    "colors": { "bg": "#F7F7F5", "ink": "#1B1B1F", "muted": "#6B6B76", "accent": "#0F766E", "accent-ink": "#FFFFFF", "accent-soft": "#E1F3F0", "surface": "#FFFFFF", "line": "#E6E6E3", "danger": "#C2410C", "danger-soft": "#FEE9DF", "warning-soft": "#FEF3C7", "warning": "#92400E", "info-soft": "#E0F2FE", "info": "#075985" },
+    "type": { "body": "system-ui, -apple-system, 'Segoe UI', sans-serif", "display": "system-ui, -apple-system, 'Segoe UI', sans-serif", "mono": "ui-monospace, 'SF Mono', Menlo, monospace" },
+    "spacing": { "unit": "8px", "gutter": "24px", "sidebar": "232px" },
+    "radius": { "card": "10px", "control": "8px", "pill": "999px" },
+    "motion": { "fast": "120ms", "base": "200ms" }
+  },
+  "components": [
+    { "id": "sidebar", "name": "Sidebar", "description": "232px navigation column with workspace switcher, views, and counts", "usedIn": ["inbox", "ticket", "reports"] },
+    { "id": "ticket-row", "name": "Ticket row", "description": "Single-line ticket summary: priority dot, subject, customer, tag, age, assignee", "usedIn": ["inbox"] },
+    { "id": "status-badge", "name": "Status badge", "description": "Pill showing Open, Waiting, Escalated, or Resolved", "usedIn": ["inbox", "ticket"] }
+  ],
+  "screens": [
+    {
+      "id": "inbox",
+      "name": "Inbox",
+      "purpose": "Triage every open ticket and pick the next one to work",
+      "file": "screens/inbox.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Open tickets listed, newest activity first", "isDefault": true },
+        { "id": "loading", "name": "Loading", "description": "Rows are skeletons while the list fetches", "trigger": "view opened", "isDefault": false },
+        { "id": "empty", "name": "Inbox zero", "description": "Every ticket is resolved or assigned elsewhere", "trigger": "no open tickets match", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "sidebar", "role": "nav", "label": "Sidebar navigation" },
+        { "id": "reports-link", "role": "button", "label": "Reports link" },
+        { "id": "search", "role": "input", "label": "Search tickets" },
+        { "id": "filter-bar", "role": "nav", "label": "Filter chips" },
+        { "id": "new-ticket-button", "role": "button", "label": "New ticket" },
+        { "id": "ticket-list", "role": "list", "label": "Ticket list" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "ticket",
+      "name": "Ticket",
+      "purpose": "Read the whole conversation, reply, and change the ticket's status",
+      "file": "screens/ticket.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Open ticket with the composer ready", "isDefault": true },
+        { "id": "replied", "name": "Reply sent", "description": "The new reply joins the thread and the status flips to Waiting on customer", "trigger": "tap Send reply", "isDefault": false },
+        { "id": "escalated", "name": "Escalated", "description": "Handed to Tier 2 with a banner; the composer becomes an internal note", "trigger": "tap Escalate", "isDefault": false },
+        { "id": "resolved", "name": "Resolved", "description": "Ticket closed; composer replaced by a reopen prompt", "trigger": "tap Resolve", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "sidebar", "role": "nav", "label": "Sidebar navigation" },
+        { "id": "back-button", "role": "button", "label": "Back to inbox" },
+        { "id": "ticket-header", "role": "hero", "label": "Ticket header" },
+        { "id": "thread", "role": "list", "label": "Conversation thread" },
+        { "id": "reply-composer", "role": "form", "label": "Reply composer" },
+        { "id": "send-reply-button", "role": "button", "label": "Send reply" },
+        { "id": "escalate-button", "role": "button", "label": "Escalate" },
+        { "id": "resolve-button", "role": "button", "label": "Resolve" },
+        { "id": "customer-panel", "role": "card", "label": "Customer panel" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "new-ticket",
+      "name": "New ticket",
+      "purpose": "Log a ticket on a customer's behalf, for calls and walk-ins",
+      "file": "screens/new-ticket.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Form over the dimmed inbox", "isDefault": true },
+        { "id": "invalid", "name": "Missing fields", "description": "Subject is empty; field is outlined and Create stays put", "trigger": "tap Create with an empty subject", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "dialog", "role": "form", "label": "New ticket dialog" },
+        { "id": "customer-field", "role": "input", "label": "Customer" },
+        { "id": "subject-field", "role": "input", "label": "Subject" },
+        { "id": "priority-picker", "role": "segmented", "label": "Priority" },
+        { "id": "cancel-button", "role": "button", "label": "Cancel" },
+        { "id": "create-button", "role": "button", "label": "Create ticket" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "reports",
+      "name": "Reports",
+      "purpose": "See how the team is doing this week and where the load is",
+      "file": "screens/reports.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "This week's numbers", "isDefault": true },
+        { "id": "loading", "name": "Loading", "description": "Tiles and chart show placeholders", "trigger": "date range changed", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "sidebar", "role": "nav", "label": "Sidebar navigation" },
+        { "id": "inbox-link", "role": "button", "label": "Inbox link" },
+        { "id": "date-range", "role": "segmented", "label": "Date range" },
+        { "id": "kpi-row", "role": "card", "label": "KPI tiles" },
+        { "id": "volume-chart", "role": "image", "label": "Ticket volume chart" },
+        { "id": "agent-table", "role": "list", "label": "Agent leaderboard" }
+      ],
+      "provenance": []
+    }
+  ],
+  "transitions": [
+    { "id": "inbox-to-ticket", "from": { "screenId": "inbox", "elementId": "ticket-list" }, "to": { "screenId": "ticket" }, "trigger": "click a ticket row", "animation": "fade" },
+    { "id": "inbox-to-new-ticket", "from": { "screenId": "inbox", "elementId": "new-ticket-button" }, "to": { "screenId": "new-ticket" }, "trigger": "click New ticket", "animation": "modal" },
+    { "id": "inbox-to-reports", "from": { "screenId": "inbox", "elementId": "reports-link" }, "to": { "screenId": "reports" }, "trigger": "click Reports", "animation": "fade" },
+    { "id": "new-ticket-cancel", "from": { "screenId": "new-ticket", "elementId": "cancel-button" }, "to": { "screenId": "inbox" }, "trigger": "click Cancel", "animation": "fade" },
+    { "id": "new-ticket-create", "from": { "screenId": "new-ticket", "elementId": "create-button" }, "to": { "screenId": "inbox" }, "trigger": "click Create ticket", "condition": "customer and subject filled", "animation": "fade" },
+    { "id": "new-ticket-invalid", "from": { "screenId": "new-ticket", "elementId": "create-button" }, "to": { "screenId": "new-ticket", "stateId": "invalid" }, "trigger": "click Create ticket", "condition": "subject empty", "animation": "none" },
+    { "id": "ticket-back", "from": { "screenId": "ticket", "elementId": "back-button" }, "to": { "screenId": "inbox" }, "trigger": "click back", "animation": "fade" },
+    { "id": "ticket-reply", "from": { "screenId": "ticket", "elementId": "send-reply-button" }, "to": { "screenId": "ticket", "stateId": "replied" }, "trigger": "click Send reply", "animation": "none" },
+    { "id": "ticket-escalate", "from": { "screenId": "ticket", "elementId": "escalate-button" }, "to": { "screenId": "ticket", "stateId": "escalated" }, "trigger": "click Escalate", "animation": "none" },
+    { "id": "ticket-resolve", "from": { "screenId": "ticket", "elementId": "resolve-button" }, "to": { "screenId": "ticket", "stateId": "resolved" }, "trigger": "click Resolve", "animation": "none" },
+    { "id": "reports-to-inbox", "from": { "screenId": "reports", "elementId": "inbox-link" }, "to": { "screenId": "inbox" }, "trigger": "click Inbox", "animation": "fade" }
+  ],
+  "edgeCases": [
+    { "id": "inbox-zero", "attachedTo": { "screenId": "inbox" }, "scenario": "All tickets are resolved or filtered out", "handling": "Show an inbox-zero state that suggests widening the filter instead of a blank table", "severity": "low" },
+    { "id": "reply-offline", "attachedTo": { "transitionId": "ticket-reply" }, "scenario": "Connection drops while a reply is being sent", "handling": "Keep the draft in the composer, show a retry toast, never lose typed text", "severity": "high" },
+    { "id": "collision", "attachedTo": { "screenId": "ticket" }, "scenario": "Another agent replies to the same ticket while this one is open", "handling": "Thread updates live with a 'new reply' divider; composer warns before sending a duplicate", "severity": "medium" },
+    { "id": "escalate-without-note", "attachedTo": { "transitionId": "ticket-escalate" }, "scenario": "Agent escalates without explaining why", "handling": "Escalated state turns the composer into a required internal note before Tier 2 is notified", "severity": "medium" },
+    { "id": "unknown-customer", "attachedTo": { "screenId": "new-ticket" }, "scenario": "Caller isn't in the customer directory", "handling": "Customer field accepts a free-text name and email and creates the record on save", "severity": "low" }
+  ]
+}

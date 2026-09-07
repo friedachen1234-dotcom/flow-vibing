@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en" data-flow-screen="reports">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reports</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body { font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg, #F7F7F5); color: var(--color-ink, #1B1B1F); font-size: 13px; -webkit-font-smoothing: antialiased; display: grid; grid-template-columns: var(--space-sidebar, 232px) 1fr; height: 100vh; overflow: hidden; }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      aside { background: var(--color-surface, #fff); border-right: 1px solid var(--color-line, #E6E6E3); display: flex; flex-direction: column; padding: 14px 12px; gap: 6px; }
+      .ws { display: flex; align-items: center; gap: 10px; padding: 6px 8px 14px; font-weight: 700; font-size: 14px; }
+      .ws .logo { width: 26px; height: 26px; border-radius: 7px; background: var(--color-accent, #0F766E); color: #fff; display: grid; place-items: center; font-size: 13px; }
+      .nav-h { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted, #6B6B76); padding: 10px 8px 4px; }
+      .nav { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: var(--radius-control, 8px); border: 0; background: none; width: 100%; text-align: left; font-weight: 500; }
+      .nav:hover { background: var(--color-bg, #F7F7F5); }
+      .nav.on { background: var(--color-accent-soft, #E1F3F0); color: var(--color-accent, #0F766E); font-weight: 600; }
+      .nav svg { width: 16px; height: 16px; flex: none; }
+      .nav .count { margin-left: auto; font-size: 11.5px; color: var(--color-muted, #6B6B76); }
+      .me { margin-top: auto; display: flex; align-items: center; gap: 9px; padding: 8px; border-top: 1px solid var(--color-line, #E6E6E3); }
+      .avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; font-weight: 700; flex: none; }
+      .me b { display: block; font-size: 12.5px; } .me span { font-size: 11px; color: var(--color-muted, #6B6B76); }
+      main { overflow-y: auto; padding: 0 0 24px; }
+      .topbar { display: flex; align-items: center; gap: 12px; padding: 14px var(--space-gutter, 24px); border-bottom: 1px solid var(--color-line, #E6E6E3); background: var(--color-surface, #fff); position: sticky; top: 0; }
+      .topbar h1 { margin: 0; font-size: 17px; font-weight: 700; }
+      .seg { margin-left: auto; display: inline-flex; border: 1px solid var(--color-line, #E6E6E3); border-radius: var(--radius-control, 8px); overflow: hidden; height: 32px; }
+      .seg button { border: 0; background: #fff; padding: 0 12px; font-weight: 600; color: var(--color-muted, #6B6B76); border-right: 1px solid var(--color-line, #E6E6E3); }
+      .seg button:last-child { border-right: 0; }
+      .seg button.on { background: var(--color-ink, #1B1B1F); color: #fff; }
+      .btn { height: 32px; padding: 0 12px; border-radius: var(--radius-control, 8px); border: 1px solid var(--color-line, #E6E6E3); background: var(--color-surface, #fff); font-weight: 600; }
+      .grid { padding: 20px var(--space-gutter, 24px) 0; display: grid; gap: 16px; }
+      .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+      .kpi { background: var(--color-surface, #fff); border: 1px solid var(--color-line, #E6E6E3); border-radius: var(--radius-card, 10px); padding: 16px 18px; }
+      .kpi .l { font-size: 12px; font-weight: 600; color: var(--color-muted, #6B6B76); }
+      .kpi .v { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+      .kpi .v small { font-size: 14px; font-weight: 600; color: var(--color-muted, #6B6B76); margin-left: 2px; }
+      .kpi .d { margin-top: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; }
+      .kpi .d.up { background: #DCFCE7; color: #166534; } .kpi .d.down { background: var(--color-danger-soft, #FEE9DF); color: var(--color-danger, #C2410C); } .kpi .d.flat { background: var(--color-bg, #F7F7F5); color: var(--color-muted, #6B6B76); }
+      .two { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; }
+      .card { background: var(--color-surface, #fff); border: 1px solid var(--color-line, #E6E6E3); border-radius: var(--radius-card, 10px); padding: 16px 18px; }
+      .card h2 { margin: 0; font-size: 14px; display: flex; align-items: center; justify-content: space-between; }
+      .card h2 span { font-size: 12px; font-weight: 500; color: var(--color-muted, #6B6B76); }
+      .legend { display: flex; gap: 14px; margin: 10px 0 6px; font-size: 12px; color: var(--color-muted, #6B6B76); }
+      .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+      .chart { display: grid; grid-template-columns: repeat(7, 1fr); gap: 14px; align-items: end; height: 190px; padding: 10px 6px 0; border-bottom: 1px solid var(--color-line, #E6E6E3); }
+      .bar { display: grid; grid-template-rows: 1fr auto; height: 100%; align-items: end; }
+      .bar .stack { display: grid; gap: 2px; }
+      .bar .stack i { display: block; border-radius: 4px 4px 0 0; background: var(--color-accent, #0F766E); }
+      .bar .stack i.b { background: #99D6CC; border-radius: 0; }
+      .bar .stack i.c { background: #FDE68A; border-radius: 0 0 3px 3px; }
+      .bar .stack i:first-child { border-radius: 4px 4px 0 0; }
+      .xaxis { display: grid; grid-template-columns: repeat(7, 1fr); gap: 14px; padding: 6px 6px 0; font-size: 11.5px; color: var(--color-muted, #6B6B76); text-align: center; }
+      .xaxis span.today { color: var(--color-ink, #1B1B1F); font-weight: 700; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      th { text-align: left; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-muted, #6B6B76); padding: 6px 0; border-bottom: 1px solid var(--color-line, #E6E6E3); font-weight: 700; }
+      td { padding: 9px 0; border-bottom: 1px solid var(--color-line, #E6E6E3); font-variant-numeric: tabular-nums; }
+      tr:last-child td { border-bottom: 0; }
+      td.n { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+      th.r, td.r { text-align: right; }
+      .meter { height: 6px; border-radius: 3px; background: var(--color-bg, #F7F7F5); overflow: hidden; width: 80px; display: inline-block; vertical-align: middle; }
+      .meter i { display: block; height: 100%; background: var(--color-accent, #0F766E); }
+
+      html[data-flow-state="loading"] .kpi .v, html[data-flow-state="loading"] .kpi .d, html[data-flow-state="loading"] td, html[data-flow-state="loading"] .bar .stack i { color: transparent !important; background: linear-gradient(90deg, #EFEFEC 25%, #F8F8F6 50%, #EFEFEC 75%) !important; background-size: 200% 100% !important; animation: shimmer 1.2s linear infinite; border-radius: 6px; }
+      html[data-flow-state="loading"] .meter, html[data-flow-state="loading"] .avatar.t { visibility: hidden; }
+      @keyframes shimmer { to { background-position: -200% 0; } }
+    </style>
+  </head>
+  <body>
+    <aside data-flow-el="sidebar">
+      <div class="ws"><span class="logo">R</span>Relay Desk</div>
+      <div class="nav-h">Views</div>
+      <button class="nav" data-flow-el="inbox-link" data-flow-transition="reports-to-inbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l3-7h12l3 7v7H3z"/><path d="M3 12h5l2 3h4l2-3h5"/></svg>Inbox<span class="count">24</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Unassigned<span class="count">6</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>Mine<span class="count">9</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6zM10 20a2 2 0 0 0 4 0"/></svg>Snoozed<span class="count">3</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>Resolved</button>
+      <div class="nav-h">Workspace</div>
+      <button class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2l.4 2.6h4.4l.4-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>Settings</button>
+      <div class="me"><span class="avatar" style="background:#DBEAFE;color:#1D4ED8">JW</span><div><b>Jordan Wu</b><span>Tier 1 · Online</span></div></div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <h1>Reports</h1>
+        <div class="seg" data-flow-el="date-range"><button>Today</button><button class="on">This week</button><button>30 days</button><button>Quarter</button></div>
+        <button class="btn">Export CSV</button>
+      </div>
+      <div class="grid">
+        <div class="kpis" data-flow-el="kpi-row">
+          <div class="kpi"><div class="l">Open tickets</div><div class="v">24</div><span class="d down">▲ 6 vs last week</span></div>
+          <div class="kpi"><div class="l">Median first response</div><div class="v">11<small>min</small></div><span class="d up">▼ 4 min faster</span></div>
+          <div class="kpi"><div class="l">Resolved this week</div><div class="v">148</div><span class="d up">▲ 12%</span></div>
+          <div class="kpi"><div class="l">CSAT</div><div class="v">4.7<small>/ 5</small></div><span class="d flat">— unchanged</span></div>
+        </div>
+        <div class="two">
+          <div class="card" data-flow-el="volume-chart">
+            <h2>Ticket volume <span>Mon 1 – Sun 7 Sep</span></h2>
+            <div class="legend"><span><i style="background:var(--color-accent,#0F766E)"></i>Resolved</span><span><i style="background:#99D6CC"></i>Open</span><span><i style="background:#FDE68A"></i>Escalated</span></div>
+            <div class="chart">
+              <div class="bar"><div class="stack"><i style="height:78px"></i><i class="b" style="height:22px"></i><i class="c" style="height:6px"></i></div></div>
+              <div class="bar"><div class="stack"><i style="height:96px"></i><i class="b" style="height:30px"></i><i class="c" style="height:10px"></i></div></div>
+              <div class="bar"><div class="stack"><i style="height:64px"></i><i class="b" style="height:18px"></i><i class="c" style="height:4px"></i></div></div>
+              <div class="bar"><div class="stack"><i style="height:110px"></i><i class="b" style="height:36px"></i><i class="c" style="height:12px"></i></div></div>
+              <div class="bar"><div class="stack"><i style="height:88px"></i><i class="b" style="height:26px"></i><i class="c" style="height:8px"></i></div></div>
+              <div class="bar"><div class="stack"><i style="height:34px"></i><i class="b" style="height:12px"></i><i class="c" style="height:0"></i></div></div>
+              <div class="bar"><div class="stack"><i style="height:20px"></i><i class="b" style="height:24px"></i><i class="c" style="height:6px"></i></div></div>
+            </div>
+            <div class="xaxis"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span class="today">Sun</span></div>
+          </div>
+          <div class="card" data-flow-el="agent-table">
+            <h2>Agents <span>Resolved · CSAT</span></h2>
+            <table>
+              <thead><tr><th>Agent</th><th class="r">Resolved</th><th class="r">CSAT</th></tr></thead>
+              <tbody>
+                <tr><td class="n"><span class="avatar t" style="background:#EDE9FE;color:#6D28D9">PS</span>Parisa Shah</td><td class="r">41</td><td class="r"><span class="meter"><i style="width:96%"></i></span> 4.8</td></tr>
+                <tr><td class="n"><span class="avatar t" style="background:#DBEAFE;color:#1D4ED8">JW</span>Jordan Wu</td><td class="r">38</td><td class="r"><span class="meter"><i style="width:94%"></i></span> 4.7</td></tr>
+                <tr><td class="n"><span class="avatar t" style="background:#FCE7F3;color:#BE185D">AM</span>Ana Moreno</td><td class="r">33</td><td class="r"><span class="meter"><i style="width:92%"></i></span> 4.6</td></tr>
+                <tr><td class="n"><span class="avatar t" style="background:#DCFCE7;color:#15803D">KO</span>Kwame Osei</td><td class="r">21</td><td class="r"><span class="meter"><i style="width:98%"></i></span> 4.9</td></tr>
+                <tr><td class="n"><span class="avatar t" style="background:#FEF3C7;color:#B45309">EL</span>Elin Lund</td><td class="r">15</td><td class="r"><span class="meter"><i style="width:86%"></i></span> 4.3</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en" data-flow-screen="inbox">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inbox</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body { font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg, #F7F7F5); color: var(--color-ink, #1B1B1F); font-size: 13px; -webkit-font-smoothing: antialiased; display: grid; grid-template-columns: var(--space-sidebar, 232px) 1fr; height: 100vh; overflow: hidden; }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      /* Sidebar */
+      aside { background: var(--color-surface, #fff); border-right: 1px solid var(--color-line, #E6E6E3); display: flex; flex-direction: column; padding: 14px 12px; gap: 6px; }
+      .ws { display: flex; align-items: center; gap: 10px; padding: 6px 8px 14px; font-weight: 700; font-size: 14px; }
+      .ws .logo { width: 26px; height: 26px; border-radius: 7px; background: var(--color-accent, #0F766E); color: #fff; display: grid; place-items: center; font-size: 13px; }
+      .ws .chev { margin-left: auto; color: var(--color-muted, #6B6B76); }
+      .nav-h { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted, #6B6B76); padding: 10px 8px 4px; }
+      .nav { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: var(--radius-control, 8px); border: 0; background: none; width: 100%; text-align: left; font-weight: 500; color: var(--color-ink, #1B1B1F); }
+      .nav:hover { background: var(--color-bg, #F7F7F5); }
+      .nav.on { background: var(--color-accent-soft, #E1F3F0); color: var(--color-accent, #0F766E); font-weight: 600; }
+      .nav svg { width: 16px; height: 16px; flex: none; }
+      .nav .count { margin-left: auto; font-size: 11.5px; color: var(--color-muted, #6B6B76); font-variant-numeric: tabular-nums; }
+      .nav.on .count { color: inherit; }
+      .me { margin-top: auto; display: flex; align-items: center; gap: 9px; padding: 8px; border-top: 1px solid var(--color-line, #E6E6E3); }
+      .avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; font-weight: 700; flex: none; }
+      .me b { display: block; font-size: 12.5px; } .me span { font-size: 11px; color: var(--color-muted, #6B6B76); }
+      /* Main */
+      main { display: flex; flex-direction: column; min-width: 0; }
+      .topbar { display: flex; align-items: center; gap: 12px; padding: 14px var(--space-gutter, 24px); border-bottom: 1px solid var(--color-line, #E6E6E3); background: var(--color-surface, #fff); }
+      .topbar h1 { margin: 0; font-size: 17px; font-weight: 700; }
+      .topbar h1 span { color: var(--color-muted, #6B6B76); font-weight: 500; margin-left: 6px; }
+      .search { margin-left: auto; width: 300px; height: 34px; border: 1px solid var(--color-line, #E6E6E3); border-radius: var(--radius-control, 8px); background: var(--color-bg, #F7F7F5); display: flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--color-muted, #6B6B76); }
+      .search svg { width: 15px; height: 15px; }
+      .search kbd { margin-left: auto; font: 11px var(--font-mono, monospace); padding: 1px 5px; border: 1px solid var(--color-line, #E6E6E3); border-radius: 4px; background: #fff; }
+      .btn { height: 34px; padding: 0 14px; border-radius: var(--radius-control, 8px); border: 1px solid var(--color-line, #E6E6E3); background: var(--color-surface, #fff); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+      .btn.primary { background: var(--color-accent, #0F766E); border-color: var(--color-accent, #0F766E); color: var(--color-accent-ink, #fff); }
+      .btn svg { width: 15px; height: 15px; }
+      .filters { display: flex; align-items: center; gap: 8px; padding: 12px var(--space-gutter, 24px) 0; }
+      .chip { height: 28px; padding: 0 11px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--color-line, #E6E6E3); background: var(--color-surface, #fff); font-weight: 500; color: var(--color-muted, #6B6B76); display: inline-flex; align-items: center; gap: 6px; }
+      .chip.on { background: var(--color-ink, #1B1B1F); color: #fff; border-color: var(--color-ink, #1B1B1F); }
+      .filters .sort { margin-left: auto; color: var(--color-muted, #6B6B76); font-size: 12px; }
+      .filters .sort b { color: var(--color-ink, #1B1B1F); font-weight: 600; }
+      .table { margin: 12px var(--space-gutter, 24px) 24px; background: var(--color-surface, #fff); border: 1px solid var(--color-line, #E6E6E3); border-radius: var(--radius-card, 10px); overflow: hidden; }
+      .thead, .row { display: grid; grid-template-columns: 18px minmax(0, 1fr) 170px 120px 110px 80px 40px; gap: 14px; align-items: center; padding: 0 16px; }
+      .thead { height: 36px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-muted, #6B6B76); background: #FBFBFA; border-bottom: 1px solid var(--color-line, #E6E6E3); }
+      .row { height: 52px; border-bottom: 1px solid var(--color-line, #E6E6E3); border-left: 0; border-right: 0; border-top: 0; background: none; width: 100%; text-align: left; }
+      .row:last-child { border-bottom: 0; }
+      .row:hover { background: #FAFAF8; }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-muted, #6B6B76); }
+      .dot.high { background: var(--color-danger, #C2410C); } .dot.med { background: #D97706; } .dot.low { background: #9CA3AF; }
+      .subj { min-width: 0; }
+      .subj b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .subj span { display: block; font-size: 12px; color: var(--color-muted, #6B6B76); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+      .row.unread .subj b::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent, #0F766E); margin-right: 7px; vertical-align: 2px; }
+      .cust { display: flex; align-items: center; gap: 8px; min-width: 0; }
+      .cust span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .badge { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--radius-pill, 999px); font-size: 11.5px; font-weight: 600; }
+      .badge.open { background: var(--color-accent-soft, #E1F3F0); color: var(--color-accent, #0F766E); }
+      .badge.waiting { background: var(--color-info-soft, #E0F2FE); color: var(--color-info, #075985); }
+      .badge.escalated { background: var(--color-warning-soft, #FEF3C7); color: var(--color-warning, #92400E); }
+      .tag { font-size: 12px; color: var(--color-muted, #6B6B76); }
+      .age { font-size: 12px; color: var(--color-muted, #6B6B76); font-variant-numeric: tabular-nums; }
+      .empty, .skeleton { display: none; }
+      .empty { padding: 90px 24px; text-align: center; }
+      .empty .art { width: 84px; height: 84px; margin: 0 auto 16px; border-radius: 24px; background: var(--color-accent-soft, #E1F3F0); color: var(--color-accent, #0F766E); display: grid; place-items: center; }
+      .empty .art svg { width: 40px; height: 40px; }
+      .empty h3 { margin: 0; font-size: 17px; } .empty p { margin: 6px 0 0; color: var(--color-muted, #6B6B76); }
+
+      html[data-flow-state="loading"] .rows { display: none; }
+      html[data-flow-state="loading"] .skeleton { display: block; }
+      .skeleton .row { pointer-events: none; }
+      .skeleton .ph { height: 12px; border-radius: 6px; background: linear-gradient(90deg, #EFEFEC 25%, #F8F8F6 50%, #EFEFEC 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+      @keyframes shimmer { to { background-position: -200% 0; } }
+      html[data-flow-state="empty"] .rows, html[data-flow-state="empty"] .thead { display: none; }
+      html[data-flow-state="empty"] .empty { display: block; }
+    </style>
+  </head>
+  <body>
+    <aside data-flow-el="sidebar">
+      <div class="ws"><span class="logo">R</span>Relay Desk<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+      <div class="nav-h">Views</div>
+      <button class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l3-7h12l3 7v7H3z"/><path d="M3 12h5l2 3h4l2-3h5"/></svg>Inbox<span class="count">24</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Unassigned<span class="count">6</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>Mine<span class="count">9</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6zM10 20a2 2 0 0 0 4 0"/></svg>Snoozed<span class="count">3</span></button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>Resolved</button>
+      <div class="nav-h">Workspace</div>
+      <button class="nav" data-flow-el="reports-link" data-flow-transition="inbox-to-reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</button>
+      <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2l.4 2.6h4.4l.4-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>Settings</button>
+      <div class="me"><span class="avatar" style="background:#DBEAFE;color:#1D4ED8">JW</span><div><b>Jordan Wu</b><span>Tier 1 · Online</span></div></div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <h1>Inbox<span>24 open</span></h1>
+        <div class="search" data-flow-el="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search tickets, customers, order numbers<kbd>/</kbd></div>
+        <button class="btn primary" data-flow-el="new-ticket-button" data-flow-transition="inbox-to-new-ticket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New ticket</button>
+      </div>
+      <div class="filters" data-flow-el="filter-bar">
+        <button class="chip on">All open</button><button class="chip">Needs reply · 11</button><button class="chip">Waiting</button><button class="chip">Escalated · 2</button><button class="chip">High priority</button>
+        <span class="sort">Sorted by <b>latest activity</b></span>
+      </div>
+      <div class="table" data-flow-el="ticket-list">
+        <div class="thead"><span></span><span>Ticket</span><span>Customer</span><span>Status</span><span>Tag</span><span>Updated</span><span></span></div>
+        <div class="rows">
+          <button class="row unread" data-flow-transition="inbox-to-ticket"><span class="dot high"></span><div class="subj"><b>Order #48213 arrived damaged, need replacement</b><span>Hi, the box was crushed and two of the four glasses are broken. Photos attached…</span></div><div class="cust"><span class="avatar" style="background:#FCE7F3;color:#BE185D">NA</span><span>Nadia Aziz</span></div><span class="badge open">Open</span><span class="tag">Shipping</span><span class="age">4m</span><span class="avatar" style="background:#DBEAFE;color:#1D4ED8">JW</span></button>
+          <button class="row unread" data-flow-transition="inbox-to-ticket"><span class="dot med"></span><div class="subj"><b>Can't apply loyalty discount at checkout</b><span>The code LOYAL15 says invalid but I've used it before. Is it expired?</span></div><div class="cust"><span class="avatar" style="background:#DCFCE7;color:#15803D">TM</span><span>Theo Marsh</span></div><span class="badge open">Open</span><span class="tag">Billing</span><span class="age">18m</span><span></span></button>
+          <button class="row" data-flow-transition="inbox-to-ticket"><span class="dot high"></span><div class="subj"><b>Charged twice for the same subscription</b><span>Two charges on 3 Sep for £29. I only have one account.</span></div><div class="cust"><span class="avatar" style="background:#FEF3C7;color:#B45309">RK</span><span>Rosa Kimura</span></div><span class="badge escalated">Escalated</span><span class="tag">Billing</span><span class="age">41m</span><span class="avatar" style="background:#EDE9FE;color:#6D28D9">PS</span></button>
+          <button class="row" data-flow-transition="inbox-to-ticket"><span class="dot low"></span><div class="subj"><b>Change delivery address on order #48190</b><span>Moving house on Friday, can it go to the new place instead?</span></div><div class="cust"><span class="avatar" style="background:#E0F2FE;color:#0369A1">LB</span><span>Liam Brennan</span></div><span class="badge waiting">Waiting on customer</span><span class="tag">Shipping</span><span class="age">1h</span><span class="avatar" style="background:#DBEAFE;color:#1D4ED8">JW</span></button>
+          <button class="row unread" data-flow-transition="inbox-to-ticket"><span class="dot med"></span><div class="subj"><b>App crashes when opening order history</b><span>iPhone 15, version 4.2.1. Happens every time since the update.</span></div><div class="cust"><span class="avatar" style="background:#FEE2E2;color:#B91C1C">HS</span><span>Hana Sato</span></div><span class="badge open">Open</span><span class="tag">App</span><span class="age">2h</span><span></span></button>
+          <button class="row" data-flow-transition="inbox-to-ticket"><span class="dot low"></span><div class="subj"><b>Do you ship to Ireland?</b><span>Looking at the ceramic set but the checkout only lists UK.</span></div><div class="cust"><span class="avatar" style="background:#F1F5F9;color:#475569">CO</span><span>Ciara O'Neill</span></div><span class="badge waiting">Waiting on customer</span><span class="tag">Pre-sale</span><span class="age">3h</span><span class="avatar" style="background:#FCE7F3;color:#BE185D">AM</span></button>
+          <button class="row" data-flow-transition="inbox-to-ticket"><span class="dot low"></span><div class="subj"><b>Return label never arrived</b><span>Requested a return on Monday, no email yet. Checked spam.</span></div><div class="cust"><span class="avatar" style="background:#DCFCE7;color:#15803D">PO</span><span>Priya Oduya</span></div><span class="badge open">Open</span><span class="tag">Returns</span><span class="age">5h</span><span class="avatar" style="background:#EDE9FE;color:#6D28D9">PS</span></button>
+          <button class="row" data-flow-transition="inbox-to-ticket"><span class="dot med"></span><div class="subj"><b>Gift card balance shows £0 after redeeming</b><span>Redeemed a £50 card, used £12, now it says zero.</span></div><div class="cust"><span class="avatar" style="background:#FEF3C7;color:#B45309">DF</span><span>Dev Farouk</span></div><span class="badge open">Open</span><span class="tag">Billing</span><span class="age">Yesterday</span><span></span></button>
+        </div>
+        <div class="skeleton">
+          <div class="row"><span class="dot" style="opacity:.3"></span><div class="subj"><div class="ph" style="width:60%"></div><div class="ph" style="width:85%;margin-top:6px;height:10px"></div></div><div class="ph" style="width:110px"></div><div class="ph" style="width:70px"></div><div class="ph" style="width:60px"></div><div class="ph" style="width:30px"></div><span></span></div>
+          <div class="row"><span class="dot" style="opacity:.3"></span><div class="subj"><div class="ph" style="width:45%"></div><div class="ph" style="width:70%;margin-top:6px;height:10px"></div></div><div class="ph" style="width:90px"></div><div class="ph" style="width:70px"></div><div class="ph" style="width:60px"></div><div class="ph" style="width:30px"></div><span></span></div>
+          <div class="row"><span class="dot" style="opacity:.3"></span><div class="subj"><div class="ph" style="width:55%"></div><div class="ph" style="width:80%;margin-top:6px;height:10px"></div></div><div class="ph" style="width:120px"></div><div class="ph" style="width:70px"></div><div class="ph" style="width:60px"></div><div class="ph" style="width:30px"></div><span></span></div>
+          <div class="row"><span class="dot" style="opacity:.3"></span><div class="subj"><div class="ph" style="width:40%"></div><div class="ph" style="width:65%;margin-top:6px;height:10px"></div></div><div class="ph" style="width:100px"></div><div class="ph" style="width:70px"></div><div class="ph" style="width:60px"></div><div class="ph" style="width:30px"></div><span></span></div>
+        </div>
+        <div class="empty">
+          <div class="art"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l3-7h12l3 7v7H3z"/><path d="M8 12l3 3 5-6"/></svg></div>
+          <h3>Inbox zero</h3>
+          <p>Nothing matches this view. Try “All open” or check Snoozed.</p>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "id": "lumen-bank",
+  "name": "Lumen Bank",
+  "brief": "A mobile banking app for people who move money between friends a few times a week. The core job is sending a transfer in under twenty seconds without ever feeling unsure about what happened. Calm, precise, trustworthy. Big numbers, small chrome.",
+  "device": { "kind": "mobile", "width": 390, "height": 844 },
+  "tokens": {
+    "colors": { "bg": "#F4F6FB", "ink": "#101828", "muted": "#667085", "accent": "#3B4FE4", "accent-ink": "#FFFFFF", "surface": "#FFFFFF", "line": "#E4E7EC", "positive": "#12925E", "negative": "#D92D20", "warning": "#B54708", "warning-soft": "#FFF4E5" },
+    "type": { "body": "system-ui, -apple-system, 'Segoe UI', sans-serif", "display": "system-ui, -apple-system, 'Segoe UI', sans-serif", "mono": "ui-monospace, 'SF Mono', Menlo, monospace" },
+    "spacing": { "unit": "8px", "page": "20px" },
+    "radius": { "card": "18px", "control": "12px", "pill": "999px" },
+    "motion": { "fast": "160ms", "base": "240ms" }
+  },
+  "components": [
+    { "id": "primary-button", "name": "Primary button", "description": "Full-width pill, accent fill, 52px tall", "usedIn": ["home", "transfer", "review", "success"] },
+    { "id": "amount-display", "name": "Amount display", "description": "Large tabular figure with currency symbol set smaller", "usedIn": ["home", "transfer", "review", "success"] },
+    { "id": "contact-chip", "name": "Contact chip", "description": "Avatar initials on a tinted circle with a name underneath", "usedIn": ["home", "transfer", "review"] }
+  ],
+  "screens": [
+    {
+      "id": "home",
+      "name": "Home",
+      "purpose": "See balances at a glance and start the most common actions",
+      "file": "screens/home.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Balances and recent activity loaded", "isDefault": true },
+        { "id": "loading", "name": "Loading", "description": "Balances still fetching; skeletons in place of numbers", "trigger": "app opened", "isDefault": false },
+        { "id": "offline", "name": "Offline", "description": "No connection; show last known balance with a banner and disable sending", "trigger": "network unavailable", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "balance-card", "role": "card", "label": "Main balance card" },
+        { "id": "send-button", "role": "button", "label": "Send money" },
+        { "id": "recent-contacts", "role": "list", "label": "Recent contacts" },
+        { "id": "activity-preview", "role": "list", "label": "Recent activity" },
+        { "id": "see-all-activity", "role": "button", "label": "See all activity" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "transfer",
+      "name": "Send",
+      "purpose": "Pick a recipient and an amount",
+      "file": "screens/transfer.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Recipient chosen, amount being typed", "isDefault": true },
+        { "id": "invalid", "name": "Invalid amount", "description": "Amount exceeds the available balance; explain and keep the keypad", "trigger": "amount greater than balance", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "back-button", "role": "button", "label": "Back" },
+        { "id": "recipient-picker", "role": "list", "label": "Recipient picker" },
+        { "id": "amount-field", "role": "input", "label": "Amount" },
+        { "id": "keypad", "role": "form", "label": "Number keypad" },
+        { "id": "continue-button", "role": "button", "label": "Continue" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "review",
+      "name": "Review",
+      "purpose": "Confirm who, how much, and from which account before sending",
+      "file": "screens/review.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Summary ready to confirm", "isDefault": true },
+        { "id": "sending", "name": "Sending", "description": "Transfer in flight; button shows progress and cannot be tapped twice", "trigger": "tap Confirm", "isDefault": false },
+        { "id": "failed", "name": "Declined", "description": "The bank refused the transfer; keep the details and explain what to do", "trigger": "transfer rejected", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "back-button", "role": "button", "label": "Back" },
+        { "id": "summary-card", "role": "card", "label": "Transfer summary" },
+        { "id": "from-account", "role": "card", "label": "From account" },
+        { "id": "confirm-button", "role": "button", "label": "Confirm and send" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "success",
+      "name": "Sent",
+      "purpose": "Reassure that the money left and offer the next thing to do",
+      "file": "screens/success.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Confirmation with reference number", "isDefault": true }
+      ],
+      "elements": [
+        { "id": "receipt-card", "role": "card", "label": "Receipt" },
+        { "id": "share-button", "role": "button", "label": "Share receipt" },
+        { "id": "done-button", "role": "button", "label": "Done" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "activity",
+      "name": "Activity",
+      "purpose": "Browse every transaction grouped by day",
+      "file": "screens/activity.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Transactions grouped by day", "isDefault": true },
+        { "id": "empty", "name": "No activity", "description": "New account with nothing to show yet", "trigger": "no transactions", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "back-button", "role": "button", "label": "Back" },
+        { "id": "filter-bar", "role": "nav", "label": "Filter chips" },
+        { "id": "transaction-list", "role": "list", "label": "Transaction list" }
+      ],
+      "provenance": []
+    }
+  ],
+  "transitions": [
+    { "id": "home-to-transfer", "from": { "screenId": "home", "elementId": "send-button" }, "to": { "screenId": "transfer" }, "trigger": "tap Send money", "animation": "push" },
+    { "id": "home-contact-to-transfer", "from": { "screenId": "home", "elementId": "recent-contacts" }, "to": { "screenId": "transfer" }, "trigger": "tap a recent contact", "animation": "push" },
+    { "id": "home-to-activity", "from": { "screenId": "home", "elementId": "see-all-activity" }, "to": { "screenId": "activity" }, "trigger": "tap See all", "animation": "push" },
+    { "id": "transfer-back", "from": { "screenId": "transfer", "elementId": "back-button" }, "to": { "screenId": "home" }, "trigger": "tap back", "animation": "pop" },
+    { "id": "transfer-to-review", "from": { "screenId": "transfer", "elementId": "continue-button" }, "to": { "screenId": "review" }, "trigger": "tap Continue", "condition": "amount within balance", "animation": "push" },
+    { "id": "transfer-invalid", "from": { "screenId": "transfer", "elementId": "continue-button" }, "to": { "screenId": "transfer", "stateId": "invalid" }, "trigger": "tap Continue", "condition": "amount exceeds balance", "animation": "none" },
+    { "id": "review-back", "from": { "screenId": "review", "elementId": "back-button" }, "to": { "screenId": "transfer" }, "trigger": "tap back", "animation": "pop" },
+    { "id": "review-to-success", "from": { "screenId": "review", "elementId": "confirm-button" }, "to": { "screenId": "success" }, "trigger": "tap Confirm", "condition": "bank accepts", "animation": "fade" },
+    { "id": "review-declined", "from": { "screenId": "review", "elementId": "confirm-button" }, "to": { "screenId": "review", "stateId": "failed" }, "trigger": "tap Confirm", "condition": "bank declines", "animation": "none" },
+    { "id": "success-to-home", "from": { "screenId": "success", "elementId": "done-button" }, "to": { "screenId": "home" }, "trigger": "tap Done", "animation": "pop" },
+    { "id": "activity-back", "from": { "screenId": "activity", "elementId": "back-button" }, "to": { "screenId": "home" }, "trigger": "tap back", "animation": "pop" }
+  ],
+  "edgeCases": [
+    { "id": "offline-home", "attachedTo": { "screenId": "home" }, "scenario": "Device loses connection while the app is open", "handling": "Show the last known balance with an offline banner and disable Send", "severity": "high" },
+    { "id": "insufficient-funds", "attachedTo": { "transitionId": "transfer-to-review" }, "scenario": "Amount typed is larger than the available balance", "handling": "Stay on Send in the invalid state with the shortfall shown; never let Continue proceed", "severity": "high" },
+    { "id": "double-tap-confirm", "attachedTo": { "screenId": "review" }, "scenario": "User taps Confirm twice while the first request is in flight", "handling": "Sending state disables the button and shows progress; the second tap is ignored", "severity": "high" },
+    { "id": "declined-transfer", "attachedTo": { "transitionId": "review-to-success" }, "scenario": "The bank rejects the transfer after confirmation", "handling": "Return to Review in the declined state, keep every detail, and suggest a different account", "severity": "medium" },
+    { "id": "new-account-empty", "attachedTo": { "screenId": "activity" }, "scenario": "Brand-new account with no transactions", "handling": "Empty state that explains what will appear here and points back to Send", "severity": "low" }
+  ]
+}

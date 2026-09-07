@@ -3,7 +3,7 @@ import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { CanvasDoc, DesignSpec, DeviceKind, reconcileCanvas } from "@flow/shared";
-import { createDemoProject, createProject, fileExists, listProjects, loadProject, projectDir, readCanvas, readPins, readProjectFile, readSpec, saveAsset, writeCanvas, writePins, writeSpec } from "./projects.js";
+import { createDemoProject, createProject, createProjectFromExample, listExamples, fileExists, listProjects, loadProject, projectDir, readCanvas, readPins, readProjectFile, readSpec, saveAsset, writeCanvas, writePins, writeSpec } from "./projects.js";
 import { commitVersion, fileAtVersion, restoreVersion } from "./versions.js";
 import { isRunning } from "./agent/run.js";
 import { broadcast } from "./ws.js";
@@ -26,6 +26,13 @@ export function registerRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/projects/demo", async () => createDemoProject());
+
+  app.get("/api/examples", async () => listExamples());
+
+  app.post("/api/projects/examples/:exampleId", async (req) => {
+    const { exampleId } = req.params as { exampleId: string };
+    return createProjectFromExample(exampleId);
+  });
 
   app.get("/api/projects/:id", async (req) => {
     const { id } = req.params as { id: string };

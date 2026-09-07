@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en" data-flow-screen="transfer">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Send</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body { font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg, #F4F6FB); color: var(--color-ink, #101828); -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; min-height: 100vh; }
+      button { font: inherit; color: inherit; }
+      .status { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px 0; font-size: 15px; font-weight: 600; }
+      .status .pills { display: flex; gap: 5px; align-items: center; }
+      .status .bar { width: 3px; background: currentColor; border-radius: 1px; }
+      .status .batt { width: 24px; height: 11px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+      .status .batt::after { content: ""; position: absolute; inset: 2px; right: 4px; background: currentColor; border-radius: 1px; }
+      .top { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 10px 12px 4px; }
+      .top h1 { margin: 0; text-align: center; font-size: 17px; font-weight: 700; }
+      .iconbtn { width: 44px; height: 44px; border: 0; background: none; display: grid; place-items: center; border-radius: 50%; cursor: pointer; }
+      .iconbtn:active { background: rgba(16,24,40,0.06); }
+      .iconbtn svg { width: 22px; height: 22px; }
+      .recips { display: flex; gap: 12px; overflow-x: auto; padding: 14px var(--space-page, 20px) 6px; scrollbar-width: none; }
+      .recips::-webkit-scrollbar { display: none; }
+      .recip { flex: none; display: grid; justify-items: center; gap: 6px; width: 64px; border: 0; background: none; padding: 0; cursor: pointer; }
+      .recip .avatar { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 16px; border: 3px solid transparent; }
+      .recip.on .avatar { border-color: var(--color-accent, #3B4FE4); box-shadow: 0 0 0 2px #fff inset; }
+      .recip span { font-size: 12px; font-weight: 500; }
+      .recip.on span { font-weight: 700; color: var(--color-accent, #3B4FE4); }
+      .amount-wrap { flex: 1; display: grid; place-content: center; justify-items: center; gap: 8px; padding: 10px 20px; text-align: center; }
+      .amount { font-size: 56px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; }
+      .amount .cur { font-size: 30px; vertical-align: 16px; margin-right: 2px; color: var(--color-muted, #667085); }
+      .amount .caret { display: inline-block; width: 2px; height: 44px; background: var(--color-accent, #3B4FE4); margin-left: 4px; vertical-align: -4px; animation: blink 1s steps(2) infinite; }
+      @keyframes blink { to { visibility: hidden; } }
+      .hint { font-size: 13px; color: var(--color-muted, #667085); }
+      .hint b { font-weight: 600; color: var(--color-ink, #101828); }
+      .error { display: none; font-size: 13px; font-weight: 600; color: var(--color-negative, #D92D20); padding: 8px 14px; border-radius: var(--radius-pill, 999px); background: #FEF3F2; }
+      .note { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 8px 14px; border-radius: var(--radius-pill, 999px); background: var(--color-surface, #fff); border: 1px solid var(--color-line, #E4E7EC); font-size: 13px; color: var(--color-muted, #667085); }
+      .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 14px; padding: 6px var(--space-page, 20px) 10px; }
+      .key { height: 56px; border: 0; background: none; font-size: 26px; font-weight: 500; border-radius: var(--radius-control, 12px); cursor: pointer; font-variant-numeric: tabular-nums; }
+      .key:active { background: rgba(16,24,40,0.06); }
+      .key svg { width: 26px; height: 26px; vertical-align: middle; }
+      .cta-wrap { padding: 6px var(--space-page, 20px) 28px; }
+      .cta { width: 100%; height: 54px; border: 0; border-radius: var(--radius-pill, 999px); background: var(--color-accent, #3B4FE4); color: var(--color-accent-ink, #fff); font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(59,79,228,0.28); }
+      .cta:active { transform: translateY(1px); }
+
+      html[data-flow-state="invalid"] .amount { color: var(--color-negative, #D92D20); }
+      html[data-flow-state="invalid"] .amount .caret { background: var(--color-negative, #D92D20); }
+      html[data-flow-state="invalid"] .hint { display: none; }
+      html[data-flow-state="invalid"] .error { display: block; }
+      html[data-flow-state="invalid"] .cta { background: #E4E7EC; color: var(--color-muted, #667085); box-shadow: none; }
+    </style>
+  </head>
+  <body>
+    <div class="status"><span>9:41</span><span class="pills"><span class="bar" style="height:4px"></span><span class="bar" style="height:6px"></span><span class="bar" style="height:8px"></span><span class="bar" style="height:10px"></span><span class="batt" style="margin-left:6px"></span></span></div>
+    <div class="top">
+      <button class="iconbtn" aria-label="Back" data-flow-el="back-button" data-flow-transition="transfer-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h1>Send money</h1>
+      <span></span>
+    </div>
+
+    <div class="recips" data-flow-el="recipient-picker">
+      <button class="recip on"><span class="avatar" style="background:#FCE7F3;color:#BE185D">SO</span><span>Sam</span></button>
+      <button class="recip"><span class="avatar" style="background:#DCFCE7;color:#15803D">PL</span><span>Priya</span></button>
+      <button class="recip"><span class="avatar" style="background:#FEF3C7;color:#B45309">JK</span><span>Jonas</span></button>
+      <button class="recip"><span class="avatar" style="background:#E0F2FE;color:#0369A1">AT</span><span>Amara</span></button>
+      <button class="recip"><span class="avatar" style="background:#EDE9FE;color:#6D28D9">LN</span><span>Lena</span></button>
+    </div>
+
+    <div class="amount-wrap">
+      <div class="amount" data-flow-el="amount-field"><span class="cur">£</span>120<span style="font-size:32px;color:var(--color-muted,#667085)">.00</span><span class="caret"></span></div>
+      <div class="hint">Available <b>£4,286.20</b> · Everyday account</div>
+      <div class="error">That's more than you have available</div>
+      <div class="note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg>Dinner on Friday</div>
+    </div>
+
+    <div class="keypad" data-flow-el="keypad">
+      <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+      <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+      <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+      <button class="key">.</button><button class="key">0</button>
+      <button class="key" aria-label="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 6H8l-5 6 5 6h13a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1zM17 9l-6 6M11 9l6 6"/></svg></button>
+    </div>
+
+    <div class="cta-wrap">
+      <button class="cta" data-flow-el="continue-button" data-flow-transition="transfer-to-review transfer-invalid">Continue</button>
+    </div>
+  </body>
+</html>

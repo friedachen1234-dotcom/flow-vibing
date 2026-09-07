@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en" data-flow-screen="review">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Review</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body { font-family: var(--font-body, system-ui, sans-serif); background: var(--color-bg, #F4F6FB); color: var(--color-ink, #101828); -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; min-height: 100vh; }
+      button { font: inherit; color: inherit; }
+      .status { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px 0; font-size: 15px; font-weight: 600; }
+      .status .pills { display: flex; gap: 5px; align-items: center; }
+      .status .bar { width: 3px; background: currentColor; border-radius: 1px; }
+      .status .batt { width: 24px; height: 11px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+      .status .batt::after { content: ""; position: absolute; inset: 2px; right: 4px; background: currentColor; border-radius: 1px; }
+      .top { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 10px 12px 4px; }
+      .top h1 { margin: 0; text-align: center; font-size: 17px; font-weight: 700; }
+      .iconbtn { width: 44px; height: 44px; border: 0; background: none; display: grid; place-items: center; border-radius: 50%; cursor: pointer; }
+      .iconbtn svg { width: 22px; height: 22px; }
+      main { flex: 1; padding: 12px var(--space-page, 20px); display: grid; gap: 14px; align-content: start; }
+      .alert { display: none; gap: 10px; padding: 14px; border-radius: var(--radius-card, 18px); background: #FEF3F2; border: 1px solid #FECDCA; color: #912018; }
+      .alert .ic { width: 34px; height: 34px; border-radius: 50%; background: var(--color-negative, #D92D20); color: #fff; display: grid; place-items: center; flex: none; }
+      .alert .ic svg { width: 18px; height: 18px; }
+      .alert b { display: block; font-size: 14px; }
+      .alert p { margin: 3px 0 0; font-size: 13px; line-height: 1.4; }
+      .card { background: var(--color-surface, #fff); border-radius: var(--radius-card, 18px); padding: 18px; box-shadow: 0 1px 2px rgba(16,24,40,0.05); }
+      .hero { text-align: center; padding: 26px 18px 22px; }
+      .hero .avatar { width: 64px; height: 64px; border-radius: 50%; display: inline-grid; place-items: center; font-weight: 700; font-size: 20px; background: #FCE7F3; color: #BE185D; }
+      .hero .to { margin-top: 10px; font-size: 13px; color: var(--color-muted, #667085); }
+      .hero .name { font-size: 17px; font-weight: 700; margin-top: 2px; }
+      .hero .amount { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; margin-top: 14px; font-variant-numeric: tabular-nums; }
+      .hero .amount .cur { font-size: 24px; color: var(--color-muted, #667085); vertical-align: 12px; margin-right: 2px; }
+      .kv { display: grid; gap: 0; }
+      .kv .r { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--color-line, #E4E7EC); font-size: 14px; }
+      .kv .r:first-child { padding-top: 0; }
+      .kv .r:last-child { border-bottom: 0; padding-bottom: 0; }
+      .kv .k { color: var(--color-muted, #667085); }
+      .kv .v { font-weight: 600; text-align: right; }
+      .kv .v.pos { color: var(--color-positive, #12925E); }
+      .acct { display: flex; align-items: center; gap: 12px; }
+      .acct .chip { width: 44px; height: 30px; border-radius: 6px; background: linear-gradient(140deg, #3B4FE4, #1F2A8F); flex: none; }
+      .acct .t { flex: 1; }
+      .acct b { display: block; font-size: 14px; }
+      .acct span { font-size: 12.5px; color: var(--color-muted, #667085); }
+      .acct .chev { color: var(--color-muted, #667085); }
+      .fine { font-size: 12px; color: var(--color-muted, #667085); text-align: center; line-height: 1.45; padding: 0 10px; }
+      .cta-wrap { padding: 8px var(--space-page, 20px) 28px; }
+      .cta { width: 100%; height: 54px; border: 0; border-radius: var(--radius-pill, 999px); background: var(--color-accent, #3B4FE4); color: var(--color-accent-ink, #fff); font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(59,79,228,0.28); display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+      .cta .spin { display: none; width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.35); border-top-color: #fff; animation: spin 0.8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .cta .lbl-default { display: inline; } .cta .lbl-sending, .cta .lbl-failed { display: none; }
+
+      html[data-flow-state="sending"] .cta { pointer-events: none; background: #2A37B8; box-shadow: none; }
+      html[data-flow-state="sending"] .cta .spin { display: block; }
+      html[data-flow-state="sending"] .cta .lbl-default { display: none; }
+      html[data-flow-state="sending"] .cta .lbl-sending { display: inline; }
+      html[data-flow-state="sending"] main { opacity: 0.6; }
+
+      html[data-flow-state="failed"] .alert { display: flex; }
+      html[data-flow-state="failed"] .cta .lbl-default { display: none; }
+      html[data-flow-state="failed"] .cta .lbl-failed { display: inline; }
+      html[data-flow-state="failed"] .cta { background: var(--color-ink, #101828); box-shadow: none; }
+      html[data-flow-state="failed"] .acct { outline: 2px solid var(--color-negative, #D92D20); outline-offset: 10px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <div class="status"><span>9:41</span><span class="pills"><span class="bar" style="height:4px"></span><span class="bar" style="height:6px"></span><span class="bar" style="height:8px"></span><span class="bar" style="height:10px"></span><span class="batt" style="margin-left:6px"></span></span></div>
+    <div class="top">
+      <button class="iconbtn" aria-label="Back" data-flow-el="back-button" data-flow-transition="review-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h1>Review</h1>
+      <span></span>
+    </div>
+
+    <main>
+      <div class="alert" role="alert">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 8v5M12 16.5v.5"/></svg></span>
+        <div><b>Your bank declined this transfer</b><p>Nothing was sent. This usually means a daily limit was reached. Try a different account, or wait until tomorrow.</p></div>
+      </div>
+
+      <div class="card hero" data-flow-el="summary-card">
+        <span class="avatar">SO</span>
+        <div class="to">Sending to</div>
+        <div class="name">Sam Okafor</div>
+        <div class="amount"><span class="cur">£</span>120.00</div>
+      </div>
+
+      <div class="card kv">
+        <div class="r"><span class="k">Reference</span><span class="v">Dinner on Friday</span></div>
+        <div class="r"><span class="k">Arrives</span><span class="v pos">Instantly</span></div>
+        <div class="r"><span class="k">Fee</span><span class="v">Free</span></div>
+      </div>
+
+      <div class="card acct" data-flow-el="from-account">
+        <span class="chip"></span>
+        <div class="t"><b>Everyday account</b><span>•• 4821 · £4,166.20 after this</span></div>
+        <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
+
+      <p class="fine">Double-check the name. Instant transfers can't be reversed once they've been accepted.</p>
+    </main>
+
+    <div class="cta-wrap">
+      <button class="cta" data-flow-el="confirm-button" data-flow-transition="review-to-success review-declined">
+        <span class="spin"></span>
+        <span class="lbl-default">Confirm and send £120.00</span>
+        <span class="lbl-sending">Sending…</span>
+        <span class="lbl-failed">Try a different account</span>
+      </button>
+    </div>
+  </body>
+</html>

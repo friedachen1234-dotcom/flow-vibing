@@ -1,0 +1,22 @@
+:root {
+  --color-bg: #FFFDF8;
+  --color-ink: #1F1A17;
+  --color-muted: #7A6F68;
+  --color-accent: #D9480F;
+  --color-accent-ink: #FFFFFF;
+  --color-accent-soft: #FDE8DE;
+  --color-surface: #FFFFFF;
+  --color-line: #EDE6DD;
+  --color-green: #2F7D4F;
+  --color-green-soft: #E3F3E8;
+  --color-cream: #F7F1E6;
+  --font-display: Georgia, 'Times New Roman', serif;
+  --font-body: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --space-unit: 8px;
+  --space-page: 32px;
+  --radius-card: 20px;
+  --radius-control: 14px;
+  --radius-pill: 999px;
+  --motion-fast: 160ms;
+  --motion-base: 260ms;
+}
