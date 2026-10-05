@@ -285,6 +285,8 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .react-flow__node { font-family: var(--font-ui); }
 .react-flow__handle { width: 10px; height: 10px; border: 2px solid var(--surface); background: var(--ink-3); }
 .react-flow__handle.magic { background: var(--magic); }
+.react-flow__handle.magic.side { top: 50%; }
+.react-flow__handle.magic.side.react-flow__handle-left { left: 0; }
 .react-flow__handle.flow { background: var(--accent); }
 .react-flow__handle.card-in { width: 9px; height: 9px; border: 2px solid var(--surface); background: var(--accent); top: 40px; left: 0; transform: translate(-50%, -50%); }
 .react-flow__handle.state-in { top: 50%; }
@@ -296,6 +298,7 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .edge-label.transition.selected, .edge-label.transition:hover { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .edge-label.transition .cond { color: var(--ink-2); font-weight: 500; }
 .edge-label.transition.back { color: var(--ink-2); border-color: var(--line); }
+.edge-label.transition.quiet { color: var(--ink-2); border-color: var(--line); font-weight: 500; }
 .edge-label.magic { color: var(--magic); border-color: #E6C9EC; font-size: var(--t-11); padding: 3px 8px; }
 .edge-label.magic.selected { border-color: var(--magic); }
 .react-flow__minimap-mask { fill: rgba(243,245,250,.75); }

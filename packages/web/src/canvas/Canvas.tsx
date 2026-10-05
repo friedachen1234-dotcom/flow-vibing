@@ -4,7 +4,7 @@ import {
   type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type OnSelectionChangeParams, MarkerType
 } from "@xyflow/react";
 import { MAGIC_RELATION_LABELS, classifyTransitions, hostScreen, mainMoves, type CanvasDoc, type CanvasNode, type DesignSpec, type MagicRelation, type ViewMode } from "@flow/shared";
-import { EDGE_CASE_H, FLOW_CARD_W, flowCardHeight, tidyLayout } from "./layout";
+import { EDGE_CASE_W, FLOW_CARD_W, edgeCaseStackHeight, flowCardHeight, tidyLayout } from "./layout";
 import { Icon } from "../components/Icon";
 import { api } from "../api";
 import { useFlow } from "../store";
@@ -28,6 +28,21 @@ function focusScreenOf(selection: { kind: string; id: string } | null, spec: Des
   if (selection.kind === "node" && selection.id.startsWith("edgecase:")) { const ec = spec.edgeCases.find((e) => e.id === selection.id.slice(9)); return ec ? hostScreen(spec, ec.attachedTo) : undefined; }
   if (selection.kind === "transition") return spec.transitions.find((t) => t.id === selection.id)?.from.screenId;
   return undefined;
+}
+
+/**
+ * A screen is far taller in prototype view than in flow view, and its edge cases only exist in flow view, so a panel
+ * parked under a screen in one view can land inside it in the other. Push it clear rather than let it overlap.
+ */
+function panelPosition(n: Extract<CanvasNode, { type: "variantPanel" }>, canvas: CanvasDoc, spec: DesignSpec, view: ViewMode, showEdgeCases: boolean): { x: number; y: number } {
+  const host = n.target.screenId ? canvas.nodes.find((h) => h.type === "screen" && h.screenId === n.target.screenId) : undefined;
+  if (!host || host.type !== "screen") return n.position;
+  const w = view === "flow" ? Math.max(FLOW_CARD_W, 36 + EDGE_CASE_W) : host.width ?? spec.device.width;
+  const ecs = view === "flow" && showEdgeCases ? spec.edgeCases.filter((e) => hostScreen(spec, e.attachedTo) === host.screenId).length : 0;
+  const bottom = host.position.y + (view === "flow" ? flowCardHeight(spec, host.screenId) + edgeCaseStackHeight(ecs) : (host.height ?? spec.device.height) + 40);
+  const overlapsX = n.position.x < host.position.x + w && n.position.x + 640 > host.position.x;
+  if (!overlapsX || n.position.y >= bottom + 40 || n.position.y + 330 <= host.position.y) return n.position;
+  return { x: n.position.x, y: bottom + 60 };
 }
 
 /**
@@ -87,6 +102,7 @@ export function Canvas() {
   const [dragOver, setDragOver] = useState(false);
   const [showKeys, setShowKeys] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const fit = useCallback(() => requestAnimationFrame(() => void rf.fitView({ padding: 0.15, duration: 300 })), [rf]);
 
   /* Derive React Flow nodes and edges from the spec and canvas for the active view. */
   const derived = useMemo(() => {
@@ -100,8 +116,9 @@ export function Canvas() {
         nodes.push({ id: n.id, position: n.position, type: "edgeCase", data: { node: n, spec }, selected: isSel, dragHandle: ".hdr", zIndex: 2 });
         continue;
       }
-      const common = { id: n.id, position: n.position, data: { node: n, spec, primaryMoves: canvas.primaryMoves, expanded: flow && isSel }, selected: isSel };
-      if (n.type === "screen") nodes.push({ ...common, type: flow ? "screenCard" : "screen", dragHandle: ".hdr", zIndex: common.data.expanded ? 10 : 1 });
+      const common = { id: n.id, position: n.position, data: { node: n, spec, primaryMoves: canvas.primaryMoves }, selected: isSel };
+      if (n.type === "screen") nodes.push({ ...common, type: flow ? "screenCard" : "screen", dragHandle: ".hdr", zIndex: 1 });
+      else if (n.type === "variantPanel") nodes.push({ ...common, position: panelPosition(n, canvas, spec, view, showEdgeCases), type: n.type, dragHandle: ".hdr", zIndex: 2 });
       else if (n.type === "group") nodes.push({ ...common, type: "group", zIndex: -1, style: { width: n.width, height: n.height } });
       else nodes.push({ ...common, type: n.type, dragHandle: n.type === "prompt" || n.type === "note" ? undefined : ".hdr", zIndex: 2 });
     }
@@ -114,26 +131,25 @@ export function Canvas() {
       const first = spec.screens[0];
       const firstPos = first ? screenPos.get(first.id) : undefined;
       if (first && firstPos) {
-        nodes.push({ id: "start", type: "start", position: { x: firstPos.x - 110, y: firstPos.y + 30 }, data: {}, draggable: false, selectable: false, zIndex: 1 });
+        nodes.push({ id: "start", type: "start", position: { x: firstPos.x - 92, y: firstPos.y + 30 }, data: {}, draggable: false, selectable: false, zIndex: 1 });
         edges.push({ id: "start-edge", type: "start", source: "start", target: `screen:${first.id}`, sourceHandle: "out", targetHandle: "in", markerEnd: { type: MarkerType.ArrowClosed, color: "#1C8A6E", width: 12, height: 12 }, zIndex: 3 });
       }
       // Lines that travel backwards (target left of source) orbit below the whole row instead of crossing cards.
-      const screenBottom = Math.max(0, ...canvas.nodes.filter((n) => n.type === "screen").map((n) => n.position.y + flowCardHeight(spec, n.screenId) + (focusScreen === n.screenId ? 240 : 0) + (showEdgeCases && spec.edgeCases.some((e) => hostScreen(spec, e.attachedTo) === n.screenId) ? EDGE_CASE_H + 90 : 0)));
+      const screenBottom = Math.max(0, ...canvas.nodes.filter((n) => n.type === "screen").map((n) => n.position.y + flowCardHeight(spec, n.screenId) + (showEdgeCases ? edgeCaseStackHeight(spec.edgeCases.filter((e) => hostScreen(spec, e.attachedTo) === n.screenId).length) : 0)));
       let lane = 0;
       for (const t of spec.transitions) {
         const kind = kinds.get(t.id) ?? "forward";
         const touches = !!focusScreen && (t.from.screenId === focusScreen || t.to.screenId === focusScreen);
         if (kind === "state") continue;
         if (kind === "back") continue; // returns are rows on the card, never lines: a line back across the flow says nothing the row does not
-        const toState = t.to.stateId && focusScreen === t.to.screenId ? `in:${t.to.stateId}` : "in";
         const sx = screenPos.get(t.from.screenId)?.x ?? 0, tx = screenPos.get(t.to.screenId)?.x ?? 0;
         const loop = tx <= sx;
         const orbitY = loop ? screenBottom + 40 + (lane++ % 6) * 14 : undefined;
         edges.push({
-          id: `t:${t.id}`, type: "transition", source: `screen:${t.from.screenId}`, target: `screen:${t.to.screenId}`, sourceHandle: `out:${t.id}`, targetHandle: toState,
+          id: `t:${t.id}`, type: "transition", source: `screen:${t.from.screenId}`, target: `screen:${t.to.screenId}`, sourceHandle: `out:${t.id}`, targetHandle: "in",
           data: { transition: t, kind, dim: !!focusScreen && !touches, lit: touches, main: mains.has(t.id), orbitY },
           selected: selection?.kind === "transition" && selection.id === t.id,
-          markerEnd: { type: MarkerType.ArrowClosed, color: "#2C4FDB", width: 12, height: 12 }, zIndex: touches ? 4 : 3
+          markerEnd: { type: MarkerType.ArrowClosed, color: "#2C4FDB", width: 10, height: 10 }, zIndex: touches ? 4 : 3
         });
       }
       if (showEdgeCases) {
@@ -141,14 +157,16 @@ export function Canvas() {
           const host = hostScreen(spec, ec.attachedTo);
           if (!host || !canvas.nodes.some((n) => n.type === "edgeCase" && n.edgeCaseId === ec.id)) continue;
           const touches = !!focusScreen && focusScreen === host;
-          edges.push({ id: `ec:${ec.id}`, type: "edgeCase", source: `screen:${host}`, target: `edgecase:${ec.id}`, sourceHandle: "ec", targetHandle: "ec-in", data: { dim: !!focusScreen && !touches }, markerEnd: { type: MarkerType.ArrowClosed, color: "#B7791F", width: 11, height: 11 }, zIndex: touches ? 4 : 2 });
+          edges.push({ id: `ec:${ec.id}`, type: "edgeCase", source: `screen:${host}`, target: `edgecase:${ec.id}`, sourceHandle: "ec", targetHandle: "ec-in", data: { dim: !!focusScreen && !touches }, markerEnd: { type: MarkerType.ArrowClosed, color: "#D19A1F", width: 9, height: 9 }, zIndex: touches ? 4 : 2 });
         }
       }
     }
     for (const e of canvas.edges) {
       if (e.type === "provenance" && !showInfluences) continue;
       if (!canvas.nodes.some((n) => n.id === e.source) || !canvas.nodes.some((n) => n.id === e.target)) continue;
-      edges.push({ id: e.id, type: e.type, source: e.source, target: e.target, sourceHandle: "out", targetHandle: "in", data: { edge: e }, selected: selection?.kind === "edge" && selection.id === e.id, zIndex: 3 });
+      // Explorations hang under their screen, so that line leaves from the bottom and lands on the panel's top.
+      const vertical = e.type === "variantLink";
+      edges.push({ id: e.id, type: e.type, source: e.source, target: e.target, sourceHandle: vertical ? "below" : "out", targetHandle: vertical ? "top" : "in", data: { edge: e }, selected: selection?.kind === "edge" && selection.id === e.id, zIndex: 3 });
     }
     if (showInfluences) {
       // Provenance drawn live from the spec so it always reflects the latest generation.
@@ -163,6 +181,19 @@ export function Canvas() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvas.nodes, canvas.edges, canvas.primaryMoves, spec, view, selection, showInfluences, showEdgeCases]);
 
+  // Screens are one size in flow view and another in prototype view, so a layout that is tidy in one can pile up in
+  // the other. When a view switch leaves two screens overlapping, tidy for this view rather than show the pile.
+  useEffect(() => {
+    const screens = canvas.nodes.filter((n): n is Extract<CanvasNode, { type: "screen" }> => n.type === "screen");
+    const size = (n: (typeof screens)[number]) => view === "flow" ? { w: FLOW_CARD_W, h: flowCardHeight(spec, n.screenId) } : { w: n.width ?? spec.device.width, h: (n.height ?? spec.device.height) + 40 };
+    const overlap = screens.some((a, i) => screens.slice(i + 1).some((b) => {
+      const A = size(a), B = size(b);
+      return a.position.x < b.position.x + B.w && b.position.x < a.position.x + A.w && a.position.y < b.position.y + B.h && b.position.y < a.position.y + A.h;
+    }));
+    if (overlap) { updateCanvas((c) => tidyLayout(spec, c, view)); fit(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
+
   const [nodes, setNodes] = useState<Node[]>(derived.nodes);
   const [edges, setEdges] = useState<Edge[]>(derived.edges);
   // Merge rather than replace, so React Flow keeps measurements and in-progress drags.
@@ -174,7 +205,6 @@ export function Canvas() {
     setEdges(derived.edges);
   }, [derived]);
   const isDefaultViewport = canvas.viewport.x === 0 && canvas.viewport.y === 0 && canvas.viewport.zoom === 1;
-  const fit = useCallback(() => requestAnimationFrame(() => void rf.fitView({ padding: 0.15, duration: 300 })), [rf]);
   const [initialViewport] = useState(canvas.viewport);
   const onMoveEnd = useCallback((_: unknown, vp: { x: number; y: number; zoom: number }) => updateCanvas((c) => ({ ...c, viewport: vp })), [updateCanvas]);
   const onPaneClick = useCallback(() => { select(null); setPending(null); }, [select]);

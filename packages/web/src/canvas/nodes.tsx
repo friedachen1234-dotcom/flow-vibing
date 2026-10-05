@@ -1,6 +1,5 @@
 import React, { memo, useEffect, useRef, useState } from "react";
 import { Handle, Position, useConnection, useNodeId, type NodeProps } from "@xyflow/react";
-import { ask } from "../components/Dialog";
 import { classifyTransition, mainMoves, type CanvasNode, type DesignSpec, type EdgeCaseSpec, type ScreenSpec } from "@flow/shared";
 import { api } from "../api";
 import { useFlow, useHeadVersion } from "../store";
@@ -9,6 +8,8 @@ import { Icon } from "../components/Icon";
 type N<T extends CanvasNode["type"]> = NodeProps & { data: { node: Extract<CanvasNode, { type: T }>; spec: DesignSpec } };
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+/** Where the line to a screen's exploration leaves and lands: the same x on the screen and on the panel below it, right of the edge-case stack. */
+export const RAIL_X = 282;
 
 /** While a connection is being dragged, the whole node becomes a drop target, so lines can land anywhere on it. */
 function DropTarget() {
@@ -99,8 +100,9 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
   return (
     <div className={`screen-frame ${selected ? "selected" : ""}`} style={{ width: w, height: h, outline: isWalkHere ? "3px solid var(--accent)" : undefined }}>
       <DropTarget />
-      <Handle type="target" position={Position.Left} id="in" className="magic" style={{ top: 20 }} />
-      <Handle type="source" position={Position.Right} id="out" className="magic" style={{ top: 20 }} />
+      <Handle type="target" position={Position.Left} id="in" className="magic side" />
+      <Handle type="source" position={Position.Right} id="out" className="magic side" />
+      <Handle type="source" position={Position.Bottom} id="below" className="ec-port" style={{ left: RAIL_X }} />
       <div className="hdr" onDoubleClick={() => select({ kind: "node", id: node.id })}>
         {showing.id !== screen.id
           ? <button className="icon nodrag" onClick={() => post({ type: "flow:goto", screenId: screen.id })} title={`Back to ${screen.name}`} aria-label="Back"><Icon name="arrow-left" size={14} /></button>
@@ -146,14 +148,12 @@ export const StartNode = memo(function StartNode() {
  * Thumbnail, name, purpose, and the state and edge-case counts; then one row per interaction, each the start of its
  * own line, so the line never needs to be traced back to find out what fires it.
  */
-export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N<"screen"> & { data: { expanded?: boolean; primaryMoves?: Record<string, string> } }) {
+export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N<"screen"> & { data: { primaryMoves?: Record<string, string> } }) {
   const { node, spec } = data;
-  const expanded = !!data.expanded;
   const mainId = mainMoves(spec, data.primaryMoves ?? {}).get(node.screenId);
   const screen = spec.screens.find((s) => s.id === node.screenId);
   const walk = useFlow((s) => s.walk);
   const selection = useFlow((s) => s.selection);
-  const addChange = useFlow((s) => s.addChange);
   const select = useFlow((s) => s.select);
   const setPanel = useFlow((s) => s.setPanel);
   const showToast = useFlow((s) => s.showToast);
@@ -161,18 +161,11 @@ export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N
   const outs = spec.transitions.filter((t) => t.from.screenId === screen.id);
   const forwards = outs.filter((t) => classifyTransition(t) === "forward");
   const backs = outs.filter((t) => classifyTransition(t) === "back");
-  const stateMoves = outs.filter((t) => classifyTransition(t) === "state");
   const ecs = spec.edgeCases.filter((e) => e.attachedTo.screenId === screen.id || outs.some((t) => t.id === e.attachedTo.transitionId));
   const isWalkHere = walk.active && walk.screenId === screen.id;
   const nameOf = (id: string) => spec.screens.find((s) => s.id === id)?.name ?? id;
   const selectedTransition = selection?.kind === "transition" ? selection.id : null;
   const defaultState = screen.states.find((s) => s.isDefault) ?? screen.states[0];
-  const addState = async () => { const name = await ask("New state", { placeholder: "Loading, Empty, Error…" }); if (name?.trim()) addChange({ op: "add-state", screenId: screen.id, name: name.trim(), description: "" }); };
-  const addEdgeCase = async () => {
-    const sc = await ask("Edge case scenario", { placeholder: "What goes wrong or is unusual?" }); if (!sc?.trim()) return;
-    const h = (await ask("How should the design handle it?", { multiline: true })) ?? "";
-    addChange({ op: "add-edge-case", attachedTo: { screenId: screen.id }, scenario: sc.trim(), handling: h.trim(), severity: "medium" });
-  };
   const inspect = (ev: React.MouseEvent) => { ev.stopPropagation(); select({ kind: "node", id: node.id }); setPanel("inspect"); };
   const rows = [...forwards].sort((a, b) => (a.id === mainId ? -1 : b.id === mainId ? 1 : 0)).concat(backs);
   const moveRow = (t: (typeof outs)[number]) => {
@@ -188,10 +181,11 @@ export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N
     );
   };
   return (
-    <div className={`screen-card ${expanded ? "expanded" : ""} ${selected ? "selected" : ""}`} style={{ outline: isWalkHere ? "3px solid var(--accent)" : undefined }}>
+    <div className={`screen-card ${selected ? "selected" : ""}`} style={{ outline: isWalkHere ? "3px solid var(--accent)" : undefined }}>
       <DropTarget />
       <Handle type="target" position={Position.Left} id="in" className="card-in" />
-      <Handle type="source" position={Position.Bottom} id="ec" className="ec-port" />
+      <Handle type="source" position={Position.Bottom} id="ec" className="ec-port" style={{ left: 18 }} />
+      <Handle type="source" position={Position.Bottom} id="below" className="ec-port" style={{ left: RAIL_X }} />
       <div className="hdr" onDoubleClick={() => select({ kind: "node", id: node.id })}>
         <Thumb screenId={screen.id} width={84} />
         <div className="hdr-text">
@@ -212,31 +206,6 @@ export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N
           <Handle type="source" position={Position.Right} id="out" className="row-port" />
         </div>
       </div>
-      {expanded && (
-        <div className="detail nowheel">
-          <div className="sec">
-            <h5>States</h5>
-            {screen.states.map((st) => {
-              const into = stateMoves.filter((t) => t.to.stateId === st.id);
-              return (
-                <div key={st.id} className={`state ${st.isDefault ? "default" : ""} ${isWalkHere && (walk.stateId === st.id || (!walk.stateId && st.isDefault)) ? "active" : ""}`}>
-                  <Handle type="target" position={Position.Left} id={`in:${st.id}`} className="card-in state-in" />
-                  <span className="dot" />
-                  <span className="nm">{st.name}</span>
-                  <span className="tr" title={st.trigger}>{st.trigger}</span>
-                  {into.map((t) => <span key={t.id} className="into nodrag" title={t.condition ? `if ${t.condition}` : ""} onClick={(e) => { e.stopPropagation(); select({ kind: "transition", id: t.id }); }}>← {t.trigger}{t.condition ? ` · if ${t.condition}` : ""}</span>)}
-                </div>
-              );
-            })}
-            {screen.states.length === 0 && <div className="muted small">No states declared</div>}
-          </div>
-          <div className="foot">
-            <button className="add nodrag" onClick={addState}>+ state</button>
-            <button className="add nodrag" onClick={addEdgeCase}>+ edge case</button>
-            <span className="muted small" style={{ marginLeft: "auto" }}>{outs.length} out · {spec.transitions.filter((t) => t.to.screenId === screen.id && t.from.screenId !== screen.id).length} in</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 });
@@ -255,8 +224,8 @@ export const EdgeCaseNode = memo(function EdgeCaseNode({ data, selected }: N<"ed
   return (
     <div className={`edge-case-card ${ec.severity} ${selected ? "selected" : ""}`}>
       <DropTarget />
-      <Handle type="target" position={Position.Top} id="ec-in" className="ec-port" />
-      <Handle type="target" position={Position.Left} id="in" className="magic" style={{ top: 22 }} />
+      <Handle type="target" position={Position.Left} id="ec-in" className="ec-port" style={{ top: 30 }} />
+      <Handle type="target" position={Position.Left} id="in" className="magic" style={{ top: "60%" }} />
       <div className="hdr">
         {hostId && <Thumb screenId={hostId} width={56} aspect={1.2} className="dim" />}
         <div className="hdr-text">
@@ -388,6 +357,7 @@ export const VariantPanelNode = memo(function VariantPanelNode({ data, selected 
       <DropTarget />
       <Handle type="source" position={Position.Right} id="out" className="flow" />
       <Handle type="target" position={Position.Left} id="in" className="magic" style={{ top: 24 }} />
+      <Handle type="target" position={Position.Top} id="top" className="ec-port" style={{ left: RAIL_X }} />
       <div className="hdr">
         <span className="vp-mark"><Icon name="hexagon" size={16} strokeWidth={2} /></span>
         <span className="name">{subject} exploration</span>
