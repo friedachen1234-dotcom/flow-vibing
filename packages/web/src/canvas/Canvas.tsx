@@ -116,6 +116,7 @@ export function Canvas() {
         nodes.push({ id: n.id, position: n.position, type: "edgeCase", data: { node: n, spec }, selected: isSel, dragHandle: ".hdr", zIndex: 2 });
         continue;
       }
+      if (flow && (n.type === "inspiration" || n.type === "skill" || n.type === "variantPanel")) continue; // references and explorations belong to the prototype reading; the flow view is about moves
       const common = { id: n.id, position: n.position, data: { node: n, spec, primaryMoves: canvas.primaryMoves }, selected: isSel };
       if (n.type === "screen") nodes.push({ ...common, type: flow ? "screenCard" : "screen", dragHandle: ".hdr", zIndex: 1 });
       else if (n.type === "variantPanel") nodes.push({ ...common, position: panelPosition(n, canvas, spec, view, showEdgeCases), type: n.type, dragHandle: ".hdr", zIndex: 2 });
@@ -152,6 +153,13 @@ export function Canvas() {
           markerEnd: { type: MarkerType.ArrowClosed, color: "#2C4FDB", width: 10, height: 10 }, zIndex: touches ? 4 : 3
         });
       }
+      // Lines leaving one card each take their own lane beside the card, ordered by where they land, so none overlaps another.
+      const bySource = new Map<string, Edge[]>();
+      for (const e of edges) if (e.type === "transition") bySource.set(e.source, [...(bySource.get(e.source) ?? []), e]);
+      for (const group of bySource.values()) {
+        const ty = (e: Edge) => screenPos.get(e.target.slice(7))?.y ?? 0;
+        group.sort((a, b) => ty(a) - ty(b)).forEach((e, i) => { e.data = { ...e.data, lane: i, lanes: group.length }; });
+      }
       if (showEdgeCases) {
         for (const ec of spec.edgeCases) {
           const host = hostScreen(spec, ec.attachedTo);
@@ -161,9 +169,10 @@ export function Canvas() {
         }
       }
     }
+    const shown = new Set(nodes.map((n) => n.id));
     for (const e of canvas.edges) {
       if (e.type === "provenance" && !showInfluences) continue;
-      if (!canvas.nodes.some((n) => n.id === e.source) || !canvas.nodes.some((n) => n.id === e.target)) continue;
+      if (!shown.has(e.source) || !shown.has(e.target)) continue;
       // Explorations hang under their screen, so that line leaves from the bottom and lands on the panel's top.
       const vertical = e.type === "variantLink";
       edges.push({ id: e.id, type: e.type, source: e.source, target: e.target, sourceHandle: vertical ? "below" : "out", targetHandle: vertical ? "top" : "in", data: { edge: e }, selected: selection?.kind === "edge" && selection.id === e.id, zIndex: 3 });
@@ -171,7 +180,7 @@ export function Canvas() {
     if (showInfluences) {
       // Provenance drawn live from the spec so it always reflects the latest generation.
       for (const s of spec.screens) for (const p of s.provenance) {
-        if (!canvas.nodes.some((n) => n.id === p.sourceNodeId)) continue;
+        if (!shown.has(p.sourceNodeId)) continue;
         const id = `prov:${p.sourceNodeId}:${s.id}`;
         if (edges.some((e) => e.id === id)) continue;
         edges.push({ id, type: "provenance", source: p.sourceNodeId, target: `screen:${s.id}`, sourceHandle: "out", targetHandle: "in", zIndex: 0 });

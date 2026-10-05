@@ -19,6 +19,7 @@ function orbitPath(sx: number, sy: number, tx: number, ty: number, laneY: number
  * vertical trunk and the labels beside the card stay clear of it.
  */
 const TRUNK = 132;
+const LANE = 12;
 
 /** A transition line: out of its row, along a shared trunk, into the target from the left. Named where it leaves. */
 export function TransitionEdge(props: EdgeProps) {
@@ -31,7 +32,10 @@ export function TransitionEdge(props: EdgeProps) {
   const walk = useFlow((s) => s.walk);
   const orbitY = props.data?.orbitY as number | undefined;
   const gap = props.targetX - props.sourceX;
-  const [step] = getSmoothStepPath({ sourceX: props.sourceX, sourceY: props.sourceY, targetX: props.targetX, targetY: props.targetY, sourcePosition: props.sourcePosition, targetPosition: props.targetPosition, borderRadius: 10, offset: 20, centerX: props.sourceX + Math.min(TRUNK, Math.max(28, gap * 0.6)) });
+  const lane = (props.data?.lane as number | undefined) ?? 0;
+  const lanes = (props.data?.lanes as number | undefined) ?? 1;
+  const trunk = props.sourceX + Math.min(TRUNK, Math.max(28, gap * 0.6)) + (lane - (lanes - 1) / 2) * LANE;
+  const [step] = getSmoothStepPath({ sourceX: props.sourceX, sourceY: props.sourceY, targetX: props.targetX, targetY: props.targetY, sourcePosition: props.sourcePosition, targetPosition: props.targetPosition, borderRadius: 10, offset: 20, centerX: trunk });
   const path = orbitY != null ? orbitPath(props.sourceX, props.sourceY, props.targetX, props.targetY, orbitY) : step;
   // The label sits on the first straight run out of the row, so it lines up with the row that fires it.
   const lx = props.sourceX + 12;
