@@ -3,29 +3,32 @@ import {
   Background, BackgroundVariant, MiniMap, ReactFlow, applyEdgeChanges, applyNodeChanges, useReactFlow, useViewport,
   type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type OnSelectionChangeParams, MarkerType
 } from "@xyflow/react";
-import { FLOW_CARD_WIDTH, MAGIC_RELATION_LABELS, classifyTransitions, mainMoves, type CanvasDoc, type CanvasNode, type DesignSpec, type MagicRelation, type ViewMode } from "@flow/shared";
-import { flowCardHeight, tidyLayout } from "./layout";
+import { MAGIC_RELATION_LABELS, classifyTransitions, hostScreen, mainMoves, type CanvasDoc, type CanvasNode, type DesignSpec, type MagicRelation, type ViewMode } from "@flow/shared";
+import { EDGE_CASE_H, FLOW_CARD_W, flowCardHeight, tidyLayout } from "./layout";
 import { Icon } from "../components/Icon";
-
-function focusScreenOf(selection: { kind: string; id: string } | null, spec: { transitions: { id: string; from: { screenId: string } }[] }): string | undefined {
-  if (!selection) return undefined;
-  if (selection.kind === "node" && selection.id.startsWith("screen:")) return selection.id.slice(7);
-  if (selection.kind === "transition") return spec.transitions.find((t) => t.id === selection.id)?.from.screenId;
-  return undefined;
-}
 import { api } from "../api";
 import { useFlow } from "../store";
-import { nodeTypes, PickBubble } from "./nodes";
+import { nodeTypes } from "./nodes";
 import { ask } from "../components/Dialog";
 import { edgeTypes } from "./edges";
+import { Composer } from "../components/Composer";
 
 type Pending = { source: string; target: string; x: number; y: number; targetElementId?: string };
 
 // Stable references: React Flow re-syncs inline objects into its store on every render, which can loop.
 const FIT_OPTS = { padding: 0.15 };
-const CONN_LINE_STYLE = { stroke: "var(--magic)", strokeDasharray: "7 5" };
+const CONN_LINE_STYLE = { stroke: "var(--accent)", strokeDasharray: "7 5" };
 const PRO_OPTS = { hideAttribution: true };
-const minimapColor = (n: Node) => (n.type === "screen" || n.type === "screenCard" ? "#2C4FDB" : n.type === "inspiration" || n.type === "skill" ? "#B8368B" : "#C9CFD8");
+const PAN_BUTTONS = [1, 2];
+const minimapColor = (n: Node) => (n.type === "screen" || n.type === "screenCard" ? "#C9D4F7" : n.type === "edgeCase" ? "#F5DFA8" : n.type === "inspiration" || n.type === "skill" ? "#E7CBE9" : "#D9DEE6");
+
+function focusScreenOf(selection: { kind: string; id: string } | null, spec: DesignSpec): string | undefined {
+  if (!selection) return undefined;
+  if (selection.kind === "node" && selection.id.startsWith("screen:")) return selection.id.slice(7);
+  if (selection.kind === "node" && selection.id.startsWith("edgecase:")) { const ec = spec.edgeCases.find((e) => e.id === selection.id.slice(9)); return ec ? hostScreen(spec, ec.attachedTo) : undefined; }
+  if (selection.kind === "transition") return spec.transitions.find((t) => t.id === selection.id)?.from.screenId;
+  return undefined;
+}
 
 /**
  * True when the saved viewport has at least one node's centre on screen. A viewport is saved on every pan, so a
@@ -36,8 +39,8 @@ function viewportShowsSomething(canvas: CanvasDoc, spec: DesignSpec, view: ViewM
   const { x, y, zoom } = canvas.viewport;
   for (const n of canvas.nodes) {
     if (n.type === "edgeCase") continue;
-    const w = n.type === "screen" ? (view === "flow" ? FLOW_CARD_WIDTH : n.width ?? spec.device.width) : n.width ?? 240;
-    const h = n.type === "screen" ? (view === "flow" ? flowCardHeight(spec, n.screenId) : (n.height ?? spec.device.height) + 36) : n.height ?? 160;
+    const w = n.type === "screen" ? (view === "flow" ? FLOW_CARD_W : n.width ?? spec.device.width) : n.width ?? 240;
+    const h = n.type === "screen" ? (view === "flow" ? flowCardHeight(spec, n.screenId) : (n.height ?? spec.device.height) + 40) : n.height ?? 160;
     const cx = (n.position.x + w / 2) * zoom + x, cy = (n.position.y + h / 2) * zoom + y;
     if (cx > 0 && cy > 0 && cx < pane.w && cy < pane.h) return true;
   }
@@ -46,17 +49,17 @@ function viewportShowsSomething(canvas: CanvasDoc, spec: DesignSpec, view: ViewM
 
 const SHORTCUTS: [string, string][] = [
   ["1 / 2", "Prototype view / Flow view"],
-  ["V", "Select"],
+  ["V / H", "Select / Hand"],
   ["P", "Pick an element inside a prototype"],
-  ["W", "Present the flow full screen"],
+  ["W", "Run the prototype full screen"],
   ["N", "New note"],
-  ["I / C / H", "Inspect / Claude / History panel"],
+  ["I / C", "Inspect / Claude panel"],
+  ["E", "Show or hide edge cases"],
   ["⇧1", "Fit everything on screen"],
   ["⌘= / ⌘−", "Zoom in / out"],
   ["⌘0", "Zoom to 100%"],
   ["⌫", "Remove the selected note, reference, or line"],
   ["Esc", "Deselect, stop picking, close this"],
-  ["⌘↵", "Send to Claude from the composer"],
   ["?", "This list"],
 ];
 
@@ -72,10 +75,11 @@ export function Canvas() {
   const setShowInfluences = useFlow((s) => s.setShowInfluences);
   const showMinimap = useFlow((s) => s.showMinimap);
   const setShowMinimap = useFlow((s) => s.setShowMinimap);
+  const showEdgeCases = useFlow((s) => s.showEdgeCases);
+  const setShowEdgeCases = useFlow((s) => s.setShowEdgeCases);
+  const hand = useFlow((s) => s.hand);
   const { zoom } = useViewport();
   const picked = useFlow((s) => s.picker.picked);
-  const walk = useFlow((s) => s.walk);
-  const setWalk = useFlow((s) => s.setWalk);
   const showToast = useFlow((s) => s.showToast);
   const rf = useReactFlow();
   const { spec, canvas } = bundle;
@@ -87,31 +91,40 @@ export function Canvas() {
   /* Derive React Flow nodes and edges from the spec and canvas for the active view. */
   const derived = useMemo(() => {
     const nodes: Node[] = [];
+    const focusScreen = focusScreenOf(selection, spec);
+    const flow = view === "flow";
     for (const n of canvas.nodes) {
-      if (n.type === "edgeCase") continue; // edge cases render inside their screen card
-      const common = { id: n.id, position: n.position, data: { node: n, spec, primaryMoves: canvas.primaryMoves, expanded: view === "flow" && selection?.kind === "node" && selection.id === n.id }, selected: selection?.kind === "node" && selection.id === n.id };
-      if (n.type === "screen") nodes.push({ ...common, type: view === "flow" ? "screenCard" : "screen", dragHandle: ".hdr", zIndex: common.data.expanded ? 10 : 1 });
+      const isSel = selection?.kind === "node" && selection.id === n.id;
+      if (n.type === "edgeCase") {
+        if (!flow || !showEdgeCases) continue; // in prototype view edge cases are a chip on the screen's header
+        nodes.push({ id: n.id, position: n.position, type: "edgeCase", data: { node: n, spec }, selected: isSel, dragHandle: ".hdr", zIndex: 2 });
+        continue;
+      }
+      const common = { id: n.id, position: n.position, data: { node: n, spec, primaryMoves: canvas.primaryMoves, expanded: flow && isSel }, selected: isSel };
+      if (n.type === "screen") nodes.push({ ...common, type: flow ? "screenCard" : "screen", dragHandle: ".hdr", zIndex: common.data.expanded ? 10 : 1 });
       else if (n.type === "group") nodes.push({ ...common, type: "group", zIndex: -1, style: { width: n.width, height: n.height } });
       else nodes.push({ ...common, type: n.type, dragHandle: n.type === "prompt" || n.type === "note" ? undefined : ".hdr", zIndex: 2 });
     }
     const edges: Edge[] = [];
-    if (view === "flow") {
-      // Map level: forward moves only, each line starting at its labelled row on the source card.
-      // Focus level: a selected screen (or transition) lights up its own moves, including returns, and fades the rest.
+    if (flow) {
       const kinds = classifyTransitions(spec);
       const mains = new Set(mainMoves(spec, canvas.primaryMoves).values());
       const screenPos = new Map(canvas.nodes.filter((n) => n.type === "screen").map((n) => [n.screenId, n.position] as const));
+      // The start marker sits to the left of the first screen and is never saved; it only says where the product opens.
+      const first = spec.screens[0];
+      const firstPos = first ? screenPos.get(first.id) : undefined;
+      if (first && firstPos) {
+        nodes.push({ id: "start", type: "start", position: { x: firstPos.x - 110, y: firstPos.y + 30 }, data: {}, draggable: false, selectable: false, zIndex: 1 });
+        edges.push({ id: "start-edge", type: "start", source: "start", target: `screen:${first.id}`, sourceHandle: "out", targetHandle: "in", markerEnd: { type: MarkerType.ArrowClosed, color: "#1C8A6E", width: 12, height: 12 }, zIndex: 3 });
+      }
       // Lines that travel backwards (target left of source) orbit below the whole row instead of crossing cards.
-      const screenBottom = Math.max(0, ...canvas.nodes.filter((n) => n.type === "screen").map((n) => n.position.y + flowCardHeight(spec, n.screenId) + (focusScreenOf(selection, spec) === n.screenId ? 420 : 0)));
+      const screenBottom = Math.max(0, ...canvas.nodes.filter((n) => n.type === "screen").map((n) => n.position.y + flowCardHeight(spec, n.screenId) + (focusScreen === n.screenId ? 240 : 0) + (showEdgeCases && spec.edgeCases.some((e) => hostScreen(spec, e.attachedTo) === n.screenId) ? EDGE_CASE_H + 90 : 0)));
       let lane = 0;
-      const focusScreen = selection?.kind === "node" && selection.id.startsWith("screen:") ? selection.id.slice(7)
-        : selection?.kind === "transition" ? spec.transitions.find((t) => t.id === selection.id)?.from.screenId : undefined;
       for (const t of spec.transitions) {
         const kind = kinds.get(t.id) ?? "forward";
         const touches = !!focusScreen && (t.from.screenId === focusScreen || t.to.screenId === focusScreen);
         if (kind === "state") continue;
-        if (kind === "back" && !(focusScreen === t.from.screenId)) continue; // return rows exist only on the expanded card
-        if (kind === "forward" && !mains.has(t.id) && !(focusScreen === t.from.screenId)) continue; // alternatives appear only on the focused card
+        if (kind === "back") continue; // returns are rows on the card, never lines: a line back across the flow says nothing the row does not
         const toState = t.to.stateId && focusScreen === t.to.screenId ? `in:${t.to.stateId}` : "in";
         const sx = screenPos.get(t.from.screenId)?.x ?? 0, tx = screenPos.get(t.to.screenId)?.x ?? 0;
         const loop = tx <= sx;
@@ -120,15 +133,21 @@ export function Canvas() {
           id: `t:${t.id}`, type: "transition", source: `screen:${t.from.screenId}`, target: `screen:${t.to.screenId}`, sourceHandle: `out:${t.id}`, targetHandle: toState,
           data: { transition: t, kind, dim: !!focusScreen && !touches, lit: touches, main: mains.has(t.id), orbitY },
           selected: selection?.kind === "transition" && selection.id === t.id,
-          markerEnd: { type: MarkerType.ArrowClosed, color: kind === "back" ? "#7C8494" : "#2C4FDB", width: 14, height: 14 }, zIndex: touches ? 4 : 3
+          markerEnd: { type: MarkerType.ArrowClosed, color: "#2C4FDB", width: 12, height: 12 }, zIndex: touches ? 4 : 3
         });
+      }
+      if (showEdgeCases) {
+        for (const ec of spec.edgeCases) {
+          const host = hostScreen(spec, ec.attachedTo);
+          if (!host || !canvas.nodes.some((n) => n.type === "edgeCase" && n.edgeCaseId === ec.id)) continue;
+          const touches = !!focusScreen && focusScreen === host;
+          edges.push({ id: `ec:${ec.id}`, type: "edgeCase", source: `screen:${host}`, target: `edgecase:${ec.id}`, sourceHandle: "ec", targetHandle: "ec-in", data: { dim: !!focusScreen && !touches }, markerEnd: { type: MarkerType.ArrowClosed, color: "#B7791F", width: 11, height: 11 }, zIndex: touches ? 4 : 2 });
+        }
       }
     }
     for (const e of canvas.edges) {
       if (e.type === "provenance" && !showInfluences) continue;
       if (!canvas.nodes.some((n) => n.id === e.source) || !canvas.nodes.some((n) => n.id === e.target)) continue;
-      const srcNode = canvas.nodes.find((n) => n.id === e.source), tgtNode = canvas.nodes.find((n) => n.id === e.target);
-      const flowCard = (n?: CanvasNode) => view === "flow" && n?.type === "screen";
       edges.push({ id: e.id, type: e.type, source: e.source, target: e.target, sourceHandle: "out", targetHandle: "in", data: { edge: e }, selected: selection?.kind === "edge" && selection.id === e.id, zIndex: 3 });
     }
     if (showInfluences) {
@@ -142,7 +161,7 @@ export function Canvas() {
     }
     return { nodes, edges };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvas.nodes, canvas.edges, spec, view, selection, showInfluences]);
+  }, [canvas.nodes, canvas.edges, canvas.primaryMoves, spec, view, selection, showInfluences, showEdgeCases]);
 
   const [nodes, setNodes] = useState<Node[]>(derived.nodes);
   const [edges, setEdges] = useState<Edge[]>(derived.edges);
@@ -164,17 +183,19 @@ export function Canvas() {
   const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((es) => applyEdgeChanges(changes, es)), []);
 
   const onNodeDragStop = useCallback((_: unknown, node: Node, dragged: Node[]) => {
-    const moved = dragged.length ? dragged : [node];
+    const moved = (dragged.length ? dragged : [node]).filter((n) => n.id !== "start");
     updateCanvas((c) => ({ ...c, nodes: c.nodes.map((n) => { const m = moved.find((x) => x.id === n.id); return m ? { ...n, position: m.position } : n; }) }));
   }, [updateCanvas]);
 
   // Reads the store directly: React Flow may call a stale closure, and select() is idempotent.
   const onSelectionChange = useCallback(({ nodes: sn, edges: se }: OnSelectionChangeParams) => {
     const { select: sel } = useFlow.getState();
-    if (sn.length) sel({ kind: "node", id: sn[0].id });
+    const node = sn.find((n) => n.id !== "start");
+    if (node) sel({ kind: "node", id: node.id });
     else if (se.length) {
       const e = se[0];
       if (e.type === "transition") sel({ kind: "transition", id: e.id.slice(2) });
+      else if (e.type === "edgeCase") sel({ kind: "node", id: `edgecase:${e.id.slice(3)}` });
       else if (e.type === "magic" || e.type === "variantLink") sel({ kind: "edge", id: e.id });
     } else sel(null);
   }, []);
@@ -187,7 +208,7 @@ export function Canvas() {
     if (!src || !tgt) return;
     const isRef = src.type === "inspiration" || src.type === "skill" || src.type === "note" || src.type === "versionPin" || src.type === "group" || src.type === "prompt";
     if (src.type === "screen" && tgt.type === "screen" && view === "flow") {
-      const trigger = await ask("New transition", { label: `From ${spec.screens.find((s) => s.id === src.screenId)?.name} to ${spec.screens.find((s) => s.id === tgt.screenId)?.name}. What triggers it?`, placeholder: "tap Continue" });
+      const trigger = await ask("New interaction", { label: `From ${spec.screens.find((s) => s.id === src.screenId)?.name} to ${spec.screens.find((s) => s.id === tgt.screenId)?.name}. What triggers it?`, placeholder: "tap Continue" });
       if (!trigger?.trim()) return;
       const condition = (await ask("Condition", { label: "Only if this is a branch. Leave empty for none.", placeholder: "cart has items" })) ?? "";
       const stateId = c.targetHandle?.startsWith("in:") ? c.targetHandle.slice(3) : undefined;
@@ -200,7 +221,7 @@ export function Canvas() {
       setPending({ source: src.id, target: tgt.id, x: p.x - (box?.left ?? 0), y: p.y - (box?.top ?? 0), targetElementId: tgt.type === "screen" && picked?.screenId === tgt.screenId ? picked.elementId : undefined });
       return;
     }
-    showToast("Connect a reference, skill, or note to a target. In flow view, connect screens to add a transition.");
+    showToast("Connect a reference, skill, or note to a target. In flow view, connect screens to add an interaction.");
   }, [canvas.nodes, view, addChange, rf, picked, showToast, spec.screens]);
 
   const commitMagic = async (relation: MagicRelation) => {
@@ -228,14 +249,14 @@ export function Canvas() {
       if (f.type.startsWith("image/")) {
         const b64 = await fileToBase64(f);
         const { path } = await api.uploadAsset(projectId, "inspirations", f.name, { dataBase64: b64 });
-        add({ id: `insp-${Date.now().toString(36)}${i}`, type: "inspiration", kind: "image", title: f.name.replace(/\.[^.]+$/, ""), path, caption: "", description: "", position: p, width: 240 });
+        add({ id: `insp-${Date.now().toString(36)}${i}`, type: "inspiration", kind: "image", title: f.name.replace(/\.[^.]+$/, ""), path, caption: "", description: "", position: p, width: 224 });
       } else if (/\.(md|markdown|txt)$/i.test(f.name)) {
         const text = await f.text();
         if (/\.md|markdown/i.test(f.name)) {
           const { path } = await api.uploadAsset(projectId, "skills", f.name, { text });
           const title = text.match(/^#\s+(.+)$/m)?.[1] ?? f.name.replace(/\.[^.]+$/, "");
           add({ id: `skill-${Date.now().toString(36)}${i}`, type: "skill", path, title, position: p });
-        } else add({ id: `insp-${Date.now().toString(36)}${i}`, type: "inspiration", kind: "text", title: f.name, text, caption: "", description: "", position: p, width: 240 });
+        } else add({ id: `insp-${Date.now().toString(36)}${i}`, type: "inspiration", kind: "text", title: f.name, text, caption: "", description: "", position: p, width: 224 });
       }
     }
     if (files.length === 0) {
@@ -254,7 +275,7 @@ export function Canvas() {
         const b64 = await fileToBase64(img);
         const { path } = await api.uploadAsset(projectId, "inspirations", `pasted-${Date.now()}.png`, { dataBase64: b64 });
         const id = `insp-${Date.now().toString(36)}`;
-        updateCanvas((c) => ({ ...c, nodes: [...c.nodes, { id, type: "inspiration", kind: "image", title: "Pasted image", path, caption: "", description: "", position: center, width: 240 }] }));
+        updateCanvas((c) => ({ ...c, nodes: [...c.nodes, { id, type: "inspiration", kind: "image", title: "Pasted image", path, caption: "", description: "", position: center, width: 224 }] }));
         await useFlow.getState().saveCanvasNow();
         if (!useFlow.getState().agent.running) useFlow.getState().run("describe", { nodeId: id }, "Describe the pasted image");
         return;
@@ -277,20 +298,22 @@ export function Canvas() {
         else if (ev.key === "0") { ev.preventDefault(); void rf.zoomTo(1, { duration: 200 }); }
         return;
       }
-      if (ev.key === "p" || ev.key === "P") st.setPicker(!st.picker.enabled);
-      if (ev.key === "v" || ev.key === "V") { st.setPicker(false); if (st.walk.active) st.setWalk({ active: false, screenId: null, stateId: null, lastTransitionId: null }); }
-      if (ev.key === "w" || ev.key === "W") st.setWalk({ active: !st.walk.active, screenId: st.walk.active ? null : (spec.screens[0]?.id ?? null), stateId: null, lastTransitionId: null });
-      if (ev.key === "i" || ev.key === "I") st.setPanel(st.panel === "inspect" ? null : "inspect");
-      if (ev.key === "c" || ev.key === "C") st.setPanel(st.panel === "claude" ? null : "claude");
-      if (ev.key === "h" || ev.key === "H") st.setPanel(st.panel === "history" ? null : "history");
-      if (ev.key === "n" || ev.key === "N") updateCanvas((c) => ({ ...c, nodes: [...c.nodes, { id: `note-${Date.now().toString(36)}`, type: "note", text: "", position: { x: -c.viewport.x / c.viewport.zoom + 120, y: -c.viewport.y / c.viewport.zoom + 120 }, width: 240 }] }));
+      const k = ev.key.toLowerCase();
+      if (k === "p") st.setPicker(!st.picker.enabled);
+      if (k === "v") { st.setPicker(false); st.setHand(false); if (st.walk.active) st.setWalk({ active: false, screenId: null, stateId: null, lastTransitionId: null }); }
+      if (k === "h") st.setHand(!st.hand);
+      if (k === "w") st.setWalk({ active: !st.walk.active, screenId: st.walk.active ? null : (spec.screens[0]?.id ?? null), stateId: null, lastTransitionId: null });
+      if (k === "i") st.setPanel(st.panel === "inspect" ? null : "inspect");
+      if (k === "c") st.setPanel(st.panel === "claude" ? null : "claude");
+      if (k === "e") st.setShowEdgeCases(!st.showEdgeCases);
+      if (k === "n") updateCanvas((c) => ({ ...c, nodes: [...c.nodes, { id: `note-${Date.now().toString(36)}`, type: "note", text: "", position: { x: -c.viewport.x / c.viewport.zoom + 120, y: -c.viewport.y / c.viewport.zoom + 120 }, width: 240 }] }));
       if (ev.key === "1" && !ev.shiftKey) st.setView("prototype");
       if (ev.key === "2") st.setView("flow");
       if (ev.key === "!" || (ev.key === "1" && ev.shiftKey)) fit();
       if (ev.key === "=" || ev.key === "+") rf.zoomIn({ duration: 150 });
       if (ev.key === "-") rf.zoomOut({ duration: 150 });
       if (ev.key === "?") setShowKeys((v) => !v);
-      if (ev.key === "Escape") { useFlow.getState().setPicker(false); select(null); setPending(null); setShowKeys(false); }
+      if (ev.key === "Escape") { st.setPicker(false); st.setHand(false); select(null); setPending(null); setShowKeys(false); }
       if ((ev.key === "Delete" || ev.key === "Backspace") && selection) {
         if (selection.kind === "node") {
           const n = canvas.nodes.find((x) => x.id === selection.id);
@@ -331,29 +354,10 @@ export function Canvas() {
     };
   }, [rf]);
 
-  const pickedFull = useFlow((s) => s.picker.picked);
-  const frames = useFlow((s) => s.frames);
-  // The picked element's rect is in the frame's own pixels, which are flow units inside the screen node (header is 36 tall).
-  const bubbleStyle = useMemo(() => {
-    if (!pickedFull || view !== "prototype" || !wrapRef.current) return null;
-    const host = canvas.nodes.find((n) => n.type === "screen" && (frames[n.screenId]?.screenId ?? n.screenId) === pickedFull.screenId) ?? canvas.nodes.find((n) => n.type === "screen" && n.screenId === pickedFull.screenId);
-    if (!host) return null;
-    const r = pickedFull.rect ?? { x: 12, y: 12, width: 0, height: 0 };
-    const p = rf.flowToScreenPosition({ x: host.position.x + r.x, y: host.position.y + 36 + r.y + r.height });
-    const box = wrapRef.current.getBoundingClientRect();
-    const W = 272, H = 124;
-    const left = Math.max(8, Math.min(box.width - W - 8, p.x - box.left));
-    let top = p.y - box.top + 8;
-    if (top + H > box.height - 70) top = Math.max(8, rf.flowToScreenPosition({ x: 0, y: host.position.y + 36 + r.y }).y - box.top - H - 8);
-    return { left, top, width: W } as React.CSSProperties;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickedFull, view, canvas.nodes, frames, rf, zoom]);
-
-  const walkScreen = walk.active && walk.screenId ? spec.screens.find((s) => s.id === walk.screenId) : null;
-  const walkOut = walkScreen ? spec.transitions.filter((t) => t.from.screenId === walkScreen.id) : [];
+  const ecCount = spec.edgeCases.length;
 
   return (
-    <div ref={wrapRef} style={{ position: "absolute", inset: 0 }} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}>
+    <div ref={wrapRef} className={`board ${hand ? "hand" : ""}`} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}>
       <ReactFlow
         nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onNodeDragStop={onNodeDragStop} onConnect={onConnect} onSelectionChange={onSelectionChange}
@@ -362,22 +366,41 @@ export function Canvas() {
           const box = wrapRef.current?.getBoundingClientRect();
           if (box && !isDefaultViewport && canvas.nodes.length > 0 && !viewportShowsSomething(canvas, spec, view, { w: box.width, h: box.height })) void inst.fitView(FIT_OPTS);
         }}
-        connectionRadius={40} minZoom={0.05} maxZoom={2} fitView={isDefaultViewport && canvas.nodes.length > 0} fitViewOptions={FIT_OPTS} panOnScroll selectionOnDrag={false} zoomOnDoubleClick={false} deleteKeyCode={null} connectionLineStyle={CONN_LINE_STYLE} proOptions={PRO_OPTS}
+        connectionRadius={40} minZoom={0.05} maxZoom={2} fitView={isDefaultViewport && canvas.nodes.length > 0} fitViewOptions={FIT_OPTS}
+        panOnScroll panOnDrag={hand ? true : PAN_BUTTONS} nodesDraggable={!hand} elementsSelectable={!hand} nodesConnectable={!hand}
+        selectionOnDrag={false} zoomOnDoubleClick={false} deleteKeyCode={null} connectionLineStyle={CONN_LINE_STYLE} proOptions={PRO_OPTS}
         onPaneClick={onPaneClick}
       >
-        <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="var(--canvas-dot)" />
-        {showMinimap && <MiniMap pannable zoomable nodeColor={minimapColor} />}
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1.4} color="var(--canvas-dot)" />
+        {showMinimap && <MiniMap pannable zoomable nodeColor={minimapColor} nodeStrokeWidth={0} maskColor="rgba(238,241,246,.7)" />}
       </ReactFlow>
+
+      {view === "flow" && ecCount > 0 && (
+        <div className="ec-toggle" role="group" aria-label="Edge cases">
+          <button className="ec-btn" onClick={() => setShowEdgeCases(!showEdgeCases)} aria-pressed={showEdgeCases} title="Show or hide edge cases (E)">
+            <Icon name={showEdgeCases ? "eye" : "eye-off"} size={15} /> Edge cases <b>{showEdgeCases ? "Shown" : "Hidden"}</b> <Icon name="chevron-down" size={12} />
+          </button>
+          <div className="legend">
+            <span><i className="ln main" /> Main flow</span>
+            <span><i className="ln ec" /> Edge case</span>
+          </div>
+        </div>
+      )}
+
+      {showMinimap && <button className="mm-expand" onClick={fit} title="Fit to content (⇧1)" aria-label="Fit to content"><Icon name="expand" size={13} /></button>}
+
+      <Composer />
+
       <div className="canvas-bar" role="toolbar" aria-label="Canvas">
         <button className="cb-btn" onClick={() => rf.zoomOut({ duration: 150 })} title="Zoom out (−)" aria-label="Zoom out"><Icon name="zoom-out" size={15} /></button>
-        <button className="cb-zoom" onClick={fit} title="Fit to content (⇧1)">{Math.round(zoom * 100)}%</button>
+        <button className="cb-zoom" onClick={() => void rf.zoomTo(1, { duration: 200 })} title="Zoom to 100% (⌘0)">{Math.round(zoom * 100)}%</button>
         <button className="cb-btn" onClick={() => rf.zoomIn({ duration: 150 })} title="Zoom in (+)" aria-label="Zoom in"><Icon name="zoom-in" size={15} /></button>
         <span className="cb-sep" />
-        <button className="cb-btn" onClick={fit} title="Fit to content" aria-label="Fit to content"><Icon name="maximize" size={15} /></button>
-        {view === "flow" && <button className="cb-btn" onClick={() => { updateCanvas((c) => tidyLayout(spec, c, view)); fit(); }} disabled={spec.screens.length === 0} title="Tidy: arrange screens along the flow" aria-label="Tidy layout"><Icon name="layout-grid" size={15} /></button>}
+        <button className="cb-btn" onClick={fit} title="Fit to content (⇧1)" aria-label="Fit to content"><Icon name="maximize" size={15} /></button>
+        <button className="cb-btn" onClick={() => { updateCanvas((c) => tidyLayout(spec, c, view)); fit(); }} disabled={spec.screens.length === 0} title="Tidy: arrange screens along the flow" aria-label="Tidy layout"><Icon name="layout-grid" size={15} /></button>
         <span className="cb-sep" />
         <button className={`cb-btn ${showInfluences ? "on" : ""}`} onClick={() => setShowInfluences(!showInfluences)} title="Show which references shaped each screen" aria-label="Show influences" aria-pressed={showInfluences}><Icon name="sparkles" size={15} /></button>
-        <button className={`cb-btn ${showMinimap ? "on" : ""}`} onClick={() => setShowMinimap(!showMinimap)} title="Minimap" aria-label="Minimap" aria-pressed={showMinimap}><Icon name="map" size={15} /></button>
+        <button className={`cb-btn wide ${showMinimap ? "on" : ""}`} onClick={() => setShowMinimap(!showMinimap)} title="Minimap" aria-pressed={showMinimap}><Icon name="map" size={15} /> Map</button>
         <span className="cb-sep" />
         <button className={`cb-btn cb-keys ${showKeys ? "on" : ""}`} onClick={() => setShowKeys(!showKeys)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" aria-pressed={showKeys}>?</button>
       </div>
@@ -395,11 +418,10 @@ export function Canvas() {
       {spec.screens.length === 0 && !dragOver && (
         <div className="canvas-empty">
           <div className="ce-title">No screens yet</div>
-          <div className="ce-body">Write the brief on the card above. Drop any references beside it and draw a line to the brief. Then press <b>Generate</b>.</div>
+          <div className="ce-body">Write the brief on the card above. Drop any references beside it and draw a line to the brief. Then press <b>Generate</b> below.</div>
         </div>
       )}
       {dragOver && <div className="drop-hint">Drop images, markdown skills, or text</div>}
-      {pickedFull && bubbleStyle && <PickBubble picked={pickedFull} style={bubbleStyle} />}
       {pending && (
         <div className="popover" style={{ left: pending.x, top: pending.y }}>
           <div className="muted small" style={{ padding: "4px 8px 6px" }}>How should this reference influence the target?{pending.targetElementId ? ` (element ${pending.targetElementId})` : ""}</div>
@@ -418,8 +440,8 @@ function fileToBase64(f: File): Promise<string> {
 
 function nodeFromText(text: string, position: { x: number; y: number }): CanvasNode {
   const id = `insp-${Date.now().toString(36)}`;
-  if (/^https?:\/\/\S+$/i.test(text)) { let title = text; try { title = new URL(text).hostname; } catch { /* keep */ } return { id, type: "inspiration", kind: "url", title, url: text, caption: "", description: "", position, width: 240 }; }
-  if (/^#[0-9a-f]{3,8}$/i.test(text) || /^(rgb|hsl)a?\(/i.test(text)) return { id, type: "inspiration", kind: "style", title: "Colour", text, caption: "", description: "", position, width: 240 };
-  if (/^[A-Z][A-Za-z ]{2,30}$/.test(text) && text.split(" ").length <= 3) return { id, type: "inspiration", kind: "style", title: "Typeface", text, caption: "", description: "", position, width: 240 };
-  return { id, type: "inspiration", kind: "text", title: text.slice(0, 40) + (text.length > 40 ? "…" : ""), text, caption: "", description: "", position, width: 240 };
+  if (/^https?:\/\/\S+$/i.test(text)) { let title = text; try { title = new URL(text).hostname; } catch { /* keep */ } return { id, type: "inspiration", kind: "url", title, url: text, caption: "", description: "", position, width: 224 }; }
+  if (/^#[0-9a-f]{3,8}$/i.test(text) || /^(rgb|hsl)a?\(/i.test(text)) return { id, type: "inspiration", kind: "style", title: "Colour", text, caption: "", description: "", position, width: 224 };
+  if (/^[A-Z][A-Za-z ]{2,30}$/.test(text) && text.split(" ").length <= 3) return { id, type: "inspiration", kind: "style", title: "Typeface", text, caption: "", description: "", position, width: 224 };
+  return { id, type: "inspiration", kind: "text", title: text.slice(0, 40) + (text.length > 40 ? "…" : ""), text, caption: "", description: "", position, width: 224 };
 }

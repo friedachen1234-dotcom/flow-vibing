@@ -32,7 +32,18 @@ const PATHS: Record<string, string> = {
   "corner-up-left": "M9 14L4 9l5-5M20 20v-7a4 4 0 0 0-4-4H4",
   send: "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
   stop: "M6 6h12v12H6z",
-  refresh: "M23 4v6h-6M1 20v-6h6M20.5 9A9 9 0 0 0 5.6 5.6L1 10M23 14l-4.6 4.4A9 9 0 0 1 3.5 15"
+  refresh: "M23 4v6h-6M1 20v-6h6M20.5 9A9 9 0 0 0 5.6 5.6L1 10M23 14l-4.6 4.4A9 9 0 0 1 3.5 15",
+  hand: "M18 11V6a2 2 0 0 0-4 0v1M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.8-2.4L3 14.5a2 2 0 0 1 3-2.6L8 14",
+  share: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13",
+  "chevron-left": "M15 18l-6-6 6-6",
+  eye: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 12m-3 0a3 3 0 1 0 6 0 3 3 0 1 0-6 0",
+  "eye-off": "M17.9 17.9A10 10 0 0 1 12 20c-7 0-11-8-11-8a18 18 0 0 1 5.1-6M9.9 4.2A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.2 3.2M1 1l22 22M9.9 9.9a3 3 0 0 0 4.2 4.2",
+  "check-circle": "M22 11.1V12a10 10 0 1 1-5.9-9.1M22 4L12 14l-3-3",
+  expand: "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7",
+  frame: "M22 6H2M22 18H2M6 2v20M18 2v20",
+  hexagon: "M12 2l8.7 5v10L12 22l-8.7-5V7L12 2z",
+  "arrow-right": "M5 12h14M12 5l7 7-7 7",
+  alert: "M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"
 };
 
 export function Icon({ name, size = 16, strokeWidth = 1.8, className }: { name: keyof typeof PATHS | string; size?: number; strokeWidth?: number; className?: string }) {

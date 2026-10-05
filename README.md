@@ -56,12 +56,15 @@ The runtime depends on these, and the validator checks them:
 
 ## Interface
 
-The canvas is the primary surface; everything else appears when you act on it.
+The board is the whole surface; the chrome floats over it and gets out of the way.
 
-- **Top bar**: where you are, the Prototype / Flow toggle, Export, and one accent button that always opens Claude and starts the obvious next job (Generate, Apply changes, or Ask).
-- **Rail** (left): what the pointer does (Select, Pick an element, Present) and what you add by hand (Note, Reference).
-- **Panel** (right): Inspect, Claude, History. Closed by default. Selecting anything opens Inspect; a slim edge tab reopens it when closed. Edits in Inspect queue as changes and are applied from Claude.
-- **Canvas bar** (bottom): zoom, fit, tidy (flow view), influences, minimap, and `?` for the full shortcut list.
+- **Top bar**: breadcrumb to the project (its menu has History, Export, and Regenerate), the Prototype / Flow toggle, the save status, a Claude panel toggle, Share, and **Run prototype**, which walks the flow full screen from any screen.
+- **Rail** (left, floating): Select, Hand, Pick an element, then Note and Reference, then Present.
+- **Composer** (bottom): the one place to talk to Claude. It knows its target: the picked element, the selected screen, or the whole project. Type to ask for a change, or press **Generate variants** to explore alternatives of the target side by side. Queued changes are applied from here too.
+- **Panel** (right, floating): Live preview, Inspect, Claude, History. In flow view, selecting a screen or an edge case opens Live preview: the screen running at reading size with a Simulate menu for its states. Closed by default; a tab on the edge reopens it.
+- **Flow view**: a Start marker, one card per screen with a thumbnail, its states and edge-case counts, and one row per interaction. Each row is where its line starts, and the line carries the trigger as a label. Edge cases are amber cards hanging under their screen on dashed lines; the toggle at the top right hides them.
+- **Prototype view**: every screen live, with a Live badge, a state menu, and a selection frame with handles on the picked element. Variants appear as an exploration panel beside the screen; hover an option to preview it in place, Apply to make it real.
+- **Canvas bar** (bottom): zoom, fit, tidy, influences, Map, and `?` for the shortcut list. Scroll pans, pinch or ⌘-scroll zooms, ⌘= / ⌘− / ⌘0 match the browser.
 
 Projects reopen on their content: if the saved viewport frames empty board, the canvas fits to what exists instead.
 

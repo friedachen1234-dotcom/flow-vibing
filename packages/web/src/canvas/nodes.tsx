@@ -3,17 +3,33 @@ import { Handle, Position, useConnection, useNodeId, type NodeProps } from "@xyf
 import { ask } from "../components/Dialog";
 import { classifyTransition, mainMoves, type CanvasNode, type DesignSpec, type EdgeCaseSpec, type ScreenSpec } from "@flow/shared";
 import { api } from "../api";
-import { useFlow, useHeadVersion, type Picked } from "../store";
+import { useFlow, useHeadVersion } from "../store";
 import { Icon } from "../components/Icon";
 
 type N<T extends CanvasNode["type"]> = NodeProps & { data: { node: Extract<CanvasNode, { type: T }>; spec: DesignSpec } };
+
+const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 /** While a connection is being dragged, the whole node becomes a drop target, so lines can land anywhere on it. */
 function DropTarget() {
   const fromId = useConnection((c) => (c.inProgress ? c.fromNode?.id ?? "" : null));
   const id = useNodeId();
   if (fromId == null || fromId === id) return null;
-  return <Handle type="target" position={Position.Left} id="drop" className="drop-target" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", transform: "none", borderRadius: 10, background: "rgba(184,54,139,.08)", border: "2px dashed var(--magic)", zIndex: 20, opacity: 1 }} />;
+  return <Handle type="target" position={Position.Left} id="drop" className="drop-target" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", transform: "none", borderRadius: 14, background: "rgba(44,79,219,.06)", border: "2px dashed var(--accent)", zIndex: 20, opacity: 1 }} />;
+}
+
+/** A screen's first viewport, scaled into a small dark tile. Used on cards, edge cases, and chips. */
+function Thumb({ screenId, width, aspect = 1.45, className }: { screenId: string; width: number; aspect?: number; className?: string }) {
+  const projectId = useFlow((s) => s.projectId)!;
+  const spec = useFlow((s) => s.bundle!.spec);
+  const head = useHeadVersion();
+  const scale = width / spec.device.width;
+  const h = Math.round(Math.min(spec.device.height, spec.device.width * aspect) * scale);
+  return (
+    <div className={`thumb ${className ?? ""}`} style={{ width, height: h }}>
+      <iframe key={head} title="" tabIndex={-1} loading="lazy" src={api.shellUrl(projectId, screenId, { follow: false })} style={{ width: spec.device.width, height: spec.device.height, transform: `scale(${scale})` }} />
+    </div>
+  );
 }
 
 /* ---------- Screen node (prototype view): a live device frame running the runtime shell ---------- */
@@ -32,17 +48,21 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
   const walk = useFlow((s) => s.walk);
   const setWalk = useFlow((s) => s.setWalk);
   const select = useFlow((s) => s.select);
+  const setPanel = useFlow((s) => s.setPanel);
   const ref = useRef<HTMLIFrameElement>(null);
   const [missing, setMissing] = useState(false);
 
   const post = (msg: Record<string, unknown>) => ref.current?.contentWindow?.postMessage({ source: "flow-host", ...msg }, "*");
+  const cur = frame?.screenId ?? node.screenId;
+  // The picked element stays framed while it is the target; a hover elsewhere in the app takes over temporarily.
+  const framed = highlight && highlight.screenId === cur ? highlight.elementId : picked && picked.screenId === cur ? picked.elementId : null;
 
   useEffect(() => {
     const onMsg = (ev: MessageEvent) => {
       if (!ref.current || ev.source !== ref.current.contentWindow) return;
       const d = ev.data;
       if (!d || d.source !== "flow-shell") return;
-      if (d.type === "flow:ready") { post({ type: "flow:scroll-mode", mode: selected ? "scroll" : "pan" }); post({ type: "flow:picker", enabled: picker }); }
+      if (d.type === "flow:ready") { post({ type: "flow:scroll-mode", mode: selected ? "scroll" : "pan" }); post({ type: "flow:picker", enabled: picker }); post({ type: "flow:highlight", elementId: framed }); }
       else if (d.type === "flow:navigated") { setFrame(node.screenId, { screenId: d.screenId, stateId: d.stateId }); setMissing(false); if (walk.active) setWalk({ screenId: d.screenId, stateId: d.stateId, lastTransitionId: d.transitionId ?? walk.lastTransitionId }); }
       else if (d.type === "flow:missing") setMissing(true);
       else if (d.type === "flow:picked") { setPicked({ screenId: d.screenId, elementId: d.elementId, label: d.label, rect: d.rect }); }
@@ -56,172 +76,141 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [node.screenId, setFrame, setPicked, walk.active, walk.lastTransitionId, setWalk, selected, picker]);
+  }, [node.screenId, setFrame, setPicked, walk.active, walk.lastTransitionId, setWalk, selected, picker, framed]);
 
   useEffect(() => { post({ type: "flow:picker", enabled: picker }); }, [picker]);
   // Selected: plain scroll reaches the prototype. Otherwise the board pans under it, like any other node.
   useEffect(() => { post({ type: "flow:scroll-mode", mode: selected ? "scroll" : "pan" }); }, [selected]);
+  useEffect(() => { post({ type: "flow:highlight", elementId: framed }); }, [framed]);
   useEffect(() => {
-    const cur = frame?.screenId ?? node.screenId;
-    post({ type: "flow:highlight", elementId: highlight && highlight.screenId === cur ? highlight.elementId : null });
-  }, [highlight, frame?.screenId, node.screenId]);
-  useEffect(() => {
-    const cur = frame?.screenId ?? node.screenId;
     if (preview?.css !== undefined) post({ type: "flow:preview-tokens", css: preview.css });
     else if (preview && preview.screenId === cur && preview.elementId) post({ type: "flow:preview", elementId: preview.elementId, html: preview.html ?? null });
     else { post({ type: "flow:preview", elementId: null, html: null }); post({ type: "flow:preview-tokens", css: "" }); }
-  }, [preview, frame?.screenId, node.screenId]);
+  }, [preview, cur]);
 
   if (!screen) return null;
-  const showing = spec.screens.find((s) => s.id === (frame?.screenId ?? node.screenId)) ?? screen;
+  const showing = spec.screens.find((s) => s.id === cur) ?? screen;
   const edgeCases = spec.edgeCases.filter((e) => e.attachedTo.screenId === screen.id || spec.transitions.some((t) => t.id === e.attachedTo.transitionId && t.from.screenId === screen.id));
   const w = node.width ?? spec.device.width;
-  const h = (node.height ?? spec.device.height) + 36;
+  const h = (node.height ?? spec.device.height) + 40;
   const isWalkHere = walk.active && walk.screenId === screen.id;
+  const inspect = () => { select({ kind: "node", id: node.id }); setPanel("inspect"); };
 
   return (
-    <div className="screen-frame" style={{ width: w, height: h, outline: isWalkHere ? "3px solid var(--accent)" : undefined }}>
+    <div className={`screen-frame ${selected ? "selected" : ""}`} style={{ width: w, height: h, outline: isWalkHere ? "3px solid var(--accent)" : undefined }}>
       <DropTarget />
-      <Handle type="target" position={Position.Left} id="in" className="magic" style={{ top: 18 }} />
-      <Handle type="source" position={Position.Right} id="out" className="magic" style={{ top: 18 }} />
+      <Handle type="target" position={Position.Left} id="in" className="magic" style={{ top: 20 }} />
+      <Handle type="source" position={Position.Right} id="out" className="magic" style={{ top: 20 }} />
       <div className="hdr" onDoubleClick={() => select({ kind: "node", id: node.id })}>
-        <span className="name">{screen.name}</span>
-        {showing.id !== screen.id && <button className="btn sm ghost" onClick={() => post({ type: "flow:goto", screenId: screen.id })} title="Back to this screen">↩ {showing.name}</button>}
-        {edgeCases.length > 0 && <button className="pill warn nodrag" title={edgeCases.map((e) => e.scenario).join("\n") + "\n\nClick to inspect"} onClick={() => select({ kind: "node", id: node.id })}>{edgeCases.length} edge {edgeCases.length === 1 ? "case" : "cases"}</button>}
-        <div className="state">
-          {showing.states.length > 0 && (
-            <select className="nodrag" value={frame?.stateId ?? showing.states.find((s) => s.isDefault)?.id ?? ""} onChange={(e) => post({ type: "flow:setState", stateId: e.target.value })} title="State">
+        {showing.id !== screen.id
+          ? <button className="icon nodrag" onClick={() => post({ type: "flow:goto", screenId: screen.id })} title={`Back to ${screen.name}`} aria-label="Back"><Icon name="arrow-left" size={14} /></button>
+          : <span className="icon dim" aria-hidden="true"><Icon name="arrow-left" size={14} /></span>}
+        <span className="name">{showing.id !== screen.id ? showing.name : screen.name}</span>
+        <span className="pill ok live"><span className="pill-dot" /> Live</span>
+        {edgeCases.length > 0 && <button className="pill warn nodrag" title={edgeCases.map((e) => e.scenario).join("\n") + "\n\nClick to inspect"} onClick={inspect}>{edgeCases.length} edge {edgeCases.length === 1 ? "case" : "cases"}</button>}
+        <span style={{ flex: 1 }} />
+        {showing.states.length > 0 && (
+          <label className="state-select nodrag">
+            <select value={frame?.stateId ?? showing.states.find((s) => s.isDefault)?.id ?? ""} onChange={(e) => post({ type: "flow:setState", stateId: e.target.value })} title="State">
               {showing.states.map((st) => <option key={st.id} value={st.id}>{st.name}</option>)}
             </select>
-          )}
-        </div>
-        <button className="icon nodrag" title="Reload" onClick={() => post({ type: "flow:reload" })}>↻</button>
+            <Icon name="chevron-down" size={12} />
+          </label>
+        )}
+        <button className="icon nodrag" title="Reload" aria-label="Reload" onClick={() => post({ type: "flow:reload" })}><Icon name="rotate-ccw" size={13} /></button>
+        <button className="icon nodrag" title="Inspect" aria-label="Inspect" onClick={inspect}><Icon name="more-horizontal" size={15} /></button>
       </div>
-      <div className="nodrag nowheel nopan" style={{ position: "relative", height: h - 36 }}>
+      <div className="nodrag nowheel nopan" style={{ position: "relative", height: h - 40 }}>
         <iframe ref={ref} key={head} title={screen.name} src={api.shellUrl(projectId, screen.id)} />
         {missing && (
           <div className="empty" style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,.92)" }}>
             <div>This screen has no file yet, or it could not be loaded.<br /><button className="btn sm" style={{ marginTop: 8 }} onClick={() => { setMissing(false); post({ type: "flow:reload" }); }}>Retry</button></div>
           </div>
         )}
-
       </div>
     </div>
   );
 });
 
-/** Floating editor on the picked element: say what should change, Claude edits only this screen. Rendered in screen space by the canvas. */
-export function PickBubble({ picked, style }: { picked: Picked; style: React.CSSProperties }) {
-  const [text, setText] = useState("");
-  const running = useFlow((s) => s.agent.running);
-  const editPicked = useFlow((s) => s.editPicked);
-  const setPicked = useFlow((s) => s.setPicked);
-  const run = useFlow((s) => s.run);
-  const canvas = useFlow((s) => s.bundle!.canvas);
-  const updateCanvas = useFlow((s) => s.updateCanvas);
-  const screenNodeId = `screen:${picked.screenId}`;
-  const refs = canvas.nodes.filter((n) => n.type === "inspiration" || n.type === "skill");
-  const attached = canvas.edges.filter((e) => e.type === "magic" && e.target === screenNodeId && e.targetElementId === picked.elementId);
-  const attach = (nodeId: string) => {
-    if (!nodeId || attached.some((e) => e.source === nodeId)) return;
-    const src = refs.find((n) => n.id === nodeId);
-    updateCanvas((c) => ({ ...c, edges: [...c.edges, { id: `magic-${Date.now().toString(36)}`, type: "magic", source: nodeId, target: screenNodeId, targetElementId: picked.elementId, relation: src?.type === "skill" ? "apply-skill" : "match-style", note: "" }] }));
-  };
-  const detach = (edgeId: string) => updateCanvas((c) => ({ ...c, edges: c.edges.filter((e) => e.id !== edgeId) }));
-  const titleOf = (id: string) => { const n = refs.find((x) => x.id === id); return n ? n.title : id; };
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { ref.current?.focus(); }, [picked.elementId]);
-  const send = () => { if (!text.trim() || running) return; editPicked(text); setText(""); };
+/* ---------- Start marker (flow view): where the product opens ---------- */
+export const StartNode = memo(function StartNode() {
   return (
-    <div className="pick-bubble" style={style} onClick={(e) => e.stopPropagation()}>
-      <div className="pb-head"><span className="mono">{picked.elementId}</span><span className="pb-label">{picked.label}</span><button className="btn sm icon ghost" onClick={() => setPicked(null)} aria-label="Dismiss"><Icon name="x" size={12} /></button></div>
-      <textarea ref={ref} className="input" rows={2} value={text} placeholder="What should change here?" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } if (e.key === "Escape") setPicked(null); }} />
-      {(attached.length > 0 || refs.length > 0) && (
-        <div className="pb-refs">
-          {attached.map((e) => <span key={e.id} className="ref-chip"><Icon name="sparkles" size={10} /> {titleOf(e.source)}<button onClick={() => detach(e.id)} aria-label="Remove reference"><Icon name="x" size={10} /></button></span>)}
-          {refs.some((r) => !attached.some((e) => e.source === r.id)) && (
-            <select className="ref-add" value="" onChange={(e) => attach(e.target.value)} aria-label="Attach a reference">
-              <option value="">+ Attach reference</option>
-              {refs.filter((r) => !attached.some((e) => e.source === r.id)).map((r) => <option key={r.id} value={r.id}>{r.type === "skill" ? "Skill: " : ""}{r.title}</option>)}
-            </select>
-          )}
-        </div>
-      )}
-      <div className="pb-actions">
-        <button className="btn sm ghost" disabled={running} onClick={() => run("variants", { target: { screenId: picked.screenId, elementId: picked.elementId }, count: 3, direction: text.trim() }, `Variants of ${picked.elementId}${text.trim() ? `: ${text.trim()}` : ""}`)} title="Ask for three alternative treatments of this element"><Icon name="wand" size={12} /> Variants</button>
-        <span style={{ flex: 1 }} />
-        <button className="btn sm primary" disabled={running || !text.trim()} onClick={send}><Icon name="send" size={12} /> Edit with Claude</button>
-      </div>
+    <div className="start-node">
+      Start
+      <Handle type="source" position={Position.Right} id="out" style={{ opacity: 0, right: 0 }} />
     </div>
   );
-}
+});
 
 /* ---------- Screen card (flow view) ----------
- * Map level: thumbnail, name, purpose, then one row per forward move. Each row is where that move's line starts,
- * so the line never needs a floating label. Focus level (selected): states, edge cases, and return moves inline.
+ * Thumbnail, name, purpose, and the state and edge-case counts; then one row per interaction, each the start of its
+ * own line, so the line never needs to be traced back to find out what fires it.
  */
-export const ScreenCardNode = memo(function ScreenCardNode({ data }: N<"screen"> & { data: { expanded?: boolean; primaryMoves?: Record<string, string> } }) {
+export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N<"screen"> & { data: { expanded?: boolean; primaryMoves?: Record<string, string> } }) {
   const { node, spec } = data;
   const expanded = !!data.expanded;
   const mainId = mainMoves(spec, data.primaryMoves ?? {}).get(node.screenId);
   const screen = spec.screens.find((s) => s.id === node.screenId);
-  const projectId = useFlow((s) => s.projectId)!;
-  const head = useHeadVersion();
   const walk = useFlow((s) => s.walk);
   const selection = useFlow((s) => s.selection);
   const addChange = useFlow((s) => s.addChange);
   const select = useFlow((s) => s.select);
+  const setPanel = useFlow((s) => s.setPanel);
+  const showToast = useFlow((s) => s.showToast);
   if (!screen) return null;
   const outs = spec.transitions.filter((t) => t.from.screenId === screen.id);
   const forwards = outs.filter((t) => classifyTransition(t) === "forward");
   const backs = outs.filter((t) => classifyTransition(t) === "back");
   const stateMoves = outs.filter((t) => classifyTransition(t) === "state");
   const ecs = spec.edgeCases.filter((e) => e.attachedTo.screenId === screen.id || outs.some((t) => t.id === e.attachedTo.transitionId));
-  const thumbW = 56;
-  const scale = thumbW / spec.device.width;
-  const thumbH = Math.round(Math.min(spec.device.height, spec.device.width * 1.6) * scale);
   const isWalkHere = walk.active && walk.screenId === screen.id;
   const nameOf = (id: string) => spec.screens.find((s) => s.id === id)?.name ?? id;
   const selectedTransition = selection?.kind === "transition" ? selection.id : null;
+  const defaultState = screen.states.find((s) => s.isDefault) ?? screen.states[0];
   const addState = async () => { const name = await ask("New state", { placeholder: "Loading, Empty, Error…" }); if (name?.trim()) addChange({ op: "add-state", screenId: screen.id, name: name.trim(), description: "" }); };
   const addEdgeCase = async () => {
     const sc = await ask("Edge case scenario", { placeholder: "What goes wrong or is unusual?" }); if (!sc?.trim()) return;
     const h = (await ask("How should the design handle it?", { multiline: true })) ?? "";
     addChange({ op: "add-edge-case", attachedTo: { screenId: screen.id }, scenario: sc.trim(), handling: h.trim(), severity: "medium" });
   };
-  const port = { width: 8, height: 8, border: "2px solid var(--surface)", background: "var(--accent)" } as const;
-  const moveRow = (t: (typeof outs)[number], back: boolean) => (
-    <div key={t.id} className={`move ${back ? "back" : ""} ${t.id === mainId ? "main" : ""} ${selectedTransition === t.id ? "selected" : ""} nodrag`} onClick={(ev) => { ev.stopPropagation(); select({ kind: "transition", id: t.id }); }} title={t.id === mainId ? "Main move" : t.id}>
-      <span className="trig">{back ? "↩ " : ""}{t.trigger}</span>
-      <span className="to">{nameOf(t.to.screenId)}{t.to.stateId ? ` · ${t.to.stateId}` : ""}{t.condition && <span className="cond"> · if {t.condition}</span>}</span>
-      <Handle type="source" position={Position.Right} id={`out:${t.id}`} style={{ ...port, top: "50%", transform: "translate(50%, -50%)", background: back ? "var(--ink-3)" : "var(--accent)" }} />
-    </div>
-  );
+  const inspect = (ev: React.MouseEvent) => { ev.stopPropagation(); select({ kind: "node", id: node.id }); setPanel("inspect"); };
+  const rows = [...forwards].sort((a, b) => (a.id === mainId ? -1 : b.id === mainId ? 1 : 0)).concat(backs);
+  const moveRow = (t: (typeof outs)[number]) => {
+    const back = classifyTransition(t) === "back";
+    return (
+      <div key={t.id} className={`move ${back ? "back" : ""} ${t.id === mainId ? "main" : ""} ${selectedTransition === t.id ? "selected" : ""} nodrag`} onClick={(ev) => { ev.stopPropagation(); select({ kind: "transition", id: t.id }); }} title={t.id === mainId ? "Main move. Click to inspect." : "Click to inspect"}>
+        <span className="dot" />
+        <span className="trig">{cap(t.trigger)}</span>
+        <span className="to"><Icon name="arrow-right" size={11} /> {nameOf(t.to.screenId)}{t.to.stateId ? ` · ${t.to.stateId}` : ""}{t.condition && <span className="cond"> if {t.condition}</span>}</span>
+        <span className="port" aria-hidden="true" />
+        <Handle type="source" position={Position.Right} id={`out:${t.id}`} className="row-port" />
+      </div>
+    );
+  };
   return (
-    <div className={`screen-card ${expanded ? "expanded" : ""}`} style={{ outline: isWalkHere ? "3px solid var(--accent)" : undefined }}>
+    <div className={`screen-card ${expanded ? "expanded" : ""} ${selected ? "selected" : ""}`} style={{ outline: isWalkHere ? "3px solid var(--accent)" : undefined }}>
       <DropTarget />
-      <Handle type="target" position={Position.Left} id="in" style={{ ...port, top: 26, transform: "translate(-50%, -50%)" }} />
-      <Handle type="source" position={Position.Right} id="out" style={{ opacity: 0, width: 6, height: 6, top: 26 }} />
+      <Handle type="target" position={Position.Left} id="in" className="card-in" />
+      <Handle type="source" position={Position.Bottom} id="ec" className="ec-port" />
       <div className="hdr" onDoubleClick={() => select({ kind: "node", id: node.id })}>
-        <div className="thumb" style={{ width: thumbW, height: thumbH }}>
-          <iframe key={head} title="" tabIndex={-1} src={api.shellUrl(projectId, screen.id, { follow: false })} style={{ width: spec.device.width, height: spec.device.height, transform: `scale(${scale})` }} />
-        </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div className="name">{screen.name}</div>
+        <Thumb screenId={screen.id} width={84} />
+        <div className="hdr-text">
+          <div className="name-row"><div className="name">{screen.name}</div><button className="icon nodrag" onClick={inspect} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button></div>
           <div className="purpose">{screen.purpose}</div>
-          <div className="counts">
-            <span>{screen.states.length} {screen.states.length === 1 ? "state" : "states"}</span>
-            {ecs.length > 0 && <span className={ecs.some((e) => e.severity === "high") ? "warn" : ""}>{ecs.length} edge {ecs.length === 1 ? "case" : "cases"}</span>}
-            {backs.length > 0 && !expanded && <span title={backs.map((t) => `${t.trigger} → ${nameOf(t.to.screenId)}`).join("\n")}>↩ {backs.length}</span>}
+          <div className="chips">
+            {defaultState && <span className="pill blue">{screen.states.length > 1 ? `${screen.states.length} states` : defaultState.name}</span>}
+            {ecs.length > 0 && <button className="pill warn nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: `edgecase:${ecs[0].id}` }); }} title={ecs.map((e) => e.scenario).join("\n")}>{ecs.length} edge {ecs.length === 1 ? "case" : "cases"}</button>}
           </div>
         </div>
       </div>
       <div className="moves">
-        {expanded
-          ? [...forwards].sort((a, b) => (a.id === mainId ? -1 : b.id === mainId ? 1 : 0)).map((t) => moveRow(t, false))
-          : forwards.filter((t) => t.id === mainId).map((t) => moveRow(t, false))}
-        {!expanded && forwards.length > 1 && <div className="move more">{forwards.length - 1} more {forwards.length - 1 === 1 ? "move" : "moves"}</div>}
-        {forwards.length === 0 && <div className="move none">No onward moves</div>}
+        {rows.map(moveRow)}
+        <div className="move add nodrag" onClick={(ev) => { ev.stopPropagation(); showToast("Drag from the circle on this row to another screen to add an interaction."); }} title="Drag from the circle to another screen">
+          <Icon name="plus" size={13} />
+          <span className="trig">Add interaction</span>
+          <span className="port" aria-hidden="true" />
+          <Handle type="source" position={Position.Right} id="out" className="row-port" />
+        </div>
       </div>
       {expanded && (
         <div className="detail nowheel">
@@ -231,7 +220,7 @@ export const ScreenCardNode = memo(function ScreenCardNode({ data }: N<"screen">
               const into = stateMoves.filter((t) => t.to.stateId === st.id);
               return (
                 <div key={st.id} className={`state ${st.isDefault ? "default" : ""} ${isWalkHere && (walk.stateId === st.id || (!walk.stateId && st.isDefault)) ? "active" : ""}`}>
-                  <Handle type="target" position={Position.Left} id={`in:${st.id}`} style={{ ...port, top: "50%", transform: "translate(-50%, -50%)" }} />
+                  <Handle type="target" position={Position.Left} id={`in:${st.id}`} className="card-in state-in" />
                   <span className="dot" />
                   <span className="nm">{st.name}</span>
                   <span className="tr" title={st.trigger}>{st.trigger}</span>
@@ -241,22 +230,6 @@ export const ScreenCardNode = memo(function ScreenCardNode({ data }: N<"screen">
             })}
             {screen.states.length === 0 && <div className="muted small">No states declared</div>}
           </div>
-          {ecs.length > 0 && (
-            <div className="sec">
-              <h5>Edge cases</h5>
-              {ecs.map((e) => (
-                <div key={e.id} className="ec nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: `edgecase:${e.id}` }); }}>
-                  <span className={`sev ${e.severity}`} /><span className="sc">{e.scenario}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {backs.length > 0 && (
-            <div className="sec">
-              <h5>Returns</h5>
-              <div className="moves inset">{backs.map((t) => moveRow(t, true))}</div>
-            </div>
-          )}
           <div className="foot">
             <button className="add nodrag" onClick={addState}>+ state</button>
             <button className="add nodrag" onClick={addEdgeCase}>+ edge case</button>
@@ -268,51 +241,74 @@ export const ScreenCardNode = memo(function ScreenCardNode({ data }: N<"screen">
   );
 });
 
-/* ---------- Edge case ---------- */
-export const EdgeCaseNode = memo(function EdgeCaseNode({ data }: N<"edgeCase">) {
-  const ec = data.spec.edgeCases.find((e) => e.id === data.node.edgeCaseId) as EdgeCaseSpec | undefined;
+/* ---------- Edge case (flow view): what goes wrong, and how the design answers ---------- */
+export const EdgeCaseNode = memo(function EdgeCaseNode({ data, selected }: N<"edgeCase">) {
+  const spec = data.spec;
+  const ec = spec.edgeCases.find((e) => e.id === data.node.edgeCaseId) as EdgeCaseSpec | undefined;
+  const select = useFlow((s) => s.select);
+  const setPanel = useFlow((s) => s.setPanel);
   if (!ec) return null;
-  const host = ec.attachedTo.transitionId ? `on transition ${ec.attachedTo.transitionId}` : "";
+  const via = ec.attachedTo.transitionId ? spec.transitions.find((t) => t.id === ec.attachedTo.transitionId) : undefined;
+  const hostId = ec.attachedTo.screenId ?? via?.from.screenId;
+  const inspect = (ev: React.MouseEvent) => { ev.stopPropagation(); select({ kind: "node", id: data.node.id }); setPanel("inspect"); };
+  const preview = (ev: React.MouseEvent) => { ev.stopPropagation(); select({ kind: "node", id: data.node.id }); setPanel("preview"); };
   return (
-    <div className={`node-card edge-case ${ec.severity}`}>
+    <div className={`edge-case-card ${ec.severity} ${selected ? "selected" : ""}`}>
       <DropTarget />
-      <Handle type="target" position={Position.Left} id="in" className="magic" />
-      <div className="hdr"><span className="kind">Edge case</span><span className={`pill ${ec.severity === "high" ? "err" : ec.severity === "low" ? "grey" : "warn"}`}>{ec.severity}</span></div>
-      <div className="body" title={`${ec.scenario}\n\n${ec.handling}`}><b>{ec.scenario}</b><div className="handling">{ec.handling}</div>{host && <div className="muted small" style={{ marginTop: 4 }}>{host}</div>}</div>
+      <Handle type="target" position={Position.Top} id="ec-in" className="ec-port" />
+      <Handle type="target" position={Position.Left} id="in" className="magic" style={{ top: 22 }} />
+      <div className="hdr">
+        {hostId && <Thumb screenId={hostId} width={56} aspect={1.2} className="dim" />}
+        <div className="hdr-text">
+          <div className="name-row"><div className="name">{ec.scenario}</div><button className="icon nodrag" onClick={inspect} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button></div>
+          <div className="handling">{ec.handling}</div>
+        </div>
+      </div>
+      <div className="rows">
+        <div className="row"><span className="k">Severity</span><span className={`pill ${ec.severity === "high" ? "err" : ec.severity === "low" ? "grey" : "warn"}`}>{ec.severity}</span></div>
+        <div className="row"><span className="k">{via ? "On" : "Screen"}</span><span className="v">{via ? `${cap(via.trigger)} → ${spec.screens.find((s) => s.id === via.to.screenId)?.name ?? via.to.screenId}` : spec.screens.find((s) => s.id === hostId)?.name ?? "—"}</span></div>
+      </div>
+      <button className="btn ec-btn nodrag" onClick={preview}><Icon name="play" size={12} /> Preview</button>
     </div>
   );
 });
 
-/* ---------- Inspiration ---------- */
-export const InspirationNode = memo(function InspirationNode({ data }: N<"inspiration">) {
+/* ---------- Inspiration: a reference that can be pointed at a screen ---------- */
+export const InspirationNode = memo(function InspirationNode({ data, selected }: N<"inspiration">) {
   const n = data.node;
   const projectId = useFlow((s) => s.projectId)!;
+  const select = useFlow((s) => s.select);
+  const setPanel = useFlow((s) => s.setPanel);
+  const kind = n.kind === "url" ? "Web reference" : n.kind === "style" ? "Style token" : n.kind === "text" ? "Text reference" : "Style reference";
   return (
-    <div className="node-card inspiration" style={{ width: n.width ?? 240 }}>
+    <div className={`ref-card ${selected ? "selected" : ""}`} style={{ width: n.width ?? 224 }}>
       <DropTarget />
       <Handle type="source" position={Position.Right} id="out" className="magic" />
       <Handle type="target" position={Position.Left} id="in" className="magic" />
-      <div className="hdr"><span className="kind">{n.kind === "url" ? "Web" : n.kind === "style" ? "Style" : n.kind === "text" ? "Text" : "Image"}</span><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</span></div>
+      <div className="hdr"><Icon name="image" size={14} /><span className="kind">{kind}</span><span style={{ flex: 1 }} /><button className="icon nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: n.id }); setPanel("inspect"); }} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button></div>
       {n.kind === "image" && n.path && <img src={api.fileUrl(projectId, n.path)} alt={n.caption || n.title} draggable={false} />}
-      {n.kind === "style" && n.text && <div className="body" style={{ display: "flex", gap: 8, alignItems: "center" }}>{/^#[0-9a-f]{3,8}$/i.test(n.text) && <span style={{ width: 28, height: 28, borderRadius: 6, background: n.text, border: "1px solid var(--line)" }} />}<span className="mono">{n.text}</span></div>}
-      {n.kind === "text" && <div className="body" style={{ maxHeight: 160, overflow: "hidden" }}>{n.text}</div>}
-      {n.kind === "url" && <div className="body"><a href={n.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{n.url}</a></div>}
-      {(n.caption || n.description) && <div className="body muted small" style={{ borderTop: "1px solid var(--line-soft)" }}>{n.caption || n.description}</div>}
+      {n.kind === "style" && n.text && <div className="swatch">{/^#[0-9a-f]{3,8}$/i.test(n.text) && <span className="chip" style={{ background: n.text }} />}<span className="mono">{n.text}</span></div>}
+      {n.kind === "text" && <div className="text">{n.text}</div>}
+      {n.kind === "url" && <div className="text"><a href={n.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{n.url}</a></div>}
+      <div className="body">
+        <div className="title">{n.title}</div>
+        {(n.caption || n.description) && <div className="caption">{n.caption || n.description}</div>}
+      </div>
     </div>
   );
 });
 
 /* ---------- Skill ---------- */
-export const SkillNode = memo(function SkillNode({ data }: N<"skill">) {
+export const SkillNode = memo(function SkillNode({ data, selected }: N<"skill">) {
   const n = data.node;
   const projectId = useFlow((s) => s.projectId)!;
   const [text, setText] = useState("");
   useEffect(() => { fetch(api.fileUrl(projectId, n.path)).then((r) => r.text()).then(setText).catch(() => setText("")); }, [projectId, n.path]);
   return (
-    <div className="node-card skill">
+    <div className={`ref-card skill ${selected ? "selected" : ""}`}>
       <Handle type="source" position={Position.Right} id="out" className="magic" />
-      <div className="hdr"><span className="kind">Skill</span>{n.title}</div>
-      <div className="body">{text.slice(0, 600)}</div>
+      <div className="hdr"><Icon name="sticky-note" size={14} /><span className="kind">Skill</span></div>
+      <div className="body"><div className="title">{n.title}</div><div className="code">{text.slice(0, 600)}</div></div>
     </div>
   );
 });
@@ -350,8 +346,8 @@ export const PromptNode = memo(function PromptNode({ data }: N<"prompt">) {
   );
 });
 
-/* ---------- Variant panel ---------- */
-export const VariantPanelNode = memo(function VariantPanelNode({ data }: N<"variantPanel">) {
+/* ---------- Variant panel: alternatives of one element, side by side, each one click from being the real thing ---------- */
+export const VariantPanelNode = memo(function VariantPanelNode({ data, selected }: N<"variantPanel">) {
   const n = data.node;
   const spec = data.spec;
   const projectId = useFlow((s) => s.projectId)!;
@@ -359,7 +355,10 @@ export const VariantPanelNode = memo(function VariantPanelNode({ data }: N<"vari
   const refresh = useFlow((s) => s.refresh);
   const showToast = useFlow((s) => s.showToast);
   const setPreview = useFlow((s) => s.setPreview);
+  const select = useFlow((s) => s.select);
+  const setPanel = useFlow((s) => s.setPanel);
   const [fragments, setFragments] = useState<Record<string, string>>({});
+  const [hover, setHover] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     const files = [...n.options.map((o) => ({ id: o.id, file: o.file })), ...(n.originalFile ? [{ id: "original", file: n.originalFile }] : [])];
@@ -367,48 +366,55 @@ export const VariantPanelNode = memo(function VariantPanelNode({ data }: N<"vari
       .then((pairs) => { if (!cancelled) setFragments(Object.fromEntries(pairs)); });
     return () => { cancelled = true; };
   }, [n.options, n.originalFile, projectId, head]);
-  const hoverIn = (o: { id: string; file: string }) => {
-    const body = fragments[o.id];
+  const hoverIn = (id: string, file: string) => {
+    setHover(id);
+    const body = fragments[id];
     if (!body) return;
-    if (o.file.endsWith(".css")) setPreview({ css: body });
+    if (file.endsWith(".css")) setPreview({ css: body });
     else if (n.target.elementId) setPreview({ screenId: n.target.screenId, elementId: n.target.elementId, html: body });
   };
-  const hoverOut = () => setPreview(null);
+  const hoverOut = () => { setHover(null); setPreview(null); };
   const screen = spec.screens.find((s) => s.id === n.target.screenId);
-  const targetLabel = n.target.token ? `tokens: ${n.target.token}` : n.target.elementId ? `${screen?.name ?? n.target.screenId} · ${n.target.elementId}` : screen?.name ?? "project";
+  const element = screen?.elements.find((e) => e.id === n.target.elementId);
+  const subject = n.target.token ? `Tokens · ${n.target.token}` : element?.label ?? n.target.elementId ?? screen?.name ?? "Project";
   const apply = async (optionId: string) => {
-    try { await api.applyVariant(projectId, n.id, optionId); showToast("Variant applied. A new version was recorded."); await refresh(); }
+    try { await api.applyVariant(projectId, n.id, optionId); showToast(`Variant applied to ${screen?.name ?? "the project"} · Original preserved`); await refresh(); }
     catch (e) { showToast(`Could not apply: ${(e as Error).message}`); }
   };
+  const options = [...(n.originalFile ? [{ id: "original", label: "Original", rationale: "Before any variant was applied.", file: n.originalFile }] : []), ...n.options];
+  const current = n.appliedId ?? (n.originalFile ? "original" : undefined);
   return (
-    <div className="node-card variant" style={{ width: n.width ?? 640 }}>
+    <div className={`variant-panel ${selected ? "selected" : ""}`} style={{ width: n.width ?? Math.min(900, 14 + Math.max(1, options.length) * 206) }}>
       <DropTarget />
       <Handle type="source" position={Position.Right} id="out" className="flow" />
-      <Handle type="target" position={Position.Left} id="in" className="magic" />
-      <div className="hdr"><span className="kind">Variants</span>{targetLabel}{n.direction && <span className="muted" style={{ fontWeight: 500 }}>· {n.direction}</span>}</div>
-      {n.options.length === 0 && <div className="body muted">No options yet. Claude is working, or the run failed. Check the Claude panel.</div>}
-      <div className="options">
-        {n.originalFile && (
-          <div className={`opt original ${!n.appliedId ? "applied" : ""}`} onMouseEnter={() => { const body = fragments.original; if (!body) return; if (n.originalFile!.endsWith(".css")) setPreview({ css: body }); else if (n.target.elementId) setPreview({ screenId: n.target.screenId, elementId: n.target.elementId, html: body }); }} onMouseLeave={hoverOut} title="What was there before any variant was applied">
-            <VariantPreview projectId={projectId} head={head} spec={spec} screen={screen} elementId={n.target.elementId} file={n.originalFile} />
-            <div className="meta">
-              <b>Original</b>
-              <div className="r">Before any variant was applied.</div>
-              <button className={`btn sm ${!n.appliedId ? "" : "primary"} nodrag`} onClick={() => apply("original")} disabled={!n.appliedId}>{!n.appliedId ? "In place" : "Restore"}</button>
-            </div>
-          </div>
-        )}
-        {n.options.map((o) => (
-          <div key={o.id} className={`opt ${n.appliedId === o.id ? "applied" : ""}`} onMouseEnter={() => hoverIn(o)} onMouseLeave={hoverOut} title="Hover to preview in the prototype">
-            <VariantPreview projectId={projectId} head={head} spec={spec} screen={screen} elementId={n.target.elementId} file={o.file} />
-            <div className="meta">
-              <b>{o.label}</b>
-              <div className="r">{o.rationale}</div>
-              <button className={`btn sm ${n.appliedId === o.id ? "" : "primary"} nodrag`} onClick={() => apply(o.id)} disabled={n.appliedId === o.id}>{n.appliedId === o.id ? "Applied" : "Apply"}</button>
-            </div>
-          </div>
-        ))}
+      <Handle type="target" position={Position.Left} id="in" className="magic" style={{ top: 24 }} />
+      <div className="hdr">
+        <span className="vp-mark"><Icon name="hexagon" size={16} strokeWidth={2} /></span>
+        <span className="name">{subject} exploration</span>
+        <span className="pill blue">{n.options.length} variant{n.options.length === 1 ? "" : "s"}</span>
+        <span style={{ flex: 1 }} />
+        {n.direction && <span className="direction" title={n.direction}>{n.direction}</span>}
+        <button className="icon nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: n.id }); setPanel("inspect"); }} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button>
       </div>
+      {n.options.length === 0 && <div className="vp-empty muted">No options yet. Claude is working, or the run failed. Check the Claude panel.</div>}
+      {options.length > 0 && (
+        <div className="options nowheel">
+          {options.map((o) => {
+            const applied = current === o.id;
+            const focus = hover === o.id;
+            return (
+              <div key={o.id} className={`opt ${applied ? "applied" : ""} ${focus ? "focus" : ""} ${o.id === "original" ? "original" : ""}`} onMouseEnter={() => hoverIn(o.id, o.file)} onMouseLeave={hoverOut} title={o.id === "original" ? "What was there before" : "Hover to preview in the prototype"}>
+                <VariantPreview projectId={projectId} head={head} spec={spec} screen={screen} elementId={n.target.elementId} file={o.file} />
+                <div className="meta">
+                  <b>{o.label}</b>
+                  <div className="r">{o.rationale}</div>
+                  <button className={`btn sm ${focus && !applied ? "primary" : ""} nodrag`} onClick={() => apply(o.id)} disabled={applied}>{applied ? (o.id === "original" ? "In place" : "Applied") : focus && screen ? `Apply to ${screen.name}` : o.id === "original" ? "Restore" : "Apply"}</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 });
@@ -421,7 +427,6 @@ function VariantPreview({ projectId, head, spec, screen, elementId, file }: { pr
       const frag = await fetch(api.fileUrl(projectId, file)).then((r) => r.text()).catch(() => "");
       if (cancelled) return;
       if (file.endsWith(".css")) {
-        // token variant: show the palette swatches
         const vars = [...frag.matchAll(/--color-([a-z0-9-]+):\s*([^;]+);/g)];
         setDoc(`<!doctype html><body style="margin:0;padding:10px;font:12px system-ui;display:grid;gap:6px">${vars.map((m) => `<div style="display:flex;gap:8px;align-items:center"><span style="width:22px;height:22px;border-radius:5px;background:${m[2]};border:1px solid #ddd"></span>${m[1]}</div>`).join("")}</body>`);
       } else if (elementId && screen) {
@@ -439,8 +444,8 @@ function VariantPreview({ projectId, head, spec, screen, elementId, file }: { pr
     return () => { cancelled = true; };
   }, [projectId, head, file, elementId, screen]);
   if (doc == null) return <div className="muted small" style={{ padding: 8 }}>Loading…</div>;
-  const scale = elementId ? 0.6 : 180 / spec.device.width;
-  return <div className="nodrag nowheel" style={{ overflow: "hidden", position: "relative" }}><iframe title="variant" srcDoc={doc} sandbox="allow-same-origin" style={{ width: `${100 / scale}%`, height: `${100 / scale}%`, transform: `scale(${scale})`, transformOrigin: "0 0", pointerEvents: "none" }} /></div>;
+  const scale = elementId ? 0.55 : 196 / spec.device.width;
+  return <div className="nodrag nowheel shot"><iframe title="variant" srcDoc={doc} sandbox="allow-same-origin" style={{ width: `${100 / scale}%`, height: `${100 / scale}%`, transform: `scale(${scale})`, transformOrigin: "0 0", pointerEvents: "none" }} /></div>;
 }
 
 /* ---------- Note ---------- */
@@ -484,6 +489,7 @@ export const GroupNode = memo(function GroupNode({ data }: N<"group">) {
 export const nodeTypes = {
   screen: ScreenNode,
   screenCard: ScreenCardNode,
+  start: StartNode,
   edgeCase: EdgeCaseNode,
   inspiration: InspirationNode,
   skill: SkillNode,
