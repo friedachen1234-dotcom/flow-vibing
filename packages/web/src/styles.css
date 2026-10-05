@@ -331,10 +331,12 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .screen-frame.selected { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
 .screen-frame .hdr { display: flex; align-items: center; gap: 6px; padding: 0 6px 0 6px; background: var(--surface); border-bottom: 1px solid var(--line-soft); cursor: grab; user-select: none; min-width: 0; overflow: hidden; }
 .screen-frame .hdr:active { cursor: grabbing; }
-.screen-frame .hdr .name { font-weight: 700; font-size: var(--t-14); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 36px; flex: 0 1 auto; }
+.screen-frame .hdr .name { font-weight: 700; font-size: var(--t-14); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 auto; }
 .screen-frame .hdr .pill { flex: none; }
-.screen-frame .hdr .pill.live { height: 22px; padding: 0 9px; font-size: var(--t-12); }
-.screen-frame .hdr .pill.warn { max-width: 96px; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 22px; }
+.screen-frame .hdr .pill.live { height: 22px; padding: 0 8px; font-size: var(--t-12); }
+/* The name keeps its words; when room runs out, the edge-case pill gives way first. */
+.screen-frame .hdr .pill.warn { flex: 0 1 auto; min-width: 34px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 22px; padding: 0 8px; }
+.screen-frame .hdr .name { flex: 0 0 auto; max-width: 46%; }
 .screen-frame .hdr .icon { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; border: 0; background: transparent; color: var(--ink-2); flex: none; }
 .screen-frame .hdr .icon.dim { color: var(--line); }
 .screen-frame .hdr button.icon:hover { background: var(--surface-2); color: var(--ink); }
