@@ -149,9 +149,11 @@ export function Canvas() {
       // Lines that travel backwards (target left of source) orbit below the whole row instead of crossing cards.
       const screenBottom = Math.max(0, ...canvas.nodes.filter((n) => n.type === "screen").map((n) => n.position.y + flowCardHeight(spec, n.screenId) + (showEdgeCases ? edgeCaseStackHeight(spec.edgeCases.filter((e) => hostScreen(spec, e.attachedTo) === n.screenId).length) : 0)));
       let lane = 0;
+      const pickedMove = selection?.kind === "transition" ? selection.id : null;
       for (const t of spec.transitions) {
         const kind = kinds.get(t.id) ?? "forward";
-        const touches = !!focusScreen && (t.from.screenId === focusScreen || t.to.screenId === focusScreen);
+        // A selected interaction lights its own line alone; a selected screen lights every line touching it.
+        const touches = pickedMove ? t.id === pickedMove : !!focusScreen && (t.from.screenId === focusScreen || t.to.screenId === focusScreen);
         if (kind === "state") continue;
         if (kind === "back") continue; // returns are rows on the card, never lines: a line back across the flow says nothing the row does not
         const sx = screenPos.get(t.from.screenId)?.x ?? 0, tx = screenPos.get(t.to.screenId)?.x ?? 0;
@@ -159,7 +161,7 @@ export function Canvas() {
         const orbitY = loop ? screenBottom + 40 + (lane++ % 6) * 14 : undefined;
         edges.push({
           id: `t:${t.id}`, type: "transition", source: `screen:${t.from.screenId}`, target: `screen:${t.to.screenId}`, sourceHandle: `out:${t.id}`, targetHandle: "in",
-          data: { transition: t, kind, dim: !!focusScreen && !touches, lit: touches, main: mains.has(t.id), orbitY },
+          data: { transition: t, kind, dim: (!!focusScreen || !!pickedMove) && !touches, lit: touches, main: mains.has(t.id), orbitY },
           selected: selection?.kind === "transition" && selection.id === t.id,
           markerEnd: { type: MarkerType.ArrowClosed, color: mains.has(t.id) || touches ? "#2C4FDB" : "#AEBBEF", width: 10, height: 10 }, zIndex: touches ? 4 : mains.has(t.id) ? 3 : 2
         });
