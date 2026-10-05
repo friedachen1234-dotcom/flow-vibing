@@ -52,7 +52,7 @@ export async function listProjects(): Promise<ProjectMeta[]> {
       const spec = DesignSpec.parse(JSON.parse(await fs.readFile(specPath, "utf8")));
       const st = await fs.stat(specPath);
       const dirSt = await fs.stat(path.join(PROJECTS_ROOT, e.name));
-      out.push({ id: e.name, name: spec.name, path: path.join(PROJECTS_ROOT, e.name), createdAt: dirSt.birthtime.toISOString(), updatedAt: st.mtime.toISOString(), screenCount: spec.screens.length });
+      out.push({ id: e.name, name: spec.name, path: path.join(PROJECTS_ROOT, e.name), createdAt: dirSt.birthtime.toISOString(), updatedAt: st.mtime.toISOString(), screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null, device: spec.device });
     } catch { /* skip unreadable */ }
   }
   return out.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -109,7 +109,7 @@ export async function loadProject(id: string): Promise<ProjectBundle> {
   const st = await fs.stat(path.join(dir, PROJECT_FILES.spec));
   const dirSt = await fs.stat(dir);
   return {
-    meta: { id, name: spec.name, path: dir, createdAt: dirSt.birthtime.toISOString(), updatedAt: st.mtime.toISOString(), screenCount: spec.screens.length },
+    meta: { id, name: spec.name, path: dir, createdAt: dirSt.birthtime.toISOString(), updatedAt: st.mtime.toISOString(), screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null, device: spec.device },
     spec,
     canvas,
     versions,

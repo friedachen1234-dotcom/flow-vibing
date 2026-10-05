@@ -397,7 +397,8 @@ export function Canvas() {
       const unit = d.deltaMode === 1 ? 16 : d.deltaMode === 2 ? 400 : 1;
       if (d.zoom) {
         // Zoom about the pointer, matching the feel of the board's own wheel handling.
-        const factor = Math.pow(2, -d.deltaY * unit * (d.pinch ? 0.02 : 0.002));
+        // Trackpad pinches arrive as many small deltas; a mouse wheel with Ctrl held sends one large one. Bound each step.
+        const factor = Math.min(1.4, Math.max(0.7, Math.pow(2, -d.deltaY * unit * (d.pinch ? 0.02 : 0.002))));
         const z = Math.max(0.05, Math.min(2, vp.zoom * factor));
         const box = wrapRef.current?.getBoundingClientRect();
         const px = d.clientX - (box?.left ?? 0), py = d.clientY - (box?.top ?? 0);

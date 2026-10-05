@@ -357,7 +357,7 @@ export const VariantPanelNode = memo(function VariantPanelNode({ data, selected 
   const options = [...(n.originalFile ? [{ id: "original", label: "Original", rationale: "Before any variant was applied.", file: n.originalFile }] : []), ...n.options];
   const current = n.appliedId ?? (n.originalFile ? "original" : undefined);
   return (
-    <div className={`variant-panel ${selected ? "selected" : ""}`} style={{ width: n.width ?? Math.min(900, 14 + Math.max(1, options.length) * 206) }}>
+    <div className={`variant-panel ${selected ? "selected" : ""}`} style={{ width: n.width ?? Math.min(940, 16 + Math.max(1, options.length) * 220) }}>
       <DropTarget />
       <Handle type="source" position={Position.Right} id="out" className="flow" />
       <Handle type="target" position={Position.Left} id="in" className="magic" style={{ top: 24 }} />
@@ -418,7 +418,7 @@ function VariantPreview({ projectId, head, spec, screen, elementId, file }: { pr
     return () => { cancelled = true; };
   }, [projectId, head, file, elementId, screen]);
   if (doc == null) return <div className="muted small" style={{ padding: 8 }}>Loading…</div>;
-  const scale = elementId ? 0.55 : 196 / spec.device.width;
+  const scale = elementId ? 0.58 : 196 / spec.device.width;
   return <div className="nodrag nowheel shot"><iframe title="variant" srcDoc={doc} sandbox="allow-same-origin" style={{ width: `${100 / scale}%`, height: `${100 / scale}%`, transform: `scale(${scale})`, transformOrigin: "0 0", pointerEvents: "none" }} /></div>;
 }
 
