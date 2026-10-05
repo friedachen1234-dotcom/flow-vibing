@@ -3,9 +3,10 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { nanoid } from "nanoid";
 import {
-  CanvasDoc, DesignSpec, DEVICE_PRESETS, PROJECT_FILES, emptyCanvas, emptySpec, reconcileCanvas, tokensCss, demoSpec, demoScreenHtml,
+  CanvasDoc, CanvasEdge, CanvasNode, DesignSpec, DEVICE_PRESETS, PROJECT_FILES, emptyCanvas, emptySpec, reconcileCanvas, tokensCss, demoSpec, demoScreenHtml,
   type DeviceKind, type ProjectBundle, type ProjectMeta
 } from "@flow/shared";
+import { z } from "zod";
 import { EXAMPLES_DIR, PROJECTS_ROOT } from "./config.js";
 import { commitVersion, fileAtVersion, firstApplyCommit, initRepo, listVersions } from "./versions.js";
 import { extractElement } from "./html.js";
@@ -204,6 +205,26 @@ export function exampleFilePath(exampleId: string, rel: string): string {
   return abs;
 }
 
+/** What an example puts on the board besides its screens: reference cards, variant explorations, and the lines between them. */
+export const ExampleBoard = z.object({ nodes: z.array(CanvasNode).default([]), edges: z.array(CanvasEdge).default([]) });
+export type ExampleBoard = z.infer<typeof ExampleBoard>;
+
+export async function readExampleBoard(exampleId: string): Promise<ExampleBoard> {
+  const file = path.join(EXAMPLES_DIR, exampleId, "board.json");
+  if (!(await exists(file))) return { nodes: [], edges: [] };
+  return ExampleBoard.parse(JSON.parse(await fs.readFile(file, "utf8")));
+}
+
+/** Project-relative files the board's nodes point at: reference images and variant fragments. */
+export function boardFiles(board: ExampleBoard): string[] {
+  const out: string[] = [];
+  for (const n of board.nodes) {
+    if ((n.type === "inspiration" || n.type === "skill") && n.path) out.push(n.path);
+    if (n.type === "variantPanel") { for (const o of n.options) out.push(o.file); if (n.originalFile) out.push(n.originalFile); }
+  }
+  return out;
+}
+
 /** Copies an example into a fresh project folder with its own git history. */
 export async function createProjectFromExample(exampleId: string): Promise<ProjectBundle> {
   if (!SAFE_ID.test(exampleId)) throw Object.assign(new Error(`bad example id "${exampleId}"`), { statusCode: 400 });
@@ -216,11 +237,14 @@ export async function createProjectFromExample(exampleId: string): Promise<Proje
   const canvas = emptyCanvas();
   canvas.nodes.push({ id: "brief", type: "prompt", kind: "brief", text: spec.brief, position: { x: -420, y: 0 }, width: 320 });
   canvas.nodes.push({ id: "note-" + nanoid(6), type: "note", text: `Example project "${spec.name}". Hand-built screens that follow the runtime contract, so the prototype, flow view, states, picker, and change requests all work without Claude.`, position: { x: -420, y: 220 }, width: 320 });
+  // The example's own board: references pointed at screens, and a variants exploration ready to apply.
+  const board = await readExampleBoard(exampleId);
+  canvas.nodes.push(...board.nodes);
+  canvas.edges.push(...board.edges);
   await scaffold(id, spec, reconcileCanvas(spec, canvas).canvas);
-  for (const s of spec.screens) {
-    const from = path.join(src, s.file);
-    await fs.mkdir(path.dirname(safeJoin(id, s.file)), { recursive: true });
-    await fs.copyFile(from, safeJoin(id, s.file));
+  for (const rel of [...spec.screens.map((s) => s.file), ...boardFiles(board)]) {
+    await fs.mkdir(path.dirname(safeJoin(id, rel)), { recursive: true });
+    await fs.copyFile(path.join(src, rel), safeJoin(id, rel));
   }
   const tokens = path.join(src, PROJECT_FILES.tokens);
   if (await exists(tokens)) await fs.copyFile(tokens, safeJoin(id, PROJECT_FILES.tokens));

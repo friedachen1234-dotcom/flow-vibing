@@ -1,0 +1,84 @@
+{
+  "nodes": [
+    {
+      "id": "ref-strip",
+      "type": "inspiration",
+      "kind": "image",
+      "title": "KPI strip",
+      "caption": "Four figures on one hairline row. Trend is a small coloured arrow, never a chart.",
+      "description": "",
+      "path": "inspirations/kpi-strip.svg",
+      "position": {
+        "x": -420,
+        "y": 400
+      },
+      "width": 224
+    },
+    {
+      "id": "ref-spark",
+      "type": "inspiration",
+      "kind": "image",
+      "title": "Sparkline tiles",
+      "caption": "Each number carries its own seven-day shape, in the accent green.",
+      "description": "",
+      "path": "inspirations/sparkline-tiles.svg",
+      "position": {
+        "x": -420,
+        "y": 700
+      },
+      "width": 224
+    },
+    {
+      "id": "vp-kpi-row",
+      "type": "variantPanel",
+      "target": {
+        "screenId": "reports",
+        "elementId": "kpi-row"
+      },
+      "direction": "Scannable from across the room",
+      "options": [
+        {
+          "id": "spark",
+          "label": "Tiles with trend",
+          "rationale": "Each figure carries its seven-day shape, so the delta needs no reading.",
+          "file": "variants/vp-kpi-row/spark.html"
+        },
+        {
+          "id": "strip",
+          "label": "Single strip",
+          "rationale": "One row, hairline dividers. Gives the chart below the height it wants.",
+          "file": "variants/vp-kpi-row/strip.html"
+        },
+        {
+          "id": "lead",
+          "label": "Lead metric",
+          "rationale": "Open tickets is the number the room argues about, so it gets twice the space.",
+          "file": "variants/vp-kpi-row/lead.html"
+        }
+      ],
+      "position": {
+        "x": 4260,
+        "y": 920
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "magic-ref-spark",
+      "type": "magic",
+      "source": "ref-spark",
+      "target": "screen:reports",
+      "targetElementId": "kpi-row",
+      "relation": "match-style",
+      "note": ""
+    },
+    {
+      "id": "link-vp-kpi-row",
+      "type": "variantLink",
+      "source": "screen:reports",
+      "target": "vp-kpi-row",
+      "targetElementId": "kpi-row",
+      "note": ""
+    }
+  ]
+}

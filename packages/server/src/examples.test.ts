@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { DesignSpec, lintSpec, tokensCss } from "@flow/shared";
 import { EXAMPLES_DIR } from "./config.js";
+import { boardFiles, readExampleBoard } from "./projects.js";
 
 /**
  * Every example in examples/ must be a valid, self-consistent project that obeys the screen contract,
@@ -21,6 +22,33 @@ test("examples folder has at least one example", async () => {
 });
 
 for (const id of await examples()) {
+  test(`example "${id}" board points at real things`, async () => {
+    const dir = path.join(EXAMPLES_DIR, id);
+    const spec = DesignSpec.parse(JSON.parse(await fs.readFile(path.join(dir, "flow.json"), "utf8")));
+    const board = await readExampleBoard(id);
+    assert.ok(board.nodes.some((n) => n.type === "inspiration"), "ships at least one reference");
+    assert.ok(board.nodes.some((n) => n.type === "variantPanel"), "ships a variants exploration");
+    for (const rel of boardFiles(board)) await fs.access(path.join(dir, rel)).catch(() => assert.fail(`${rel} missing`));
+    const ids = new Set([...board.nodes.map((n) => n.id), ...spec.screens.map((s) => `screen:${s.id}`)]);
+    for (const e of board.edges) {
+      assert.ok(ids.has(e.source), `edge ${e.id}: source ${e.source} exists`);
+      assert.ok(ids.has(e.target), `edge ${e.id}: target ${e.target} exists`);
+    }
+    for (const n of board.nodes) {
+      if (n.type !== "variantPanel") continue;
+      const screen = spec.screens.find((s) => s.id === n.target.screenId);
+      assert.ok(screen, `panel ${n.id}: screen ${n.target.screenId} exists`);
+      if (n.target.elementId) {
+        assert.ok(screen!.elements.some((el) => el.id === n.target.elementId), `panel ${n.id}: element ${n.target.elementId} is declared`);
+        // Every option must still be that element, so Apply keeps the screen's contract intact.
+        for (const o of n.options) {
+          const html = await fs.readFile(path.join(dir, o.file), "utf8");
+          assert.equal(html.match(new RegExp(`data-flow-el=["']${escapeRe(n.target.elementId)}["']`, "g"))?.length ?? 0, 1, `${o.file} keeps data-flow-el="${n.target.elementId}" exactly once`);
+        }
+      }
+    }
+  });
+
   test(`example "${id}" follows the contract`, async () => {
     const dir = path.join(EXAMPLES_DIR, id);
     const spec = DesignSpec.parse(JSON.parse(await fs.readFile(path.join(dir, "flow.json"), "utf8")));

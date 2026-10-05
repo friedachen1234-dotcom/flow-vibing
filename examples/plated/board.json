@@ -1,0 +1,84 @@
+{
+  "nodes": [
+    {
+      "id": "ref-type",
+      "type": "inspiration",
+      "kind": "image",
+      "title": "Counter-distance type",
+      "caption": "Serif at 40px or more, generous leading. Readable with floury hands and a step back.",
+      "description": "",
+      "path": "inspirations/counter-type.svg",
+      "position": {
+        "x": -420,
+        "y": 400
+      },
+      "width": 224
+    },
+    {
+      "id": "ref-timer",
+      "type": "inspiration",
+      "kind": "image",
+      "title": "Timer as the hero",
+      "caption": "When a step has a time, the time is the biggest thing on the screen.",
+      "description": "",
+      "path": "inspirations/timer-hero.svg",
+      "position": {
+        "x": -420,
+        "y": 700
+      },
+      "width": 224
+    },
+    {
+      "id": "vp-step-card",
+      "type": "variantPanel",
+      "target": {
+        "screenId": "cook",
+        "elementId": "step-card"
+      },
+      "direction": "Readable from across the kitchen",
+      "options": [
+        {
+          "id": "bigger",
+          "label": "Bigger type",
+          "rationale": "Same card, 44px serif. One glance from the hob is enough.",
+          "file": "variants/vp-step-card/bigger.html"
+        },
+        {
+          "id": "rail",
+          "label": "Numbered rail",
+          "rationale": "The step number becomes a big numeral on the left, so progress is visible without the bar.",
+          "file": "variants/vp-step-card/rail.html"
+        },
+        {
+          "id": "timer",
+          "label": "Timer-forward",
+          "rationale": "Puts the time inside the card, where the eye already is, instead of in the toolbar.",
+          "file": "variants/vp-step-card/timer.html"
+        }
+      ],
+      "position": {
+        "x": 1920,
+        "y": 1300
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "magic-ref-type",
+      "type": "magic",
+      "source": "ref-type",
+      "target": "screen:cook",
+      "targetElementId": "step-card",
+      "relation": "match-style",
+      "note": ""
+    },
+    {
+      "id": "link-vp-step-card",
+      "type": "variantLink",
+      "source": "screen:cook",
+      "target": "vp-step-card",
+      "targetElementId": "step-card",
+      "note": ""
+    }
+  ]
+}

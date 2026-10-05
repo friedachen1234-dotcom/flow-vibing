@@ -78,7 +78,9 @@ For something closer to real output, load one of the example prototypes from the
 - **Relay Desk** (desktop): support inbox with a ticket thread, a modal new-ticket form, and a reports page. Same-screen transitions flip the ticket to replied, escalated, or resolved.
 - **Plated** (tablet): recipe browser, recipe page, step-by-step cook mode with a timer state and a finish overlay, and an aisle-grouped shopping list.
 
-Each example is checked by `packages/server/src/examples.test.ts`: the spec lints clean, every declared element and transition exists in the markup, every non-default state has styling, and `tokens.css` matches the spec tokens. To add one, create `examples/<id>/` with `flow.json` (its `id` must match the folder), `screens/`, and a `tokens.css` generated from the spec, then run `pnpm test`.
+Each example also ships a board: two reference cards pointed at a screen with a style line, and a variants exploration of one element (the recovery ring, the balance card, the KPI row, the cook step) with three alternatives ready to hover and apply. They live in `board.json`, `inspirations/`, and `variants/` beside the screens, and `scripts/example-boards.mjs` regenerates them.
+
+Each example is checked by `packages/server/src/examples.test.ts`: the spec lints clean, every declared element and transition exists in the markup, every non-default state has styling, `tokens.css` matches the spec tokens, and the board's files exist and keep each variant's `data-flow-el`. To add one, create `examples/<id>/` with `flow.json` (its `id` must match the folder), `screens/`, and a `tokens.css` generated from the spec, then run `pnpm test`.
 
 Headless end-to-end generate (needs the dev server running):
 

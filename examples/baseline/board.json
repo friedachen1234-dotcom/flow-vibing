@@ -1,0 +1,84 @@
+{
+  "nodes": [
+    {
+      "id": "ref-ring",
+      "type": "inspiration",
+      "kind": "image",
+      "title": "Recovery ring",
+      "caption": "One band, thick stroke, round caps. The figure sits alone in the middle.",
+      "description": "",
+      "path": "inspirations/recovery-ring.svg",
+      "position": {
+        "x": -420,
+        "y": 400
+      },
+      "width": 224
+    },
+    {
+      "id": "ref-type",
+      "type": "inspiration",
+      "kind": "image",
+      "title": "Type & hierarchy",
+      "caption": "Numeral scale and metric styling for key health data.",
+      "description": "",
+      "path": "inspirations/type-hierarchy.svg",
+      "position": {
+        "x": -420,
+        "y": 700
+      },
+      "width": 224
+    },
+    {
+      "id": "vp-recovery-ring",
+      "type": "variantPanel",
+      "target": {
+        "screenId": "today",
+        "elementId": "recovery-ring"
+      },
+      "direction": "Keep the verdict readable",
+      "options": [
+        {
+          "id": "full",
+          "label": "Full ring",
+          "rationale": "Same idea, more weight. Reads from further away.",
+          "file": "variants/vp-recovery-ring/full.html"
+        },
+        {
+          "id": "arc",
+          "label": "Open arc",
+          "rationale": "Frees vertical space for the cards underneath.",
+          "file": "variants/vp-recovery-ring/arc.html"
+        },
+        {
+          "id": "bar",
+          "label": "Minimal bar",
+          "rationale": "Drops the gauge. The figure and a scale carry it.",
+          "file": "variants/vp-recovery-ring/bar.html"
+        }
+      ],
+      "position": {
+        "x": 0,
+        "y": 964
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "magic-ref-ring",
+      "type": "magic",
+      "source": "ref-ring",
+      "target": "screen:today",
+      "targetElementId": "recovery-ring",
+      "relation": "match-style",
+      "note": ""
+    },
+    {
+      "id": "link-vp-recovery-ring",
+      "type": "variantLink",
+      "source": "screen:today",
+      "target": "vp-recovery-ring",
+      "targetElementId": "recovery-ring",
+      "note": ""
+    }
+  ]
+}
