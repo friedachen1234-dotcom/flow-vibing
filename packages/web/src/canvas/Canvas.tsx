@@ -94,8 +94,13 @@ export function Canvas() {
   const showEdgeCases = useFlow((s) => s.showEdgeCases);
   const setShowEdgeCases = useFlow((s) => s.setShowEdgeCases);
   const hand = useFlow((s) => s.hand);
+  const hoverEdge = useFlow((s) => s.hoverEdge);
+  const setHoverEdge = useFlow((s) => s.setHoverEdge);
+  // While a node is dragged or the board is panned, prototypes stop taking the pointer: an iframe under the pointer would otherwise swallow the move and stall the drag.
+  const [interacting, setInteracting] = useState(false);
   const { zoom } = useViewport();
   const picked = useFlow((s) => s.picker.picked);
+  const pickerOn = useFlow((s) => s.picker.enabled);
   const showToast = useFlow((s) => s.showToast);
   const rf = useReactFlow();
   const { spec, canvas } = bundle;
@@ -126,15 +131,16 @@ export function Canvas() {
       const isSel = selection?.kind === "node" && selection.id === n.id;
       if (n.type === "edgeCase") {
         if (!flow || !showEdgeCases) continue; // in prototype view edge cases are a chip on the screen's header
-        nodes.push({ id: n.id, position: n.position, type: "edgeCase", data: { node: n, spec }, selected: isSel, dragHandle: ".hdr", zIndex: 2 });
+        nodes.push({ id: n.id, position: n.position, type: "edgeCase", data: { node: n, spec }, selected: isSel, zIndex: 2 });
         continue;
       }
       if (flow && (n.type === "inspiration" || n.type === "skill" || n.type === "variantPanel")) continue; // references and explorations belong to the prototype reading; the flow view is about moves
       const common = { id: n.id, position: n.position, data: { node: n, spec, primaryMoves: canvas.primaryMoves }, selected: isSel };
-      if (n.type === "screen") nodes.push({ ...common, data: { ...common.data, moveOrder: flow ? moveOrder.get(n.screenId) : undefined }, type: flow ? "screenCard" : "screen", dragHandle: ".hdr", zIndex: 1 });
+      // A whole card drags. A screen that is selected, or being picked inside, hands its body to the prototype and keeps the header as the handle.
+      if (n.type === "screen") nodes.push({ ...common, data: { ...common.data, moveOrder: flow ? moveOrder.get(n.screenId) : undefined }, type: flow ? "screenCard" : "screen", dragHandle: !flow && (isSel || pickerOn) ? ".hdr" : undefined, zIndex: 1 });
       else if (n.type === "variantPanel") nodes.push({ ...common, position: panelPosition(n, canvas, spec, view, showEdgeCases), type: n.type, dragHandle: ".hdr", zIndex: 2 });
       else if (n.type === "group") nodes.push({ ...common, type: "group", zIndex: -1, style: { width: n.width, height: n.height } });
-      else nodes.push({ ...common, type: n.type, dragHandle: n.type === "prompt" || n.type === "note" ? undefined : ".hdr", zIndex: 2 });
+      else nodes.push({ ...common, type: n.type, zIndex: 2 });
     }
     const edges: Edge[] = [];
     if (flow) {
@@ -162,9 +168,9 @@ export function Canvas() {
         const orbitY = loop ? screenBottom + 40 + (lane++ % 6) * 14 : undefined;
         edges.push({
           id: `t:${t.id}`, type: "transition", source: `screen:${t.from.screenId}`, target: `screen:${t.to.screenId}`, sourceHandle: `out:${t.id}`, targetHandle: "in",
-          data: { transition: t, kind, dim: (!!focusScreen || !!pickedMove) && !touches, lit: touches, main: mains.has(t.id), orbitY },
+          data: { transition: t, kind, dim: (!!focusScreen || !!pickedMove) && !touches, lit: touches, main: mains.has(t.id), orbitY, hover: hoverEdge === `t:${t.id}` },
           selected: selection?.kind === "transition" && selection.id === t.id,
-          markerEnd: { type: MarkerType.ArrowClosed, color: mains.has(t.id) || touches ? "#2C4FDB" : "#AEBBEF", width: 10, height: 10 }, zIndex: touches ? 4 : mains.has(t.id) ? 3 : 2
+          markerEnd: { type: MarkerType.ArrowClosed, color: mains.has(t.id) || touches || hoverEdge === `t:${t.id}` ? "#2C4FDB" : "#AEBBEF", width: 10, height: 10 }, zIndex: touches || hoverEdge === `t:${t.id}` ? 5 : mains.has(t.id) ? 3 : 2
         });
       }
       // Lines leaving one card take lanes in row order: the top row's line runs on the left, so stubs never cross trunks.
@@ -192,7 +198,7 @@ export function Canvas() {
           const host = hostScreen(spec, ec.attachedTo);
           if (!host || !canvas.nodes.some((n) => n.type === "edgeCase" && n.edgeCaseId === ec.id)) continue;
           const touches = !!focusScreen && focusScreen === host;
-          edges.push({ id: `ec:${ec.id}`, type: "edgeCase", source: `screen:${host}`, target: `edgecase:${ec.id}`, sourceHandle: "ec", targetHandle: "ec-in", data: { dim: !!focusScreen && !touches }, markerEnd: { type: MarkerType.ArrowClosed, color: "#D19A1F", width: 9, height: 9 }, zIndex: touches ? 4 : 2 });
+          edges.push({ id: `ec:${ec.id}`, type: "edgeCase", source: `screen:${host}`, target: `edgecase:${ec.id}`, sourceHandle: "ec", targetHandle: "ec-in", data: { dim: !!focusScreen && !touches, hover: hoverEdge === `ec:${ec.id}` }, markerEnd: { type: MarkerType.ArrowClosed, color: "#D19A1F", width: 9, height: 9 }, zIndex: touches || hoverEdge === `ec:${ec.id}` ? 5 : 2 });
         }
       }
     }
@@ -209,7 +215,7 @@ export function Canvas() {
         const below = !src || !tgt || tgt.position.y >= srcBottom - 60;
         handles = below ? { sourceHandle: "below", targetHandle: "top" } : tgt.position.x >= srcRight - 40 ? { sourceHandle: "out", targetHandle: "side" } : { sourceHandle: "in", targetHandle: "side-r" };
       }
-      edges.push({ id: e.id, type: e.type, source: e.source, target: e.target, ...handles, data: { edge: e }, selected: selection?.kind === "edge" && selection.id === e.id, zIndex: 3 });
+      edges.push({ id: e.id, type: e.type, source: e.source, target: e.target, ...handles, data: { edge: e, hover: hoverEdge === e.id }, selected: selection?.kind === "edge" && selection.id === e.id, zIndex: hoverEdge === e.id ? 5 : 3 });
     }
     if (showInfluences) {
       // Provenance drawn live from the spec so it always reflects the latest generation.
@@ -222,7 +228,7 @@ export function Canvas() {
     }
     return { nodes, edges };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvas.nodes, canvas.edges, canvas.primaryMoves, spec, view, selection, showInfluences, showEdgeCases]);
+  }, [canvas.nodes, canvas.edges, canvas.primaryMoves, spec, view, selection, showInfluences, showEdgeCases, hoverEdge, pickerOn]);
 
   // Screens are one size in flow view and another in prototype view, so a layout that is tidy in one can pile up in
   // the other. When a view switch leaves two screens overlapping, tidy for this view rather than show the pile.
@@ -249,13 +255,20 @@ export function Canvas() {
   }, [derived]);
   const isDefaultViewport = canvas.viewport.x === 0 && canvas.viewport.y === 0 && canvas.viewport.zoom === 1;
   const [initialViewport] = useState(canvas.viewport);
-  const onMoveEnd = useCallback((_: unknown, vp: { x: number; y: number; zoom: number }) => updateCanvas((c) => ({ ...c, viewport: vp })), [updateCanvas]);
+  const onMoveEnd = useCallback((_: unknown, vp: { x: number; y: number; zoom: number }) => { setInteracting(false); updateCanvas((c) => ({ ...c, viewport: vp })); }, [updateCanvas]);
   const onPaneClick = useCallback(() => { select(null); setPending(null); }, [select]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => setNodes((ns) => applyNodeChanges(changes, ns)), []);
   const onEdgesChange = useCallback((changes: EdgeChange[]) => setEdges((es) => applyEdgeChanges(changes, es)), []);
 
+  // Set on the first real drag move, not on mousedown: a plain click never gets a drag-stop, and would leave prototypes deaf.
+  const onNodeDrag = useCallback(() => setInteracting(true), []);
+  const onMoveStart = useCallback(() => setInteracting(true), []);
+  useEffect(() => { const up = () => setInteracting(false); window.addEventListener("pointerup", up); window.addEventListener("blur", up); return () => { window.removeEventListener("pointerup", up); window.removeEventListener("blur", up); }; }, []);
+  const onEdgeMouseEnter = useCallback((_: unknown, e: Edge) => setHoverEdge(e.id), [setHoverEdge]);
+  const onEdgeMouseLeave = useCallback(() => setHoverEdge(null), [setHoverEdge]);
   const onNodeDragStop = useCallback((_: unknown, node: Node, dragged: Node[]) => {
+    setInteracting(false);
     const moved = (dragged.length ? dragged : [node]).filter((n) => n.id !== "start");
     updateCanvas((c) => ({ ...c, nodes: c.nodes.map((n) => { const m = moved.find((x) => x.id === n.id); return m ? { ...n, position: m.position } : n; }) }));
   }, [updateCanvas]);
@@ -431,17 +444,18 @@ export function Canvas() {
   const ecCount = spec.edgeCases.length;
 
   return (
-    <div ref={wrapRef} className={`board ${hand ? "hand" : ""}`} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}>
+    <div ref={wrapRef} className={`board ${hand ? "hand" : ""} ${interacting ? "interacting" : ""}`} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}>
       <ReactFlow
         nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
-        onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onNodeDragStop={onNodeDragStop} onConnect={onConnect} onSelectionChange={onSelectionChange}
-        defaultViewport={initialViewport} onMoveEnd={onMoveEnd}
+        onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onNodeDrag={onNodeDrag} onNodeDragStop={onNodeDragStop} onConnect={onConnect} onSelectionChange={onSelectionChange}
+        onEdgeMouseEnter={onEdgeMouseEnter} onEdgeMouseLeave={onEdgeMouseLeave}
+        defaultViewport={initialViewport} onMoveStart={onMoveStart} onMoveEnd={onMoveEnd}
         onInit={(inst) => {
           const box = wrapRef.current?.getBoundingClientRect();
           if (box && !isDefaultViewport && canvas.nodes.length > 0 && !viewportShowsSomething(canvas, spec, view, { w: box.width, h: box.height })) void inst.fitView(FIT_OPTS);
         }}
         connectionRadius={40} minZoom={0.05} maxZoom={2} fitView={isDefaultViewport && canvas.nodes.length > 0} fitViewOptions={FIT_OPTS}
-        panOnScroll panOnDrag={hand ? true : PAN_BUTTONS} nodesDraggable={!hand} elementsSelectable={!hand} nodesConnectable={!hand}
+        panOnScroll panOnDrag={hand ? true : PAN_BUTTONS} nodesDraggable={!hand} elementsSelectable={!hand} nodesConnectable={!hand} selectNodesOnDrag={false}
         selectionOnDrag={false} zoomOnDoubleClick={false} deleteKeyCode={null} connectionLineStyle={CONN_LINE_STYLE} proOptions={PRO_OPTS}
         onPaneClick={onPaneClick}
       >

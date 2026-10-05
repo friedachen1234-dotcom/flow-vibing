@@ -122,6 +122,9 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
         <button className="icon nodrag" title="Reload" aria-label="Reload" onClick={() => post({ type: "flow:reload" })}><Icon name="rotate-ccw" size={13} /></button>
         <button className="icon nodrag" title="Inspect" aria-label="Inspect" onClick={inspect}><Icon name="more-horizontal" size={15} /></button>
       </div>
+      {/* Unselected: a veil over the prototype, so the whole frame drags and a click selects. Selected or picking: the prototype takes the pointer.
+          It sits outside the nodrag wrapper on purpose; inside it, the node would refuse to drag. */}
+      {!selected && !picker && <div className="drag-veil" style={{ top: 40 }} />}
       <div className="nodrag nowheel nopan" style={{ position: "relative", height: h - 40 }}>
         <iframe ref={ref} key={head} title={screen.name} src={api.shellUrl(projectId, screen.id)} />
         {missing && (
@@ -157,6 +160,7 @@ export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N
   const select = useFlow((s) => s.select);
   const setPanel = useFlow((s) => s.setPanel);
   const showToast = useFlow((s) => s.showToast);
+  const setHoverEdge = useFlow((s) => s.setHoverEdge);
   if (!screen) return null;
   const outs = spec.transitions.filter((t) => t.from.screenId === screen.id);
   const forwards = outs.filter((t) => classifyTransition(t) === "forward");
@@ -175,7 +179,7 @@ export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N
   const moveRow = (t: (typeof outs)[number]) => {
     const back = classifyTransition(t) === "back";
     return (
-      <div key={t.id} className={`move ${back ? "back" : ""} ${t.id === mainId ? "main" : ""} ${selectedTransition === t.id ? "selected" : ""} nodrag`} onClick={(ev) => { ev.stopPropagation(); select({ kind: "transition", id: t.id }); }} title={t.id === mainId ? "Main move. Click to inspect." : "Click to inspect"}>
+      <div key={t.id} className={`move ${back ? "back" : ""} ${t.id === mainId ? "main" : ""} ${selectedTransition === t.id ? "selected" : ""} nodrag`} onClick={(ev) => { ev.stopPropagation(); select({ kind: "transition", id: t.id }); }} onMouseEnter={() => setHoverEdge(`t:${t.id}`)} onMouseLeave={() => setHoverEdge(null)} title={t.id === mainId ? "Main move. Click to inspect." : "Click to inspect"}>
         <span className="dot" />
         <span className="trig">{cap(t.trigger)}</span>
         <span className="to"><Icon name="arrow-right" size={11} /> {nameOf(t.to.screenId)}{t.to.stateId ? ` · ${t.to.stateId}` : ""}{t.condition && <span className="cond"> if {t.condition}</span>}</span>
