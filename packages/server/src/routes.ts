@@ -3,7 +3,7 @@ import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { CanvasDoc, DesignSpec, DeviceKind, reconcileCanvas } from "@flow/shared";
-import { createDemoProject, createProject, createProjectFromExample, listExamples, fileExists, listProjects, loadProject, projectDir, readCanvas, readPins, readProjectFile, readSpec, saveAsset, writeCanvas, writePins, writeSpec } from "./projects.js";
+import { createDemoProject, createProject, createProjectFromExample, exampleFilePath, listExamples, fileExists, listProjects, loadProject, projectDir, readCanvas, readPins, readProjectFile, readSpec, saveAsset, writeCanvas, writePins, writeSpec } from "./projects.js";
 import { commitVersion, fileAtVersion, restoreVersion } from "./versions.js";
 import { isRunning } from "./agent/run.js";
 import { broadcast } from "./ws.js";
@@ -28,6 +28,20 @@ export function registerRoutes(app: FastifyInstance) {
   app.post("/api/projects/demo", async () => createDemoProject());
 
   app.get("/api/examples", async () => listExamples());
+
+  /** Example files served in place, so the home screen can run an example before it becomes a project. */
+  app.get("/api/examples/:id/files/*", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const rel = (req.params as { "*": string })["*"];
+    try {
+      const data = await fs.readFile(exampleFilePath(id, rel));
+      reply.header("cache-control", "public, max-age=60");
+      reply.type(MIME[path.extname(rel).toLowerCase()] ?? "application/octet-stream");
+      return reply.send(data);
+    } catch {
+      return reply.code(404).send({ error: "not found" });
+    }
+  });
 
   app.post("/api/projects/examples/:exampleId", async (req) => {
     const { exampleId } = req.params as { exampleId: string };

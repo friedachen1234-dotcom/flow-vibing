@@ -11,7 +11,7 @@ async function j<T>(res: Response): Promise<T> {
 const json = (body: unknown, method = "POST") => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 export type Bundle = ProjectBundle & { running: boolean };
-export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; screenCount: number };
+export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; width: number; height: number; screenCount: number; firstScreen: string | null };
 
 export const api = {
   listProjects: () => fetch("/api/projects").then((r) => j<ProjectMeta[]>(r)),
@@ -29,6 +29,8 @@ export const api = {
   applyVariant: (id: string, panelId: string, optionId: string) => fetch(`/api/projects/${id}/variants/${panelId}/apply`, json({ optionId })).then((r) => j<{ ok: true }>(r)),
   fileUrl: (id: string, rel: string) => `/api/projects/${id}/files/${rel}`,
   versionFileUrl: (id: string, sha: string, rel: string) => `/api/projects/${id}/versions/${sha}/files/${rel}`,
+  /** Runs a shipped example in the shell without creating a project. */
+  exampleShellUrl: (exampleId: string, screenId: string) => `/runtime/shell.html?${new URLSearchParams({ example: exampleId, screen: screenId }).toString()}`,
   shellUrl: (id: string, screenId: string, opts: { version?: string; follow?: boolean; state?: string } = {}) => {
     const p = new URLSearchParams({ project: id, screen: screenId });
     if (opts.version) p.set("version", opts.version);

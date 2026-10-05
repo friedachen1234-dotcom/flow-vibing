@@ -6,10 +6,12 @@
  * Data sources, in order:
  *   1. window.__FLOW__ = { spec, screens: { [file]: html }, agent: "<screen-agent.js source>" }  (exported prototype)
  *   2. ?project=ID  → fetches /api/projects/ID/files/flow.json and screen files from the FLOW server
+ *   3. ?example=ID  → same, from /api/examples/ID/files/ (a shipped example, run in place)
  */
 (function () {
   const params = new URLSearchParams(location.search);
   const projectId = params.get("project");
+  const exampleId = params.get("example"); // run a shipped example in place, without copying it into a project
   const startScreen = params.get("screen");
   const startState = params.get("state");
   const follow = params.get("follow") !== "0"; // when false, transitions are reported but not performed
@@ -17,6 +19,7 @@
   const inline = window.__FLOW__ || null;
   const filesBase = projectId
     ? (version ? `/api/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(version)}/files/` : `/api/projects/${encodeURIComponent(projectId)}/files/`)
+    : exampleId ? `/api/examples/${encodeURIComponent(exampleId)}/files/`
     : "./";
   const stage = document.getElementById("stage");
   const missing = document.getElementById("missing");

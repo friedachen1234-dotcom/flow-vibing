@@ -178,7 +178,7 @@ export async function createDemoProject(): Promise<ProjectBundle> {
   return loadProject(id);
 }
 
-export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; screenCount: number };
+export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; width: number; height: number; screenCount: number; firstScreen: string | null };
 
 /** Sample projects shipped in the repo's examples/ folder. */
 export async function listExamples(): Promise<ExampleMeta[]> {
@@ -189,10 +189,19 @@ export async function listExamples(): Promise<ExampleMeta[]> {
     if (!e.isDirectory() || !SAFE_ID.test(e.name)) continue;
     try {
       const spec = DesignSpec.parse(JSON.parse(await fs.readFile(path.join(EXAMPLES_DIR, e.name, PROJECT_FILES.spec), "utf8")));
-      out.push({ id: e.name, name: spec.name, brief: spec.brief, device: spec.device.kind, screenCount: spec.screens.length });
+      out.push({ id: e.name, name: spec.name, brief: spec.brief, device: spec.device.kind, width: spec.device.width, height: spec.device.height, screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null });
     } catch { /* skip malformed */ }
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Resolves a file inside an example and refuses anything that escapes its folder. Lets the runtime shell run an example in place. */
+export function exampleFilePath(exampleId: string, rel: string): string {
+  if (!SAFE_ID.test(exampleId)) throw Object.assign(new Error(`bad example id "${exampleId}"`), { statusCode: 400 });
+  const dir = path.join(EXAMPLES_DIR, exampleId);
+  const abs = path.resolve(dir, rel);
+  if (abs !== dir && !abs.startsWith(dir + path.sep)) throw Object.assign(new Error(`path escapes example: ${rel}`), { statusCode: 400 });
+  return abs;
 }
 
 /** Copies an example into a fresh project folder with its own git history. */

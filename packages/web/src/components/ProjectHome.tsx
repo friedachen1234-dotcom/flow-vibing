@@ -1,10 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DeviceKind, ProjectMeta } from "@flow/shared";
 import { api, type ExampleMeta } from "../api";
 import { useFlow } from "../store";
+import { Icon } from "./Icon";
 
 const DEVICE_LABEL: Record<DeviceKind, string> = { mobile: "Mobile", tablet: "Tablet", desktop: "Desktop" };
+/** Example cards are a fixed width so each live frame can be scaled exactly; wide devices take two columns. */
+const CARD_W = 272;
+const CARD_GAP = 16;
+const FRAME_H = 320;
 
+/**
+ * Home: the one page that has to explain the product. It leads with the thesis and examples that actually run,
+ * then the two things a person comes here to do: start a project, or get back to one.
+ */
 export function ProjectHome() {
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [examples, setExamples] = useState<ExampleMeta[]>([]);
@@ -15,6 +24,9 @@ export function ProjectHome() {
   const openProject = useFlow((s) => s.openProject);
   const showToast = useFlow((s) => s.showToast);
   const error = useFlow((s) => s.error);
+  const formRef = useRef<HTMLElement>(null);
+  const examplesRef = useRef<HTMLElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.listProjects().then(setProjects).catch((e) => showToast(e.message));
@@ -40,20 +52,80 @@ export function ProjectHome() {
     catch (e) { showToast((e as Error).message); }
     finally { setBusy(false); }
   };
+  // Plain scrolling rather than hash links: the hash is how the app routes to a project.
+  const goNew = () => { formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => nameRef.current?.focus(), 350); };
+  const goExamples = () => examplesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
     <div className="home">
       <div className="inner">
-        <div>
-          <h1>Flow <span>Vibing</span></h1>
-          <p className="lede">Prototypes that are also flows. Write a brief, let Claude build the screens, then edit the flow chart or the prototype and regenerate only what changed.</p>
-          {error && <p style={{ color: "var(--err)" }}>{error}</p>}
-        </div>
-        <div className="grid">
-          <div className="card">
-            <h2>New project</h2>
-            <div className="field"><label>Name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Corner Coffee ordering" /></div>
-            <div className="field"><label>Brief</label><textarea className="input" value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Who it is for, what they need to do, and the feeling it should have. You can refine it on the canvas." /></div>
+        <header className={`hero ${projects.length ? "with-recent" : ""}`}>
+          <div className="hero-copy">
+            <div className="wordmark hero-mark" aria-hidden="true">Flow<span>Vibing</span></div>
+            <h1>Every prototype is also a flow.</h1>
+            <p className="lede">
+              Write a brief. Claude writes the design spec and the screens together, so the flow chart and the running prototype are the same files.
+              Edit either one and only what changed is regenerated. Every change is a version.
+            </p>
+            {error && <p className="home-error">{error}</p>}
+            <div className="hero-actions">
+              <button className="btn primary cta" onClick={goNew}><Icon name="sparkles" size={15} /> New project</button>
+              <button className="btn" onClick={goExamples}><Icon name="play" size={14} /> Try a live example</button>
+            </div>
+          </div>
+          {projects.length > 0 && (
+            <aside className="card recent" aria-label="Recent projects">
+              <h2>Recent</h2>
+              {projects.slice(0, 6).map((p) => (
+                <div key={p.id} className="proj" onClick={() => openProject(p.id)} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && openProject(p.id)}>
+                  <div className="n">{p.name}</div>
+                  <div className="m">{p.screenCount} screen{p.screenCount === 1 ? "" : "s"} · {new Date(p.updatedAt).toLocaleDateString()}</div>
+                </div>
+              ))}
+            </aside>
+          )}
+        </header>
+
+        {examples.length > 0 && (
+          <section ref={examplesRef} className="sec">
+            <div className="sec-head">
+              <h2>Examples that run</h2>
+              <span className="muted small">These are the real screens, live. Tap inside one to move through it, or open it on the canvas to edit.</span>
+            </div>
+            <div className="ex-grid" style={{ gridTemplateColumns: `repeat(auto-fit, ${CARD_W}px)`, gap: CARD_GAP }}>
+              {examples.map((ex) => {
+                const span = ex.device === "mobile" ? 1 : 2;
+                const frameW = span * CARD_W + (span - 1) * CARD_GAP - 2;
+                const scale = frameW / ex.width;
+                const frameH = Math.min(FRAME_H, Math.round(ex.height * scale));
+                return (
+                  <article key={ex.id} className="ex" style={{ gridColumn: `span ${span}` }}>
+                    <div className="ex-frame" style={{ height: frameH }}>
+                      {ex.firstScreen && (
+                        <iframe title={`${ex.name} prototype`} loading="lazy" src={api.exampleShellUrl(ex.id, ex.firstScreen)}
+                          style={{ width: ex.width, height: ex.height, transform: `scale(${scale})` }} />
+                      )}
+                      <span className="ex-live"><span className="dot" /> live</span>
+                    </div>
+                    <div className="ex-body">
+                      <div className="ex-head">
+                        <div className="n">{ex.name}</div>
+                        <div className="m">{DEVICE_LABEL[ex.device]} · {ex.screenCount} screens</div>
+                      </div>
+                      <p className="ex-brief">{ex.brief}</p>
+                      <button className="btn sm primary" disabled={busy} onClick={() => loadExample(ex.id)}>Open on the canvas</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        <section ref={formRef} className="card new">
+          <h2>New project</h2>
+          <div className="new-grid">
+            <div className="field"><label>Name</label><input ref={nameRef} className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Corner Coffee ordering" /></div>
             <div className="field"><label>Device</label>
               <select className="input" value={device} onChange={(e) => setDevice(e.target.value as DeviceKind)}>
                 <option value="mobile">Mobile · 390×844</option>
@@ -61,40 +133,18 @@ export function ProjectHome() {
                 <option value="desktop">Desktop · 1280×800</option>
               </select>
             </div>
+            <div className="field span"><label>Brief</label><textarea className="input" rows={3} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Who it is for, what they need to do, and the feeling it should have. You can refine it on the canvas." /></div>
+          </div>
+          <div className="new-actions">
             <button className="btn primary" disabled={busy || !name.trim()} onClick={create}>Create project</button>
+            <span className="muted small">Generation uses your Claude Code login. Nothing is stored here. The examples above run without it.</span>
           </div>
-          <div className="card">
-            <h2>Recent</h2>
-            {projects.length === 0 && <div className="muted small">Nothing yet. Create a project, or load an example below to see the canvas working without Claude.</div>}
-            {projects.map((p) => (
-              <div key={p.id} className="proj" onClick={() => openProject(p.id)} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && openProject(p.id)}>
-                <div className="n">{p.name}</div>
-                <div className="m">{p.screenCount} screens · {new Date(p.updatedAt).toLocaleDateString()}</div>
-              </div>
-            ))}
-          </div>
-          {examples.length > 0 && (
-            <div className="card examples">
-              <h2>Example prototypes</h2>
-              <div className="muted small" style={{ marginBottom: 10 }}>Real prototypes that run without Claude. Load one to try navigation, states, branches, the picker, and change requests. Each load is its own copy with its own history.</div>
-              <div className="ex-grid">
-                {examples.map((ex) => (
-                  <div key={ex.id} className="ex">
-                    <div className="ex-head">
-                      <div className="n">{ex.name}</div>
-                      <div className="m">{DEVICE_LABEL[ex.device]} · {ex.screenCount} screens</div>
-                    </div>
-                    <div className="ex-brief">{ex.brief}</div>
-                    <button className="btn sm" disabled={busy} onClick={() => loadExample(ex.id)}>Load example</button>
-                  </div>
-                ))}
-              </div>
-              <div className="muted small" style={{ marginTop: 12 }}>
-                Just want placeholder screens? <button className="link" disabled={busy} onClick={demo}>Open the bare demo</button>.
-              </div>
-            </div>
-          )}
-        </div>
+        </section>
+
+        <footer className="home-foot muted small">
+          Projects are folders under <span className="mono">./projects</span>, each its own git repository.
+          {" "}Just want placeholder screens? <button className="link" disabled={busy} onClick={demo}>Open the bare demo</button>.
+        </footer>
       </div>
     </div>
   );
