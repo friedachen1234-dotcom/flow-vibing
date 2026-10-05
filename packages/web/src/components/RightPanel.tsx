@@ -32,7 +32,7 @@ export function RightPanel() {
         <span className="rp-title">{TITLES[active]}</span>
         {active === "preview" && <span className={`pill ${isEdgeCase ? "warn" : "ok"}`}><span className="pill-dot" /> {isEdgeCase ? "Edge case" : "Live"}</span>}
         <span style={{ flex: 1 }} />
-        <button className="btn icon ghost sm" onClick={() => setPanel(null)} title="Hide panel" aria-label="Hide panel"><Icon name="x" size={14} /></button>
+        <button className="rp-close" onClick={() => setPanel(null)} data-tip="Hide panel" data-key="I" aria-label="Hide panel"><Icon name="x" size={20} strokeWidth={2} /></button>
       </div>
       <div className="rp-tabs" role="tablist">
         {tabs.map((k) => (

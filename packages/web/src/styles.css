@@ -156,6 +156,10 @@ button.crumb:hover { background: var(--surface-2); color: var(--ink); }
 .rp-head { display: flex; align-items: center; gap: 9px; padding: 12px 10px 8px 14px; }
 .rp-icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: var(--accent-soft); color: var(--accent); }
 .rp-title { font-weight: 700; font-size: var(--t-16); letter-spacing: -.01em; }
+.rp-close { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 9px; background: transparent; color: var(--ink-2); }
+.rp-close:hover { background: var(--surface-2); color: var(--ink); }
+.rp-head { position: relative; }
+.rp-head .rp-close::after { right: 0; top: calc(100% + 8px); left: auto; transform: none; }
 .rp-tabs { display: flex; gap: 2px; padding: 0 10px 8px; border-bottom: 1px solid var(--line-soft); }
 .rp-tabs button { height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font-weight: 600; font-size: var(--t-12); color: var(--ink-3); transition: background .15s, color .15s; }
 .rp-tabs button:hover { color: var(--ink); }
