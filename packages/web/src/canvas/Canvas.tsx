@@ -442,8 +442,8 @@ export function Canvas() {
       </ReactFlow>
 
       {view === "flow" && ecCount > 0 && (
-        <div className="ec-toggle" role="group" aria-label="Edge cases">
-          <button className="ec-btn" onClick={() => setShowEdgeCases(!showEdgeCases)} aria-pressed={showEdgeCases} title="Show or hide edge cases (E)">
+        <div className="ec-toggle tips-down" role="group" aria-label="Edge cases">
+          <button className="ec-btn" onClick={() => setShowEdgeCases(!showEdgeCases)} aria-pressed={showEdgeCases} data-tip="Show or hide edge cases" data-key="E">
             <Icon name={showEdgeCases ? "eye" : "eye-off"} size={15} /> Edge cases <b>{showEdgeCases ? "Shown" : "Hidden"}</b> <Icon name="chevron-down" size={12} />
           </button>
           <div className="legend">
@@ -458,18 +458,18 @@ export function Canvas() {
 
       <Composer />
 
-      <div className="canvas-bar" role="toolbar" aria-label="Canvas">
-        <button className="cb-btn" onClick={() => rf.zoomOut({ duration: 150 })} title="Zoom out (−)" aria-label="Zoom out"><Icon name="zoom-out" size={15} /></button>
-        <button className="cb-zoom" onClick={() => void rf.zoomTo(1, { duration: 200 })} title="Zoom to 100% (⌘0)">{Math.round(zoom * 100)}%</button>
-        <button className="cb-btn" onClick={() => rf.zoomIn({ duration: 150 })} title="Zoom in (+)" aria-label="Zoom in"><Icon name="zoom-in" size={15} /></button>
+      <div className="canvas-bar tips-up" role="toolbar" aria-label="Canvas">
+        <button className="cb-btn" onClick={() => rf.zoomOut({ duration: 150 })} data-tip="Zoom out" data-key="−" aria-label="Zoom out"><Icon name="zoom-out" size={15} /></button>
+        <button className="cb-zoom" onClick={() => void rf.zoomTo(1, { duration: 200 })} data-tip="Zoom to 100%" data-key="⌘0">{Math.round(zoom * 100)}%</button>
+        <button className="cb-btn" onClick={() => rf.zoomIn({ duration: 150 })} data-tip="Zoom in" data-key="+" aria-label="Zoom in"><Icon name="zoom-in" size={15} /></button>
         <span className="cb-sep" />
-        <button className="cb-btn" onClick={fit} title="Fit to content (⇧1)" aria-label="Fit to content"><Icon name="maximize" size={15} /></button>
-        <button className="cb-btn" onClick={() => { updateCanvas((c) => tidyLayout(spec, c, view)); fit(); }} disabled={spec.screens.length === 0} title="Tidy: arrange screens along the flow" aria-label="Tidy layout"><Icon name="layout-grid" size={15} /></button>
+        <button className="cb-btn" onClick={fit} data-tip="Fit to content" data-key="⇧1" aria-label="Fit to content"><Icon name="maximize" size={15} /></button>
+        <button className="cb-btn" onClick={() => { updateCanvas((c) => tidyLayout(spec, c, view)); fit(); }} disabled={spec.screens.length === 0} data-tip="Tidy the layout" aria-label="Tidy layout"><Icon name="layout-grid" size={15} /></button>
         <span className="cb-sep" />
-        <button className={`cb-btn ${showInfluences ? "on" : ""}`} onClick={() => setShowInfluences(!showInfluences)} title="Show which references shaped each screen" aria-label="Show influences" aria-pressed={showInfluences}><Icon name="sparkles" size={15} /></button>
-        <button className={`cb-btn wide ${showMinimap ? "on" : ""}`} onClick={() => setShowMinimap(!showMinimap)} title="Minimap" aria-pressed={showMinimap}><Icon name="map" size={15} /> Map</button>
+        <button className={`cb-btn ${showInfluences ? "on" : ""}`} onClick={() => setShowInfluences(!showInfluences)} data-tip="Show which references shaped each screen" aria-label="Show influences" aria-pressed={showInfluences}><Icon name="sparkles" size={15} /></button>
+        <button className={`cb-btn wide ${showMinimap ? "on" : ""}`} onClick={() => setShowMinimap(!showMinimap)} data-tip="Minimap" aria-pressed={showMinimap}><Icon name="map" size={15} /> Map</button>
         <span className="cb-sep" />
-        <button className={`cb-btn cb-keys ${showKeys ? "on" : ""}`} onClick={() => setShowKeys(!showKeys)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" aria-pressed={showKeys}>?</button>
+        <button className={`cb-btn cb-keys ${showKeys ? "on" : ""}`} onClick={() => setShowKeys(!showKeys)} data-tip="Keyboard shortcuts" data-key="?" aria-label="Keyboard shortcuts" aria-pressed={showKeys}>?</button>
       </div>
       {showKeys && (
         <div className="keys-overlay" onClick={() => setShowKeys(false)} role="dialog" aria-label="Keyboard shortcuts">

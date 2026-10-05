@@ -132,6 +132,15 @@ button.crumb:hover { background: var(--surface-2); color: var(--ink); }
 .menu-meta { display: flex; align-items: center; gap: 6px; padding: 6px 10px 8px; font-size: var(--t-11); color: var(--ink-3); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .menu-sep { height: 1px; background: var(--line-soft); margin: 4px 6px; }
 
+/* Tooltips: hover any control with data-tip for its name, and data-key for its shortcut. Direction comes from the container. */
+[data-tip] { position: relative; }
+[data-tip]::after { content: attr(data-tip); position: absolute; z-index: 40; pointer-events: none; opacity: 0; white-space: nowrap; padding: 6px 9px; border-radius: 8px; background: var(--dark); color: #fff; font-size: var(--t-12); font-weight: 500; letter-spacing: 0; text-transform: none; box-shadow: var(--shadow-lg); transition: opacity .1s; transition-delay: 0s; }
+[data-tip][data-key]::after { content: attr(data-tip) "  ·  " attr(data-key); }
+[data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; transition-delay: .35s; }
+.tips-right [data-tip]::after { left: calc(100% + 12px); top: 50%; transform: translateY(-50%); }
+.tips-up [data-tip]::after { bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); }
+.tips-down [data-tip]::after { top: calc(100% + 10px); left: 50%; transform: translateX(-50%); }
+
 /* Tool rail: a floating card over the board */
 .rail { position: absolute; left: 16px; top: 16px; z-index: var(--z-canvas-ui); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
 .rail-btn { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--ink-2); transition: background .15s, color .15s; }
