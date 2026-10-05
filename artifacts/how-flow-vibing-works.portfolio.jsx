@@ -44,9 +44,9 @@ const STEPS = [
     pill: "Prototype",
     title: "The prototype runs on the canvas",
     body:
-      "Every screen node is the standalone HTML document itself, live. Not a flat export of one. Tapping a control inside a node navigates to the next screen, because the runtime reads the moves from the spec rather than from links in the markup.",
+      "Every screen node is the standalone HTML document itself, live. Not a flat export of one. Tapping a control inside a node navigates to the next screen, because the runtime reads the moves from the spec rather than from links in the markup. Scroll pans the board; select a screen to scroll inside it.",
     shot: "1-prototype",
-    look: ["Real documents, running", "Blue lines are transitions", "Edge cases flagged on each header"],
+    look: ["Real documents, running, with a Live badge and a state menu", "References sit beside the screen they inform", "Edge cases flagged on each header"],
     quote:
       "Elements that navigate carry data-flow-el=\"<element-id>\" and data-flow-transition=\"<transition-id>\". Never <a href> between screens.",
     source: "README.md · Screen HTML contract",
@@ -55,20 +55,20 @@ const STEPS = [
     pill: "Flow view",
     title: "See the flow first, then flip to the pixels",
     body:
-      "One toggle in the header swaps how the same nodes draw. Nothing is exported or regenerated in between. The flow card carries what a chart cannot show on its own: the screen's purpose, how many states it has, and how many edge cases hang off it.",
+      "One toggle in the header swaps how the same nodes draw. Nothing is exported or regenerated in between. Each card lists its interactions as rows, and each row is where its line starts. The main path is drawn heavier, other moves fade back, and edge cases hang under their screen on a dashed rail.",
     shot: "2-flow",
-    look: ["Prototype / Flow toggle, top centre", "Transitions labelled with their trigger", "State and edge-case counts per card"],
+    look: ["Prototype / Flow toggle, top centre", "One row per interaction, main flow weighted", "Edge cases stacked under the screen they belong to"],
     quote:
       "Claude writes a Design Spec (flow.json) alongside the screens. The flow view renders the spec. The prototype view runs the screens through a runtime shell that reads transitions from the spec.",
     source: "README.md · The idea in one paragraph",
   },
   {
     pill: "Edit in place",
-    title: "Edit a node without losing the flow around it",
+    title: "Edit a move without losing the flow around it",
     body:
-      "Selecting a screen opens its spec beside the board: states, elements, transitions and edge cases, each editable where it sits. The flow stays on screen, so a change to one screen is made in view of everything it touches.",
+      "Click an interaction row and its line lights while every other fades. Its spec opens beside the board: trigger, condition, animation, and the edge cases that hang off it, each editable where it sits. The flow stays on screen, so a change is made in view of everything it touches.",
     shot: "3-inspect",
-    look: ["Recovery carries a second, red state", "The move that switches it, named", "Returns listed apart from onward moves"],
+    look: ["Tap sleep selected: one line lit, the rest faded", "Trigger, condition and animation editable in place", "One click makes it the main move"],
     quote:
       "Editing the flow produces structured change requests; applying them regenerates only the affected screens, with the rest passed to Claude as keep-as-is.",
     source: "README.md · The idea in one paragraph",
@@ -77,9 +77,9 @@ const STEPS = [
     pill: "Vault",
     title: "References hang directly over the screens",
     body:
-      "A moodboard capture, a component detail, a type specimen, a colour, a written craft rule. They sit on the same board as the running prototype, and the line from one to a screen carries a named relation, so the instruction lives next to the thing it changes rather than inside a prompt nobody can find again.",
+      "A moodboard capture, a component detail, a type specimen, a colour, a written craft rule. They sit on the same board as the running prototype, and the dashed line from one to a screen carries a named relation, so the instruction lives next to the thing it changes rather than inside a prompt nobody can find again.",
     shot: "4-vault",
-    look: ["Five kinds of reference, one board", "Lines land on a named element, not just a screen", "The relation is the instruction"],
+    look: ["Style references beside the running screen", "The line lands on a named element, not just a screen", "The relation is the instruction"],
     quote:
       "Match style — palette, type, spacing, and mood of the reference. Use layout — structural arrangement only, not styling. Avoid — negative reference. Do not do this.",
     source: "packages/shared/src/canvas.ts · MAGIC_RELATION_LABELS",
@@ -88,12 +88,12 @@ const STEPS = [
     pill: "Variants",
     title: "Pick an element, get alternatives of it",
     body:
-      "Click any element inside the running prototype and it becomes the subject. The references already wired to it come along with the request, so the alternatives arrive with the reasoning attached. Hovering an option previews it in the live screen, and applying one splices in that element alone, keeping the original so you can go back.",
+      "Click any element inside the running prototype and it becomes the subject of the composer at the bottom of the board. The references already wired to it come along with the request, so the alternatives arrive with the reasoning attached. Hovering an option previews it in the live screen, and applying one splices in that element alone, keeping the original so you can go back.",
     shot: "5-variants",
-    look: ["recovery-ring picked in the live screen", "The attached reference rides along", "Three options, each arguing for itself"],
+    look: ["Recovery ring picked, with handles, in the live screen", "The composer targets it and asks for three", "Hover previews in place; Apply keeps the original"],
     quote:
-      "Ask for three alternative treatments of this element.",
-    source: "packages/web/src/canvas/nodes.tsx · PickBubble",
+      "The one place to talk to Claude from the board. It always knows what it is about: the picked element, the selected screen, or the whole project.",
+    source: "packages/web/src/components/Composer.tsx",
   },
 ];
 
