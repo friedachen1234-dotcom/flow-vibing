@@ -148,7 +148,7 @@ export const StartNode = memo(function StartNode() {
  * Thumbnail, name, purpose, and the state and edge-case counts; then one row per interaction, each the start of its
  * own line, so the line never needs to be traced back to find out what fires it.
  */
-export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N<"screen"> & { data: { primaryMoves?: Record<string, string> } }) {
+export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N<"screen"> & { data: { primaryMoves?: Record<string, string>; moveOrder?: string[] } }) {
   const { node, spec } = data;
   const mainId = mainMoves(spec, data.primaryMoves ?? {}).get(node.screenId);
   const screen = spec.screens.find((s) => s.id === node.screenId);
@@ -167,7 +167,11 @@ export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N
   const selectedTransition = selection?.kind === "transition" ? selection.id : null;
   const defaultState = screen.states.find((s) => s.isDefault) ?? screen.states[0];
   const inspect = (ev: React.MouseEvent) => { ev.stopPropagation(); select({ kind: "node", id: node.id }); setPanel("inspect"); };
-  const rows = [...forwards].sort((a, b) => (a.id === mainId ? -1 : b.id === mainId ? 1 : 0)).concat(backs);
+  // Row order comes from the board, so each row's line can take the matching lane and none of them cross.
+  const order = data.moveOrder;
+  const rows = order
+    ? [...forwards, ...backs].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
+    : [...forwards].sort((a, b) => (a.id === mainId ? -1 : b.id === mainId ? 1 : 0)).concat(backs);
   const moveRow = (t: (typeof outs)[number]) => {
     const back = classifyTransition(t) === "back";
     return (

@@ -3,7 +3,7 @@ import {
   Background, BackgroundVariant, MiniMap, ReactFlow, applyEdgeChanges, applyNodeChanges, useReactFlow, useViewport,
   type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type OnSelectionChangeParams, MarkerType
 } from "@xyflow/react";
-import { MAGIC_RELATION_LABELS, classifyTransitions, hostScreen, mainMoves, type CanvasDoc, type CanvasNode, type DesignSpec, type MagicRelation, type ViewMode } from "@flow/shared";
+import { MAGIC_RELATION_LABELS, classifyTransition, classifyTransitions, hostScreen, mainMoves, type CanvasDoc, type CanvasNode, type DesignSpec, type MagicRelation, type ViewMode } from "@flow/shared";
 import { EDGE_CASE_W, FLOW_CARD_W, edgeCaseStackHeight, flowCardHeight, tidyLayout } from "./layout";
 import { Icon } from "../components/Icon";
 import { api } from "../api";
@@ -109,6 +109,18 @@ export function Canvas() {
     const nodes: Node[] = [];
     const focusScreen = focusScreenOf(selection, spec);
     const flow = view === "flow";
+    const screenPos = new Map(canvas.nodes.filter((n) => n.type === "screen").map((n) => [n.screenId, n.position] as const));
+    // Rows on a card, top to bottom: forward moves first, farthest target first, then higher target first; returns last.
+    // Lines leave in that order and take lanes in that order, so they nest instead of crossing.
+    const moveOrder = new Map<string, string[]>();
+    if (flow) {
+      for (const sc of spec.screens) {
+        const key = (t: (typeof spec.transitions)[number]) => { const p = screenPos.get(t.to.screenId); return p ? [-p.x, p.y] : [Infinity, 0]; };
+        const outs = spec.transitions.filter((t) => t.from.screenId === sc.id && classifyTransition(t) !== "state")
+          .sort((a, b) => (classifyTransition(a) === "back" ? 1 : 0) - (classifyTransition(b) === "back" ? 1 : 0) || key(a)[0] - key(b)[0] || key(a)[1] - key(b)[1]);
+        moveOrder.set(sc.id, outs.map((t) => t.id));
+      }
+    }
     for (const n of canvas.nodes) {
       const isSel = selection?.kind === "node" && selection.id === n.id;
       if (n.type === "edgeCase") {
@@ -118,7 +130,7 @@ export function Canvas() {
       }
       if (flow && (n.type === "inspiration" || n.type === "skill" || n.type === "variantPanel")) continue; // references and explorations belong to the prototype reading; the flow view is about moves
       const common = { id: n.id, position: n.position, data: { node: n, spec, primaryMoves: canvas.primaryMoves }, selected: isSel };
-      if (n.type === "screen") nodes.push({ ...common, type: flow ? "screenCard" : "screen", dragHandle: ".hdr", zIndex: 1 });
+      if (n.type === "screen") nodes.push({ ...common, data: { ...common.data, moveOrder: flow ? moveOrder.get(n.screenId) : undefined }, type: flow ? "screenCard" : "screen", dragHandle: ".hdr", zIndex: 1 });
       else if (n.type === "variantPanel") nodes.push({ ...common, position: panelPosition(n, canvas, spec, view, showEdgeCases), type: n.type, dragHandle: ".hdr", zIndex: 2 });
       else if (n.type === "group") nodes.push({ ...common, type: "group", zIndex: -1, style: { width: n.width, height: n.height } });
       else nodes.push({ ...common, type: n.type, dragHandle: n.type === "prompt" || n.type === "note" ? undefined : ".hdr", zIndex: 2 });
@@ -127,7 +139,6 @@ export function Canvas() {
     if (flow) {
       const kinds = classifyTransitions(spec);
       const mains = new Set(mainMoves(spec, canvas.primaryMoves).values());
-      const screenPos = new Map(canvas.nodes.filter((n) => n.type === "screen").map((n) => [n.screenId, n.position] as const));
       // The start marker sits to the left of the first screen and is never saved; it only says where the product opens.
       const first = spec.screens[0];
       const firstPos = first ? screenPos.get(first.id) : undefined;
@@ -153,24 +164,25 @@ export function Canvas() {
           markerEnd: { type: MarkerType.ArrowClosed, color: "#2C4FDB", width: 10, height: 10 }, zIndex: touches ? 4 : 3
         });
       }
-      // Lines leaving one card each take their own lane beside the card, ordered by where they land, so none overlaps another.
+      // Lines leaving one card take lanes in row order: the top row's line runs on the left, so stubs never cross trunks.
       const bySource = new Map<string, Edge[]>();
-      for (const e of edges) if (e.type === "transition") bySource.set(e.source, [...(bySource.get(e.source) ?? []), e]);
-      for (const group of bySource.values()) {
-        const ty = (e: Edge) => screenPos.get(e.target.slice(7))?.y ?? 0;
-        group.sort((a, b) => ty(a) - ty(b)).forEach((e, i) => { e.data = { ...e.data, lane: i, lanes: group.length }; });
-      }
-      // A line whose straight run would pass through another card goes over the top of the row instead, in its own lane.
+      for (const e of edges) if (e.type === "transition" && (e.data as { orbitY?: number }).orbitY == null) bySource.set(e.source, [...(bySource.get(e.source) ?? []), e]);
       const boxes = canvas.nodes.filter((n): n is Extract<CanvasNode, { type: "screen" }> => n.type === "screen").map((n) => ({ id: `screen:${n.screenId}`, x: n.position.x, y: n.position.y, w: FLOW_CARD_W, h: flowCardHeight(spec, n.screenId) }));
       let overLane = 0;
-      for (const e of edges.filter((x) => x.type === "transition" && (x.data as { orbitY?: number }).orbitY == null).sort((a, b) => Math.abs((screenPos.get(b.target.slice(7))?.x ?? 0) - (screenPos.get(b.source.slice(7))?.x ?? 0)) - Math.abs((screenPos.get(a.target.slice(7))?.x ?? 0) - (screenPos.get(a.source.slice(7))?.x ?? 0)))) {
-        const src = boxes.find((b) => b.id === e.source), tgt = boxes.find((b) => b.id === e.target);
-        if (!src || !tgt) continue;
-        const sx = src.x + src.w, ty = tgt.y + 40;
-        const blocking = boxes.filter((b) => b.id !== src.id && b.id !== tgt.id && b.x < tgt.x && b.x + b.w > sx && b.y < ty + 8 && b.y + b.h > ty - 8);
-        if (!blocking.length) continue;
-        const top = Math.min(src.y, tgt.y, ...blocking.map((b) => b.y));
-        e.data = { ...e.data, overY: top - 36 - overLane++ * 12, trunkMax: Math.min(...blocking.map((b) => b.x)) - 24 };
+      for (const [sourceId, group] of bySource) {
+        const order = moveOrder.get(sourceId.slice(7)) ?? [];
+        group.sort((a, b) => order.indexOf(a.id.slice(2)) - order.indexOf(b.id.slice(2))).forEach((e, i) => { e.data = { ...e.data, lane: i, lanes: group.length }; });
+        // A line whose straight run would pass through another card climbs over the row instead. Lower rows take the
+        // lanes nearest the cards and the top row the outermost, so the climbs and drops nest too.
+        for (const e of [...group].reverse()) {
+          const src = boxes.find((b) => b.id === e.source), tgt = boxes.find((b) => b.id === e.target);
+          if (!src || !tgt) continue;
+          const sx = src.x + src.w, ty = tgt.y + 40;
+          const blocking = boxes.filter((b) => b.id !== src.id && b.id !== tgt.id && b.x < tgt.x && b.x + b.w > sx && b.y < ty + 8 && b.y + b.h > ty - 8);
+          if (!blocking.length) continue;
+          const top = Math.min(src.y, tgt.y, ...blocking.map((b) => b.y));
+          e.data = { ...e.data, overY: top - 36 - overLane++ * 12, trunkMax: Math.min(...blocking.map((b) => b.x)) - 24 };
+        }
       }
       if (showEdgeCases) {
         for (const ec of spec.edgeCases) {
