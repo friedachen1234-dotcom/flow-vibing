@@ -56,6 +56,21 @@ a { color: var(--accent); }
 .board.hand .react-flow__pane { cursor: grab; }
 .board.hand .react-flow__pane:active { cursor: grabbing; }
 .board.hand .react-flow__node, .board.hand .react-flow__node * { pointer-events: none !important; }
+/* A transparent sheet over the board while something is dragged: prototypes underneath cannot swallow the pointer and stall the drag. The drag itself listens on the window, so it carries on. Toggling pointer-events on the iframes instead leaves Chromium unable to scroll them afterwards. */
+.board.interacting .react-flow__renderer::after { content: ""; position: absolute; inset: 0; z-index: 40; cursor: grabbing; }
+/* Dragging: the card lifts, its lines keep up, and nothing else reacts under it. */
+.react-flow__node.dragging { z-index: 1000 !important; }
+.react-flow__node.dragging > * { cursor: grabbing; transform: scale(1.015); box-shadow: 0 0 0 2px var(--accent), 0 24px 56px rgba(20,23,29,.22) !important; transition: transform .12s ease, box-shadow .12s ease; }
+.react-flow__node > * { transition: transform .12s ease, box-shadow .15s ease; }
+.react-flow__node:not(.dragging) .hdr:hover { background: var(--surface-2); }
+/* Dashed lines flow toward their target while hovered or selected; the connection line while drawing does the same. */
+@keyframes dash-flow { to { stroke-dashoffset: -40; } }
+.react-flow__edge-path.dash-flow, .react-flow__edge.selected .react-flow__edge-path.dash-flow { animation: dash-flow 1.2s linear infinite; }
+.react-flow__connection-path { stroke-dasharray: 7 5; animation: dash-flow 1s linear infinite; }
+.react-flow__edge { cursor: pointer; }
+.react-flow__edge:hover .react-flow__edge-path { filter: drop-shadow(0 0 2px rgba(44,79,219,.35)); }
+.react-flow__edge.selected .react-flow__edge-path { filter: drop-shadow(0 0 3px rgba(44,79,219,.45)); }
+@media (prefers-reduced-motion: reduce) { .react-flow__edge-path.dash-flow, .react-flow__connection-path { animation: none; } }
 
 /* Buttons */
 .btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 600; font-size: var(--t-13); white-space: nowrap; transition: background .15s, border-color .15s, color .15s; }
@@ -331,6 +346,11 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .screen-frame.selected { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
 .screen-frame .hdr { display: flex; align-items: center; gap: 6px; padding: 0 6px 0 6px; background: var(--surface); border-bottom: 1px solid var(--line-soft); cursor: grab; user-select: none; min-width: 0; overflow: hidden; }
 .screen-frame .hdr:active { cursor: grabbing; }
+.screen-frame { position: relative; }
+.drag-veil { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; cursor: grab; }
+.react-flow__node.dragging .drag-veil { cursor: grabbing; }
+.screen-card, .edge-case-card, .ref-card { cursor: grab; }
+.react-flow__node.dragging .screen-card, .react-flow__node.dragging .edge-case-card, .react-flow__node.dragging .ref-card { cursor: grabbing; }
 .screen-frame .hdr .name { font-weight: 700; font-size: var(--t-14); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 auto; }
 .screen-frame .hdr .pill { flex: none; }
 .screen-frame .hdr .pill.live { height: 22px; padding: 0 8px; font-size: var(--t-12); }

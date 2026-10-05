@@ -56,6 +56,9 @@ export interface FlowState {
   /** When the project was last written, for the status in the top bar. null before the first save this session. */
   savedAt: number | null;
   saving: boolean;
+  /** The line under the pointer, or the line of the card row under it, so both light the same way. */
+  hoverEdge: string | null;
+  setHoverEdge(id: string | null): void;
 
   openProject(id: string): Promise<void>;
   closeProject(): void;
@@ -132,6 +135,8 @@ export const useFlow = create<FlowState>((set, get) => ({
   setHand(hand) { set({ hand }); if (hand) set({ picker: { enabled: false, picked: get().picker.picked } }); },
   savedAt: null,
   saving: false,
+  hoverEdge: null,
+  setHoverEdge(hoverEdge) { if (get().hoverEdge !== hoverEdge) set({ hoverEdge }); },
 
   async openProject(id) {
     set({ loading: true, error: null, projectId: id, selection: null, pendingChanges: [], frames: {}, agent: { running: false, runId: null, intent: null, items: [], streaming: "", status: "", totalCost: 0 } });
