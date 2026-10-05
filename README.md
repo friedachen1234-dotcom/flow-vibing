@@ -68,6 +68,21 @@ The board is the whole surface; the chrome floats over it and gets out of the wa
 
 Projects reopen on their content: if the saved viewport frames empty board, the canvas fits to what exists instead.
 
+## Hosted demo on Vercel
+
+The app needs a server for Claude, git, and the project folders, so the full thing runs locally. What deploys is a hosted demo: the same web app with the examples as static files, built with `pnpm build:static` into `packages/web/dist`. On it you can open every example on the canvas, read the flow, run the prototypes, hover variants, and edit the board in your tab; generation, applying variants, and history explain that they need the local app.
+
+`vercel.json` already carries the build settings, so deploying is:
+
+```bash
+npm i -g vercel        # once
+vercel login           # once, opens the browser
+vercel                 # preview deploy from this folder
+vercel --prod          # production
+```
+
+Or import the GitHub repository in the Vercel dashboard; it reads `vercel.json` and deploys every push. To preview the static build locally: `pnpm build:static && npx serve packages/web/dist`.
+
 ## Testing without Claude
 
 Open the demo project from the home screen. Its placeholder screens follow the contract, so navigation, states, the picker, magic lines, and change requests all work offline.

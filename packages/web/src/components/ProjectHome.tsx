@@ -3,6 +3,7 @@ import type { DeviceKind, ProjectMeta } from "@flow/shared";
 import { api, type ExampleMeta } from "../api";
 import { useFlow } from "../store";
 import { Icon } from "./Icon";
+import { IS_STATIC, LOCAL_APP_URL } from "../static";
 
 const DEVICE_LABEL: Record<DeviceKind, string> = { mobile: "Mobile", tablet: "Tablet", desktop: "Desktop" };
 /** One-line summaries for the cards; the brief itself is a paragraph. */
@@ -128,6 +129,12 @@ export function ProjectHome() {
       </header>
 
       <div className="inner">
+        {IS_STATIC && (
+          <div className="demo-note">
+            <Icon name="alert" size={16} /> <span>This is the hosted demo. Open the examples, edit the flow, and explore the variants; your edits stay in this tab. Generating with Claude needs the local app.</span>
+            <a href={LOCAL_APP_URL} target="_blank" rel="noreferrer">Get the local app <Icon name="arrow-right" size={14} /></a>
+          </div>
+        )}
         <section className="hero">
           <div className="hero-copy">
             <div className="eyebrow">Your workspace</div>

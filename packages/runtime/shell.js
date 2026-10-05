@@ -7,6 +7,7 @@
  *   1. window.__FLOW__ = { spec, screens: { [file]: html }, agent: "<screen-agent.js source>" }  (exported prototype)
  *   2. ?project=ID  → fetches /api/projects/ID/files/flow.json and screen files from the FLOW server
  *   3. ?example=ID  → same, from /api/examples/ID/files/ (a shipped example, run in place)
+ *   4. ?base=/path/ → same, from any static folder holding flow.json and screens/ (the hosted demo)
  */
 (function () {
   const params = new URLSearchParams(location.search);
@@ -17,7 +18,9 @@
   const follow = params.get("follow") !== "0"; // when false, transitions are reported but not performed
   const version = params.get("version");
   const inline = window.__FLOW__ || null;
-  const filesBase = projectId
+  const base = params.get("base"); // any folder that holds flow.json and screens/, for static hosting
+  const filesBase = base ? (base.endsWith("/") ? base : base + "/")
+    : projectId
     ? (version ? `/api/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(version)}/files/` : `/api/projects/${encodeURIComponent(projectId)}/files/`)
     : exampleId ? `/api/examples/${encodeURIComponent(exampleId)}/files/`
     : "./";
