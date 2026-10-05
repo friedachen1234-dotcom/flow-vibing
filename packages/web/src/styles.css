@@ -326,16 +326,19 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .start-node { position: relative; height: 34px; padding: 0 16px; display: inline-flex; align-items: center; border-radius: 999px; background: var(--ok-soft); color: var(--ok); border: 1px solid #BFE3D3; font-weight: 700; font-size: var(--t-13); }
 
 /* Screen node, prototype view */
-.screen-frame { background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-lg); border: 1px solid var(--line); overflow: hidden; display: grid; grid-template-rows: 44px 1fr; transition: box-shadow .15s; }
+/* minmax(0, 1fr): a header too wide for the frame must clip, never widen the column and push the prototype past the edge. */
+.screen-frame { background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-lg); border: 1px solid var(--line); overflow: hidden; display: grid; grid-template-rows: 44px 1fr; grid-template-columns: minmax(0, 1fr); transition: box-shadow .15s; }
 .screen-frame.selected { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
-.screen-frame .hdr { display: flex; align-items: center; gap: 8px; padding: 0 8px 0 8px; background: var(--surface); border-bottom: 1px solid var(--line-soft); cursor: grab; user-select: none; }
+.screen-frame .hdr { display: flex; align-items: center; gap: 6px; padding: 0 6px 0 6px; background: var(--surface); border-bottom: 1px solid var(--line-soft); cursor: grab; user-select: none; min-width: 0; overflow: hidden; }
 .screen-frame .hdr:active { cursor: grabbing; }
-.screen-frame .hdr .name { font-weight: 700; font-size: var(--t-14); }
+.screen-frame .hdr .name { font-weight: 700; font-size: var(--t-14); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 36px; flex: 0 1 auto; }
+.screen-frame .hdr .pill { flex: none; }
 .screen-frame .hdr .pill.live { height: 22px; padding: 0 9px; font-size: var(--t-12); }
+.screen-frame .hdr .pill.warn { max-width: 96px; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 22px; }
 .screen-frame .hdr .icon { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; border: 0; background: transparent; color: var(--ink-2); flex: none; }
 .screen-frame .hdr .icon.dim { color: var(--line); }
 .screen-frame .hdr button.icon:hover { background: var(--surface-2); color: var(--ink); }
-.state-select { position: relative; display: inline-flex; align-items: center; height: 28px; border: 1px solid var(--line); border-radius: 8px; padding: 0 6px 0 10px; font-size: var(--t-13); font-weight: 500; background: var(--surface); }
+.state-select { position: relative; display: inline-flex; align-items: center; height: 28px; border: 1px solid var(--line); border-radius: 8px; padding: 0 6px 0 10px; font-size: var(--t-13); font-weight: 500; background: var(--surface); flex: none; }
 .state-select select { appearance: none; -webkit-appearance: none; border: 0; background: none; padding: 0 16px 0 0; font-size: var(--t-13); font-weight: 500; max-width: 140px; }
 .state-select > svg { position: absolute; right: 5px; pointer-events: none; color: var(--ink-3); }
 .screen-frame iframe { width: 100%; height: 100%; border: 0; background: #fff; display: block; }
