@@ -411,7 +411,8 @@ function VariantPreview({ projectId, head, spec, screen, elementId, file }: { pr
         const base = `<base href="${location.origin}${api.fileUrl(projectId, "screens/")}">`;
         // Show the fragment alone on the screen's stylesheet so it reads at full size.
         const head = full.match(/<head[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? '<link rel="stylesheet" href="../tokens.css">';
-        setDoc(`<!doctype html><html><head>${base}${head}<style>body{padding:12px;}</style></head><body>${frag}</body></html>`);
+        // The fragment sits in the middle of the tile, whatever its size, so the options read as a row of equals.
+        setDoc(`<!doctype html><html><head>${base}${head}<style>html,body{height:100%;margin:0;overflow:hidden}body{box-sizing:border-box;padding:14px;display:grid;place-items:center}body>*{max-width:100%}</style></head><body>${frag}</body></html>`);
       } else {
         const base = `<base href="${location.origin}${api.fileUrl(projectId, "screens/")}">`;
         setDoc(frag.replace(/<head[^>]*>/i, (m) => m + base));
