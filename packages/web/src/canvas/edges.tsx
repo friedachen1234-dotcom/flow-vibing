@@ -4,6 +4,21 @@ import { useFlow } from "../store";
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
+/** An orthogonal polyline through the given corners, each corner rounded. */
+function roundedPath(pts: [number, number][], r: number): string {
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [px, py] = pts[i - 1], [cx, cy] = pts[i], [nx, ny] = pts[i + 1];
+    const inLen = Math.hypot(cx - px, cy - py), outLen = Math.hypot(nx - cx, ny - cy);
+    const k = Math.min(r, inLen / 2, outLen / 2);
+    const ax = cx - Math.sign(cx - px) * k, ay = cy - Math.sign(cy - py) * k;
+    const bx = cx + Math.sign(nx - cx) * k, by = cy + Math.sign(ny - cy) * k;
+    d += ` L ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}`;
+  }
+  const [lx, ly] = pts[pts.length - 1];
+  return d + ` L ${lx} ${ly}`;
+}
+
 /** Right out of the source, down to a lane below every card, left past the target, up, and in from the left. */
 function orbitPath(sx: number, sy: number, tx: number, ty: number, laneY: number): string {
   const r = 12;
@@ -34,9 +49,13 @@ export function TransitionEdge(props: EdgeProps) {
   const gap = props.targetX - props.sourceX;
   const lane = (props.data?.lane as number | undefined) ?? 0;
   const lanes = (props.data?.lanes as number | undefined) ?? 1;
-  const trunk = props.sourceX + Math.min(TRUNK, Math.max(28, gap * 0.6)) + (lane - (lanes - 1) / 2) * LANE;
+  const overY = props.data?.overY as number | undefined;
+  const trunkMax = (props.data?.trunkMax as number | undefined) ?? Infinity;
+  const trunk = Math.min(trunkMax, props.sourceX + Math.min(TRUNK, Math.max(28, gap * 0.6))) + (lane - (lanes - 1) / 2) * LANE;
   const [step] = getSmoothStepPath({ sourceX: props.sourceX, sourceY: props.sourceY, targetX: props.targetX, targetY: props.targetY, sourcePosition: props.sourcePosition, targetPosition: props.targetPosition, borderRadius: 10, offset: 20, centerX: trunk });
-  const path = orbitY != null ? orbitPath(props.sourceX, props.sourceY, props.targetX, props.targetY, orbitY) : step;
+  const path = orbitY != null ? orbitPath(props.sourceX, props.sourceY, props.targetX, props.targetY, orbitY)
+    : overY != null ? roundedPath([[props.sourceX, props.sourceY], [trunk, props.sourceY], [trunk, overY], [props.targetX - 22, overY], [props.targetX - 22, props.targetY], [props.targetX, props.targetY]], 10)
+    : step;
   // The label sits on the first straight run out of the row, so it lines up with the row that fires it.
   const lx = props.sourceX + 12;
   const ly = props.sourceY;

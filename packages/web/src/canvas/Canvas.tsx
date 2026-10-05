@@ -160,6 +160,18 @@ export function Canvas() {
         const ty = (e: Edge) => screenPos.get(e.target.slice(7))?.y ?? 0;
         group.sort((a, b) => ty(a) - ty(b)).forEach((e, i) => { e.data = { ...e.data, lane: i, lanes: group.length }; });
       }
+      // A line whose straight run would pass through another card goes over the top of the row instead, in its own lane.
+      const boxes = canvas.nodes.filter((n): n is Extract<CanvasNode, { type: "screen" }> => n.type === "screen").map((n) => ({ id: `screen:${n.screenId}`, x: n.position.x, y: n.position.y, w: FLOW_CARD_W, h: flowCardHeight(spec, n.screenId) }));
+      let overLane = 0;
+      for (const e of edges.filter((x) => x.type === "transition" && (x.data as { orbitY?: number }).orbitY == null).sort((a, b) => Math.abs((screenPos.get(b.target.slice(7))?.x ?? 0) - (screenPos.get(b.source.slice(7))?.x ?? 0)) - Math.abs((screenPos.get(a.target.slice(7))?.x ?? 0) - (screenPos.get(a.source.slice(7))?.x ?? 0)))) {
+        const src = boxes.find((b) => b.id === e.source), tgt = boxes.find((b) => b.id === e.target);
+        if (!src || !tgt) continue;
+        const sx = src.x + src.w, ty = tgt.y + 40;
+        const blocking = boxes.filter((b) => b.id !== src.id && b.id !== tgt.id && b.x < tgt.x && b.x + b.w > sx && b.y < ty + 8 && b.y + b.h > ty - 8);
+        if (!blocking.length) continue;
+        const top = Math.min(src.y, tgt.y, ...blocking.map((b) => b.y));
+        e.data = { ...e.data, overY: top - 36 - overLane++ * 12, trunkMax: Math.min(...blocking.map((b) => b.x)) - 24 };
+      }
       if (showEdgeCases) {
         for (const ec of spec.edgeCases) {
           const host = hostScreen(spec, ec.attachedTo);
