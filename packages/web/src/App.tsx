@@ -8,6 +8,7 @@ import { RightPanel } from "./components/RightPanel";
 import { VersionPreview } from "./components/VersionBar";
 import { DialogHost } from "./components/Dialog";
 import { Present } from "./components/Present";
+import { Icon } from "./components/Icon";
 
 export function App() {
   const projectId = useFlow((s) => s.projectId);
@@ -30,16 +31,25 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!projectId || !bundle) return <><ProjectHome />{toast && <div className="toast">{toast}</div>}<DialogHost /></>;
+  const toastEl = toast && (
+    <div className="toast" role="status">
+      <span className="tick"><Icon name={/fail|could not|error/i.test(toast) ? "alert" : "check-circle"} size={16} /></span>
+      <span>{toast}</span>
+      <button className="close" onClick={() => useFlow.setState({ toast: null })} aria-label="Dismiss"><Icon name="x" size={13} /></button>
+    </div>
+  );
+  if (!projectId || !bundle) return <><ProjectHome />{toastEl}<DialogHost /></>;
   return (
     <div className="app">
       <TopBar />
-      <ToolRail />
-      <main className="canvas-wrap"><Canvas /></main>
-      <RightPanel />
+      <main className="canvas-wrap">
+        <Canvas />
+        <ToolRail />
+        <RightPanel />
+      </main>
       {previewVersion && <VersionPreview sha={previewVersion} />}
       {presenting && <Present />}
-      {toast && <div className="toast">{toast}</div>}
+      {toastEl}
       <DialogHost />
     </div>
   );

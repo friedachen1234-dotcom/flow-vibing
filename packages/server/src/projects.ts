@@ -3,9 +3,10 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { nanoid } from "nanoid";
 import {
-  CanvasDoc, DesignSpec, DEVICE_PRESETS, PROJECT_FILES, emptyCanvas, emptySpec, reconcileCanvas, tokensCss, demoSpec, demoScreenHtml,
+  CanvasDoc, CanvasEdge, CanvasNode, DesignSpec, DEVICE_PRESETS, PROJECT_FILES, emptyCanvas, emptySpec, reconcileCanvas, tokensCss, demoSpec, demoScreenHtml,
   type DeviceKind, type ProjectBundle, type ProjectMeta
 } from "@flow/shared";
+import { z } from "zod";
 import { EXAMPLES_DIR, PROJECTS_ROOT } from "./config.js";
 import { commitVersion, fileAtVersion, firstApplyCommit, initRepo, listVersions } from "./versions.js";
 import { extractElement } from "./html.js";
@@ -51,7 +52,7 @@ export async function listProjects(): Promise<ProjectMeta[]> {
       const spec = DesignSpec.parse(JSON.parse(await fs.readFile(specPath, "utf8")));
       const st = await fs.stat(specPath);
       const dirSt = await fs.stat(path.join(PROJECTS_ROOT, e.name));
-      out.push({ id: e.name, name: spec.name, path: path.join(PROJECTS_ROOT, e.name), createdAt: dirSt.birthtime.toISOString(), updatedAt: st.mtime.toISOString(), screenCount: spec.screens.length });
+      out.push({ id: e.name, name: spec.name, path: path.join(PROJECTS_ROOT, e.name), createdAt: dirSt.birthtime.toISOString(), updatedAt: st.mtime.toISOString(), screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null, device: spec.device });
     } catch { /* skip unreadable */ }
   }
   return out.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -108,7 +109,7 @@ export async function loadProject(id: string): Promise<ProjectBundle> {
   const st = await fs.stat(path.join(dir, PROJECT_FILES.spec));
   const dirSt = await fs.stat(dir);
   return {
-    meta: { id, name: spec.name, path: dir, createdAt: dirSt.birthtime.toISOString(), updatedAt: st.mtime.toISOString(), screenCount: spec.screens.length },
+    meta: { id, name: spec.name, path: dir, createdAt: dirSt.birthtime.toISOString(), updatedAt: st.mtime.toISOString(), screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null, device: spec.device },
     spec,
     canvas,
     versions,
@@ -178,7 +179,7 @@ export async function createDemoProject(): Promise<ProjectBundle> {
   return loadProject(id);
 }
 
-export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; screenCount: number };
+export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; width: number; height: number; screenCount: number; firstScreen: string | null };
 
 /** Sample projects shipped in the repo's examples/ folder. */
 export async function listExamples(): Promise<ExampleMeta[]> {
@@ -189,10 +190,39 @@ export async function listExamples(): Promise<ExampleMeta[]> {
     if (!e.isDirectory() || !SAFE_ID.test(e.name)) continue;
     try {
       const spec = DesignSpec.parse(JSON.parse(await fs.readFile(path.join(EXAMPLES_DIR, e.name, PROJECT_FILES.spec), "utf8")));
-      out.push({ id: e.name, name: spec.name, brief: spec.brief, device: spec.device.kind, screenCount: spec.screens.length });
+      out.push({ id: e.name, name: spec.name, brief: spec.brief, device: spec.device.kind, width: spec.device.width, height: spec.device.height, screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null });
     } catch { /* skip malformed */ }
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Resolves a file inside an example and refuses anything that escapes its folder. Lets the runtime shell run an example in place. */
+export function exampleFilePath(exampleId: string, rel: string): string {
+  if (!SAFE_ID.test(exampleId)) throw Object.assign(new Error(`bad example id "${exampleId}"`), { statusCode: 400 });
+  const dir = path.join(EXAMPLES_DIR, exampleId);
+  const abs = path.resolve(dir, rel);
+  if (abs !== dir && !abs.startsWith(dir + path.sep)) throw Object.assign(new Error(`path escapes example: ${rel}`), { statusCode: 400 });
+  return abs;
+}
+
+/** What an example puts on the board besides its screens: reference cards, variant explorations, and the lines between them. */
+export const ExampleBoard = z.object({ nodes: z.array(CanvasNode).default([]), edges: z.array(CanvasEdge).default([]) });
+export type ExampleBoard = z.infer<typeof ExampleBoard>;
+
+export async function readExampleBoard(exampleId: string): Promise<ExampleBoard> {
+  const file = path.join(EXAMPLES_DIR, exampleId, "board.json");
+  if (!(await exists(file))) return { nodes: [], edges: [] };
+  return ExampleBoard.parse(JSON.parse(await fs.readFile(file, "utf8")));
+}
+
+/** Project-relative files the board's nodes point at: reference images and variant fragments. */
+export function boardFiles(board: ExampleBoard): string[] {
+  const out: string[] = [];
+  for (const n of board.nodes) {
+    if ((n.type === "inspiration" || n.type === "skill") && n.path) out.push(n.path);
+    if (n.type === "variantPanel") { for (const o of n.options) out.push(o.file); if (n.originalFile) out.push(n.originalFile); }
+  }
+  return out;
 }
 
 /** Copies an example into a fresh project folder with its own git history. */
@@ -207,11 +237,14 @@ export async function createProjectFromExample(exampleId: string): Promise<Proje
   const canvas = emptyCanvas();
   canvas.nodes.push({ id: "brief", type: "prompt", kind: "brief", text: spec.brief, position: { x: -420, y: 0 }, width: 320 });
   canvas.nodes.push({ id: "note-" + nanoid(6), type: "note", text: `Example project "${spec.name}". Hand-built screens that follow the runtime contract, so the prototype, flow view, states, picker, and change requests all work without Claude.`, position: { x: -420, y: 220 }, width: 320 });
+  // The example's own board: references pointed at screens, and a variants exploration ready to apply.
+  const board = await readExampleBoard(exampleId);
+  canvas.nodes.push(...board.nodes);
+  canvas.edges.push(...board.edges);
   await scaffold(id, spec, reconcileCanvas(spec, canvas).canvas);
-  for (const s of spec.screens) {
-    const from = path.join(src, s.file);
-    await fs.mkdir(path.dirname(safeJoin(id, s.file)), { recursive: true });
-    await fs.copyFile(from, safeJoin(id, s.file));
+  for (const rel of [...spec.screens.map((s) => s.file), ...boardFiles(board)]) {
+    await fs.mkdir(path.dirname(safeJoin(id, rel)), { recursive: true });
+    await fs.copyFile(path.join(src, rel), safeJoin(id, rel));
   }
   const tokens = path.join(src, PROJECT_FILES.tokens);
   if (await exists(tokens)) await fs.copyFile(tokens, safeJoin(id, PROJECT_FILES.tokens));

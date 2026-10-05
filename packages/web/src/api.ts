@@ -1,4 +1,5 @@
 import type { CanvasDoc, ChangeRequest, ClientMessage, DesignSpec, DeviceKind, ProjectBundle, ProjectMeta, ServerMessage, VariantTarget, Version } from "@flow/shared";
+import { IS_STATIC, StaticSocket, staticApi } from "./static";
 
 async function j<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -11,9 +12,9 @@ async function j<T>(res: Response): Promise<T> {
 const json = (body: unknown, method = "POST") => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 export type Bundle = ProjectBundle & { running: boolean };
-export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; screenCount: number };
+export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; width: number; height: number; screenCount: number; firstScreen: string | null };
 
-export const api = {
+const liveApi = {
   listProjects: () => fetch("/api/projects").then((r) => j<ProjectMeta[]>(r)),
   createProject: (name: string, brief: string, deviceKind: DeviceKind) => fetch("/api/projects", json({ name, brief, deviceKind })).then((r) => j<ProjectBundle>(r)),
   createDemo: () => fetch("/api/projects/demo", { method: "POST" }).then((r) => j<ProjectBundle>(r)),
@@ -29,6 +30,8 @@ export const api = {
   applyVariant: (id: string, panelId: string, optionId: string) => fetch(`/api/projects/${id}/variants/${panelId}/apply`, json({ optionId })).then((r) => j<{ ok: true }>(r)),
   fileUrl: (id: string, rel: string) => `/api/projects/${id}/files/${rel}`,
   versionFileUrl: (id: string, sha: string, rel: string) => `/api/projects/${id}/versions/${sha}/files/${rel}`,
+  /** Runs a shipped example in the shell without creating a project. */
+  exampleShellUrl: (exampleId: string, screenId: string) => `/runtime/shell.html?${new URLSearchParams({ example: exampleId, screen: screenId }).toString()}`,
   shellUrl: (id: string, screenId: string, opts: { version?: string; follow?: boolean; state?: string } = {}) => {
     const p = new URLSearchParams({ project: id, screen: screenId });
     if (opts.version) p.set("version", opts.version);
@@ -37,6 +40,9 @@ export const api = {
     return `/runtime/shell.html?${p.toString()}`;
   }
 };
+
+/** The hosted demo has no server; everything else talks to the local one. */
+export const api: typeof liveApi = IS_STATIC ? (staticApi as unknown as typeof liveApi) : liveApi;
 
 export type RunPayload = { brief?: string; text?: string; changeRequests?: ChangeRequest[]; target?: VariantTarget; count?: number; direction?: string; nodeId?: string; inspirationIds?: string[] };
 
@@ -71,4 +77,4 @@ export class Socket {
   }
   on(l: (m: ServerMessage) => void) { this.listeners.add(l); return () => { this.listeners.delete(l); }; }
 }
-export const socket = new Socket();
+export const socket: Socket = IS_STATIC ? (new StaticSocket() as unknown as Socket) : new Socket();

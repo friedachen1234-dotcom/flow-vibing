@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "id": "baseline",
+  "name": "Baseline",
+  "brief": "A wearable companion for people who train hard and want to know whether their body is ready for it. The whole job is one number every morning and an honest reason behind it. Dark, data-dense, no cheerleading. Numbers are the interface; words only explain them.",
+  "device": { "kind": "mobile", "width": 390, "height": 844 },
+  "tokens": {
+    "colors": {
+      "bg": "#0A0B0D", "surface": "#141619", "surface-2": "#1C1F24", "ink": "#FFFFFF", "muted": "#8B9099",
+      "dim": "#5A6069", "line": "#24272D", "high": "#16EC06", "mid": "#FFD500", "low": "#FF3B30",
+      "strain": "#0093E7", "sleep": "#7B61FF", "accent": "#16EC06", "accent-ink": "#04140A"
+    },
+    "type": {
+      "body": "system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', sans-serif",
+      "display": "system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', sans-serif",
+      "mono": "ui-monospace, 'SF Mono', Menlo, monospace"
+    },
+    "spacing": { "unit": "8px", "page": "18px" },
+    "radius": { "card": "16px", "control": "10px", "pill": "999px" },
+    "motion": { "fast": "140ms", "base": "220ms" }
+  },
+  "components": [
+    { "id": "metric-ring", "name": "Metric ring", "description": "Circular gauge whose colour band carries the verdict, with the figure centred", "usedIn": ["today", "recovery"] },
+    { "id": "stat-tile", "name": "Stat tile", "description": "Uppercase label, large tabular figure, delta against baseline underneath", "usedIn": ["today", "recovery", "sleep", "strain", "activity"] },
+    { "id": "zone-bars", "name": "Zone bars", "description": "Five stacked bars for heart-rate zones, width by time in zone", "usedIn": ["activity"] }
+  ],
+  "screens": [
+    {
+      "id": "today",
+      "name": "Today",
+      "purpose": "Answer one question on waking: how ready is the body today",
+      "file": "screens/today.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Recovery, sleep and strain all in", "isDefault": true },
+        { "id": "syncing", "name": "Syncing", "description": "Strap data still uploading; figures replaced by placeholders", "trigger": "app opened before sync finished", "isDefault": false },
+        { "id": "not-worn", "name": "Not worn", "description": "No overnight data at all; explain rather than show a zero", "trigger": "strap off during sleep", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "recovery-ring", "role": "hero", "label": "Recovery ring" },
+        { "id": "sleep-card", "role": "card", "label": "Sleep card" },
+        { "id": "strain-card", "role": "card", "label": "Strain card" },
+        { "id": "vitals-row", "role": "list", "label": "Vitals row" },
+        { "id": "plan-card", "role": "card", "label": "Today's plan" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "recovery",
+      "name": "Recovery",
+      "purpose": "Show what drove the number, so it can be trusted or argued with",
+      "file": "screens/recovery.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Green recovery with contributing inputs", "isDefault": true },
+        { "id": "low", "name": "Low recovery", "description": "Red band; the guidance changes and the drivers are ranked by damage", "trigger": "recovery under 34%", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "back-button", "role": "button", "label": "Back" },
+        { "id": "recovery-hero", "role": "hero", "label": "Recovery hero" },
+        { "id": "driver-list", "role": "list", "label": "Contributing inputs" },
+        { "id": "trend-chart", "role": "image", "label": "Fourteen day trend" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "sleep",
+      "name": "Sleep",
+      "purpose": "Compare what the body needed against what it got",
+      "file": "screens/sleep.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Performance against need, with stages", "isDefault": true },
+        { "id": "insufficient", "name": "Short sleep", "description": "Well under need; debt is surfaced first", "trigger": "performance under 70%", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "back-button", "role": "button", "label": "Back" },
+        { "id": "sleep-hero", "role": "hero", "label": "Sleep performance" },
+        { "id": "stage-bar", "role": "image", "label": "Sleep stages" },
+        { "id": "sleep-stats", "role": "list", "label": "Sleep statistics" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "strain",
+      "name": "Strain",
+      "purpose": "Track load accumulated today against what recovery can afford",
+      "file": "screens/strain.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "Strain so far with the day's activities", "isDefault": true },
+        { "id": "over", "name": "Over target", "description": "Past the recommended ceiling; the gauge and copy both change", "trigger": "strain above target", "isDefault": false }
+      ],
+      "elements": [
+        { "id": "back-button", "role": "button", "label": "Back" },
+        { "id": "strain-gauge", "role": "hero", "label": "Day strain gauge" },
+        { "id": "activity-list", "role": "list", "label": "Activities" },
+        { "id": "load-stats", "role": "list", "label": "Load statistics" }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "activity",
+      "name": "Activity",
+      "purpose": "Break one session down into where the time was actually spent",
+      "file": "screens/activity.html",
+      "states": [
+        { "id": "default", "name": "Default", "description": "One logged session with zones", "isDefault": true }
+      ],
+      "elements": [
+        { "id": "back-button", "role": "button", "label": "Back" },
+        { "id": "session-hero", "role": "hero", "label": "Session summary" },
+        { "id": "zone-bars", "role": "list", "label": "Heart rate zones" },
+        { "id": "session-stats", "role": "list", "label": "Session statistics" }
+      ],
+      "provenance": []
+    }
+  ],
+  "transitions": [
+    { "id": "today-to-recovery", "from": { "screenId": "today", "elementId": "recovery-ring" }, "to": { "screenId": "recovery" }, "trigger": "tap the ring", "animation": "push" },
+    { "id": "today-to-sleep", "from": { "screenId": "today", "elementId": "sleep-card" }, "to": { "screenId": "sleep" }, "trigger": "tap sleep", "animation": "push" },
+    { "id": "today-to-strain", "from": { "screenId": "today", "elementId": "strain-card" }, "to": { "screenId": "strain" }, "trigger": "tap strain", "animation": "push" },
+    { "id": "recovery-back", "from": { "screenId": "recovery", "elementId": "back-button" }, "to": { "screenId": "today" }, "trigger": "tap back", "animation": "pop" },
+    { "id": "recovery-low", "from": { "screenId": "recovery", "elementId": "recovery-hero" }, "to": { "screenId": "recovery", "stateId": "low" }, "trigger": "tap the band", "condition": "recovery under 34%", "animation": "none" },
+    { "id": "sleep-back", "from": { "screenId": "sleep", "elementId": "back-button" }, "to": { "screenId": "today" }, "trigger": "tap back", "animation": "pop" },
+    { "id": "strain-back", "from": { "screenId": "strain", "elementId": "back-button" }, "to": { "screenId": "today" }, "trigger": "tap back", "animation": "pop" },
+    { "id": "strain-to-activity", "from": { "screenId": "strain", "elementId": "activity-list" }, "to": { "screenId": "activity" }, "trigger": "tap a session", "animation": "push" },
+    { "id": "activity-back", "from": { "screenId": "activity", "elementId": "back-button" }, "to": { "screenId": "strain" }, "trigger": "tap back", "animation": "pop" }
+  ],
+  "edgeCases": [
+    { "id": "strap-not-worn", "attachedTo": { "screenId": "today" }, "scenario": "Strap was off overnight, so there is no recovery to report", "handling": "Say there is no reading and why, and offer yesterday's figure for context. Never show 0%", "severity": "high" },
+    { "id": "sync-lag", "attachedTo": { "screenId": "today" }, "scenario": "App opens before the strap has finished uploading", "handling": "Syncing state holds the layout with placeholders so nothing jumps when the numbers land", "severity": "medium" },
+    { "id": "nap-not-counted", "attachedTo": { "screenId": "sleep" }, "scenario": "A daytime nap is recorded separately from the main sleep", "handling": "Show the nap as its own row contributing to need, not merged into the night", "severity": "low" },
+    { "id": "strain-over-ceiling", "attachedTo": { "transitionId": "today-to-strain" }, "scenario": "Training pushes strain past what a low recovery can afford", "handling": "Gauge turns and the copy names the risk plainly, without scolding", "severity": "medium" },
+    { "id": "hr-dropout", "attachedTo": { "screenId": "activity" }, "scenario": "Heart rate signal drops mid-session", "handling": "Mark the gap in the zone bars rather than interpolating over it", "severity": "medium" }
+  ]
+}

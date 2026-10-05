@@ -9,7 +9,10 @@ export const ProjectMeta = z.object({
   path: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
-  screenCount: z.number().default(0)
+  screenCount: z.number().default(0),
+  /** Enough to draw a live thumbnail without loading the whole project. */
+  firstScreen: z.string().nullable().default(null),
+  device: z.object({ kind: z.string(), width: z.number(), height: z.number() }).optional()
 });
 export type ProjectMeta = z.infer<typeof ProjectMeta>;
 

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en" data-flow-screen="strain">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Strain</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body { font-family: var(--font-body, system-ui); background: var(--color-bg, #0A0B0D); color: var(--color-ink, #fff); -webkit-font-smoothing: antialiased; padding-bottom: 40px; }
+      button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; text-align: left; }
+      .status { display: flex; justify-content: space-between; align-items: center; padding: 13px 22px 0; font-size: 14px; font-weight: 600; }
+      .status .bars { display: flex; gap: 4px; align-items: flex-end; }
+      .status i { width: 3px; background: #fff; border-radius: 1px; display: block; }
+      .status .batt { width: 22px; height: 11px; border: 1.5px solid #fff; border-radius: 3px; position: relative; margin-left: 5px; }
+      .status .batt::after { content: ""; position: absolute; inset: 2px; right: 5px; background: #fff; border-radius: 1px; }
+      .top { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: 8px 10px 0; }
+      .top h1 { margin: 0; text-align: center; font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+      .ic { width: 40px; height: 40px; display: grid; place-items: center; }
+      .ic svg { width: 20px; height: 20px; }
+      .gauge { text-align: center; padding: 12px var(--space-page, 18px) 0; }
+      .gauge .arc { position: relative; width: 236px; height: 140px; margin: 0 auto; overflow: hidden; }
+      .gauge svg { display: block; }
+      .gauge .mid { position: absolute; left: 0; right: 0; bottom: 4px; }
+      .gauge .n { font-size: 54px; font-weight: 800; letter-spacing: -.045em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--color-strain, #0093E7); }
+      .gauge .k { font-size: 9.5px; font-weight: 700; letter-spacing: .18em; color: var(--color-dim, #5A6069); text-transform: uppercase; margin-top: 7px; }
+      .gauge .msg { margin: 14px auto 0; font-size: 13.5px; line-height: 1.55; color: var(--color-muted, #8B9099); max-width: 32ch; }
+      .over-only { display: none; }
+      .scale { display: flex; justify-content: space-between; margin: 12px var(--space-page, 18px) 0; font-size: 10.5px; color: var(--color-dim, #5A6069); font-variant-numeric: tabular-nums; }
+      h2 { font-size: 9.5px; font-weight: 700; letter-spacing: .18em; color: var(--color-dim, #5A6069); text-transform: uppercase; margin: 24px var(--space-page, 18px) 9px; display: flex; justify-content: space-between; }
+      .list { margin: 0 var(--space-page, 18px); background: var(--color-surface, #141619); border: 1px solid var(--color-line, #24272D); border-radius: var(--radius-card, 16px); padding: 2px 14px; }
+      .row { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--color-line, #24272D); width: 100%; }
+      .row:last-child { border-bottom: 0; }
+      .row .sq { width: 36px; height: 36px; border-radius: 10px; background: var(--color-surface-2, #1C1F24); display: grid; place-items: center; flex: none; color: var(--color-strain, #0093E7); }
+      .row .sq svg { width: 18px; height: 18px; }
+      .row .n { flex: 1; min-width: 0; }
+      .row .n b { display: block; font-size: 13.5px; font-weight: 600; }
+      .row .n span { display: block; font-size: 11.5px; color: var(--color-dim, #5A6069); margin-top: 2px; }
+      .row .v { text-align: right; font-variant-numeric: tabular-nums; }
+      .row .v b { display: block; font-size: 17px; font-weight: 800; letter-spacing: -.02em; color: var(--color-strain, #0093E7); }
+      .row .v span { display: block; font-size: 10.5px; color: var(--color-dim, #5A6069); margin-top: 2px; }
+      .row .chev { color: var(--color-dim, #5A6069); }
+      .stats { margin: 0 var(--space-page, 18px); display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .stat { background: var(--color-surface, #141619); border: 1px solid var(--color-line, #24272D); border-radius: var(--radius-control, 10px); padding: 12px; }
+      .stat .k { font-size: 9px; font-weight: 700; letter-spacing: .14em; color: var(--color-dim, #5A6069); text-transform: uppercase; }
+      .stat .v { font-size: 19px; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+      .stat .v small { font-size: 11px; color: var(--color-muted, #8B9099); font-weight: 600; }
+
+      html[data-flow-state="over"] .gauge .fill { stroke: var(--color-low, #FF3B30); stroke-dashoffset: 40; }
+      html[data-flow-state="over"] .gauge .n { color: var(--color-low, #FF3B30); }
+      html[data-flow-state="over"] .gauge .n .d { font-size: 0; }
+      html[data-flow-state="over"] .gauge .n .d::before { content: "17.9"; font-size: 54px; }
+      html[data-flow-state="over"] .gauge .msg { display: none; }
+      html[data-flow-state="over"] .over-only { display: block; color: var(--color-low, #FF3B30); }
+    </style>
+  </head>
+  <body>
+    <div class="status"><span>17:20</span><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i><span class="batt"></span></span></div>
+    <div class="top">
+      <button class="ic" aria-label="Back" data-flow-el="back-button" data-flow-transition="strain-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h1>STRAIN</h1><span></span>
+    </div>
+
+    <div class="gauge" data-flow-el="strain-gauge">
+      <div class="arc">
+        <svg width="236" height="140" viewBox="0 0 236 140">
+          <path d="M18 130 A 100 100 0 0 1 218 130" fill="none" stroke="#1C1F24" stroke-width="14" stroke-linecap="round" />
+          <path class="fill" d="M18 130 A 100 100 0 0 1 218 130" fill="none" stroke="#0093E7" stroke-width="14" stroke-linecap="round"
+                stroke-dasharray="314" stroke-dashoffset="129" />
+        </svg>
+        <div class="mid"><div class="n"><span class="d">8.4</span></div><div class="k">Day strain</div></div>
+      </div>
+      <p class="msg">Well inside what today's recovery can carry. There is room for another session if you want it.</p>
+      <p class="msg over-only">Past the ceiling recovery set this morning. Expect tomorrow's number to come back lower.</p>
+    </div>
+    <div class="scale"><span>0</span><span>optimal 14.2</span><span>21</span></div>
+
+    <h2>Today's sessions <span>2</span></h2>
+    <div class="list" data-flow-el="activity-list">
+      <button class="row" data-flow-transition="strain-to-activity">
+        <span class="sq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a1.5 1.5 0 1 0 0-.01M7 21l3-6 3 2 1 4M6 12l3-3 4 2 3-3"/></svg></span>
+        <span class="n"><b>Morning run</b><span>06:58 · 42m 18s · 7.4 km</span></span>
+        <span class="v"><b>11.3</b><span>strain</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <button class="row" data-flow-transition="strain-to-activity">
+        <span class="sq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9v6M20 9v6M7 7v10M17 7v10M7 12h10"/></svg></span>
+        <span class="n"><b>Lower body lift</b><span>12:40 · 51m 02s</span></span>
+        <span class="v"><b>6.8</b><span>strain</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <h2>Load</h2>
+    <div class="stats" data-flow-el="load-stats">
+      <div class="stat"><div class="k">Calories</div><div class="v">2,148</div></div>
+      <div class="stat"><div class="k">Avg HR</div><div class="v">71<small> bpm</small></div></div>
+      <div class="stat"><div class="k">Max HR</div><div class="v">176<small> bpm</small></div></div>
+    </div>
+  </body>
+</html>

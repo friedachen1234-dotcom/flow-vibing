@@ -54,6 +54,35 @@ The runtime depends on these, and the validator checks them:
 - States are styled with `html[data-flow-state="<state-id>"]` selectors. The default state renders with no attribute.
 - No external scripts, fonts, or images.
 
+## Interface
+
+The board is the whole surface; the chrome floats over it and gets out of the way.
+
+- **Top bar**: breadcrumb to the project (its menu has History, Export, and Regenerate), the Prototype / Flow toggle, the save status, a Claude panel toggle, Share, and **Run prototype**, which walks the flow full screen from any screen.
+- **Rail** (left, floating): Select, Hand, Pick an element, then Note and Reference, then Present.
+- **Composer** (bottom): the one place to talk to Claude. It knows its target: the picked element, the selected screen, or the whole project. Type to ask for a change, or press **Generate variants** to explore alternatives of the target side by side. Queued changes are applied from here too.
+- **Panel** (right, floating): Live preview, Inspect, Claude, History. In flow view, selecting a screen or an edge case opens Live preview: the screen running at reading size with a Simulate menu for its states. Closed by default; a tab on the edge reopens it.
+- **Flow view**: a Start marker, one card per screen with a thumbnail, its states and edge-case counts, and one row per interaction. Each row is where its line starts, and the line carries the trigger as a label. Edge cases are amber cards hanging under their screen on dashed lines; the toggle at the top right hides them.
+- **Prototype view**: every screen live, with a Live badge, a state menu, and a selection frame with handles on the picked element. Variants appear as an exploration panel beside the screen; hover an option to preview it in place, Apply to make it real.
+- **Canvas bar** (bottom): zoom, fit, tidy, influences, Map, and `?` for the shortcut list. Scroll pans, pinch or ⌘-scroll zooms, ⌘= / ⌘− / ⌘0 match the browser.
+
+Projects reopen on their content: if the saved viewport frames empty board, the canvas fits to what exists instead.
+
+## Hosted demo on Vercel
+
+The app needs a server for Claude, git, and the project folders, so the full thing runs locally. What deploys is a hosted demo: the same web app with the examples as static files, built with `pnpm build:static` into `packages/web/dist`. On it you can open every example on the canvas, read the flow, run the prototypes, hover variants, and edit the board in your tab; generation, applying variants, and history explain that they need the local app.
+
+`vercel.json` already carries the build settings, so deploying is:
+
+```bash
+npm i -g vercel        # once
+vercel login           # once, opens the browser
+vercel                 # preview deploy from this folder
+vercel --prod          # production
+```
+
+Or import the GitHub repository in the Vercel dashboard; it reads `vercel.json` and deploys every push. To preview the static build locally: `pnpm build:static && npx serve packages/web/dist`.
+
 ## Testing without Claude
 
 Open the demo project from the home screen. Its placeholder screens follow the contract, so navigation, states, the picker, magic lines, and change requests all work offline.
@@ -64,7 +93,9 @@ For something closer to real output, load one of the example prototypes from the
 - **Relay Desk** (desktop): support inbox with a ticket thread, a modal new-ticket form, and a reports page. Same-screen transitions flip the ticket to replied, escalated, or resolved.
 - **Plated** (tablet): recipe browser, recipe page, step-by-step cook mode with a timer state and a finish overlay, and an aisle-grouped shopping list.
 
-Each example is checked by `packages/server/src/examples.test.ts`: the spec lints clean, every declared element and transition exists in the markup, every non-default state has styling, and `tokens.css` matches the spec tokens. To add one, create `examples/<id>/` with `flow.json` (its `id` must match the folder), `screens/`, and a `tokens.css` generated from the spec, then run `pnpm test`.
+Each example also ships a board: two reference cards pointed at a screen with a style line, and a variants exploration of one element (the recovery ring, the balance card, the KPI row, the cook step) with three alternatives ready to hover and apply. They live in `board.json`, `inspirations/`, and `variants/` beside the screens, and `scripts/example-boards.mjs` regenerates them.
+
+Each example is checked by `packages/server/src/examples.test.ts`: the spec lints clean, every declared element and transition exists in the markup, every non-default state has styling, `tokens.css` matches the spec tokens, and the board's files exist and keep each variant's `data-flow-el`. To add one, create `examples/<id>/` with `flow.json` (its `id` must match the folder), `screens/`, and a `tokens.css` generated from the spec, then run `pnpm test`.
 
 Headless end-to-end generate (needs the dev server running):
 

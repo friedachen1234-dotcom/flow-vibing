@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en" data-flow-screen="sleep">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sleep</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body { font-family: var(--font-body, system-ui); background: var(--color-bg, #0A0B0D); color: var(--color-ink, #fff); -webkit-font-smoothing: antialiased; padding-bottom: 40px; }
+      button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+      .status { display: flex; justify-content: space-between; align-items: center; padding: 13px 22px 0; font-size: 14px; font-weight: 600; }
+      .status .bars { display: flex; gap: 4px; align-items: flex-end; }
+      .status i { width: 3px; background: #fff; border-radius: 1px; display: block; }
+      .status .batt { width: 22px; height: 11px; border: 1.5px solid #fff; border-radius: 3px; position: relative; margin-left: 5px; }
+      .status .batt::after { content: ""; position: absolute; inset: 2px; right: 5px; background: #fff; border-radius: 1px; }
+      .top { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: 8px 10px 0; }
+      .top h1 { margin: 0; text-align: center; font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+      .ic { width: 40px; height: 40px; display: grid; place-items: center; }
+      .ic svg { width: 20px; height: 20px; }
+      .hero { padding: 16px var(--space-page, 18px) 4px; }
+      .hero .k { font-size: 9.5px; font-weight: 700; letter-spacing: .18em; color: var(--color-dim, #5A6069); text-transform: uppercase; }
+      .hero .big { font-size: 62px; font-weight: 800; letter-spacing: -.05em; line-height: 1; margin-top: 8px; font-variant-numeric: tabular-nums; color: var(--color-sleep, #7B61FF); }
+      .hero .big sup { font-size: 24px; vertical-align: 26px; }
+      .hero .sub { font-size: 13.5px; color: var(--color-muted, #8B9099); margin-top: 9px; }
+      .hero .sub b { color: var(--color-ink, #fff); font-weight: 700; font-variant-numeric: tabular-nums; }
+      .need { margin: 16px var(--space-page, 18px) 0; }
+      .need .track { height: 10px; border-radius: 5px; background: var(--color-surface-2, #1C1F24); overflow: hidden; position: relative; }
+      .need .track i { display: block; height: 100%; background: var(--color-sleep, #7B61FF); border-radius: 5px; }
+      .need .track .mark { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--color-muted, #8B9099); border-radius: 1px; }
+      .need .lbls { display: flex; justify-content: space-between; margin-top: 7px; font-size: 10.5px; color: var(--color-dim, #5A6069); }
+      .debt { display: none; margin: 16px var(--space-page, 18px) 0; background: rgba(255,59,48,.09); border: 1px solid rgba(255,59,48,.3); border-radius: var(--radius-card, 16px); padding: 14px; }
+      .debt .k { font-size: 9.5px; font-weight: 700; letter-spacing: .16em; color: var(--color-low, #FF3B30); text-transform: uppercase; }
+      .debt h3 { margin: 7px 0 0; font-size: 15px; }
+      .debt p { margin: 5px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--color-muted, #8B9099); }
+      h2 { font-size: 9.5px; font-weight: 700; letter-spacing: .18em; color: var(--color-dim, #5A6069); text-transform: uppercase; margin: 24px var(--space-page, 18px) 9px; }
+      .stages { margin: 0 var(--space-page, 18px); background: var(--color-surface, #141619); border: 1px solid var(--color-line, #24272D); border-radius: var(--radius-card, 16px); padding: 15px 14px; }
+      .stack { display: flex; height: 34px; border-radius: 7px; overflow: hidden; gap: 2px; }
+      .stack i { display: block; height: 100%; }
+      .skey { display: grid; gap: 9px; margin-top: 14px; }
+      .skey .r { display: flex; align-items: center; gap: 9px; font-size: 12.5px; }
+      .skey .r i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+      .skey .r .nm { flex: 1; color: var(--color-muted, #8B9099); }
+      .skey .r b { font-variant-numeric: tabular-nums; font-weight: 700; }
+      .skey .r .pc { width: 40px; text-align: right; color: var(--color-dim, #5A6069); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+      .stats { margin: 0 var(--space-page, 18px); display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .stat { background: var(--color-surface, #141619); border: 1px solid var(--color-line, #24272D); border-radius: var(--radius-control, 10px); padding: 12px; }
+      .stat .k { font-size: 9px; font-weight: 700; letter-spacing: .14em; color: var(--color-dim, #5A6069); text-transform: uppercase; }
+      .stat .v { font-size: 19px; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+      .stat .v small { font-size: 11px; color: var(--color-muted, #8B9099); font-weight: 600; }
+
+      html[data-flow-state="insufficient"] .hero .big { color: var(--color-low, #FF3B30); }
+      html[data-flow-state="insufficient"] .hero .big .n { font-size: 0; }
+      html[data-flow-state="insufficient"] .hero .big .n::before { content: "58"; font-size: 62px; }
+      html[data-flow-state="insufficient"] .hero .sub .got { color: var(--color-low, #FF3B30); }
+      html[data-flow-state="insufficient"] .need .track i { width: 58% !important; background: var(--color-low, #FF3B30); }
+      html[data-flow-state="insufficient"] .debt { display: block; }
+    </style>
+  </head>
+  <body>
+    <div class="status"><span>6:42</span><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i><span class="batt"></span></span></div>
+    <div class="top">
+      <button class="ic" aria-label="Back" data-flow-el="back-button" data-flow-transition="sleep-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h1>SLEEP</h1><span></span>
+    </div>
+
+    <div class="hero" data-flow-el="sleep-hero">
+      <div class="k">Sleep performance</div>
+      <div class="big"><span class="n">87</span><sup>%</sup></div>
+      <div class="sub">Slept <b class="got">7h 42m</b> of <b>8h 51m</b> needed · 23:14 to 07:02</div>
+    </div>
+    <div class="need">
+      <div class="track"><i style="width:87%"></i><span class="mark" style="left:100%"></span></div>
+      <div class="lbls"><span>0h</span><span>need 8h 51m</span></div>
+    </div>
+
+    <div class="debt">
+      <div class="k">Sleep debt</div>
+      <h3>3h 24m behind over four nights</h3>
+      <p>Two early alarms and a late finish. An extra 50 minutes tonight clears most of it.</p>
+    </div>
+
+    <h2>Stages</h2>
+    <div class="stages" data-flow-el="stage-bar">
+      <div class="stack">
+        <i style="width:8%;background:#3A3F47"></i>
+        <i style="width:46%;background:#4B3FA8"></i>
+        <i style="width:23%;background:#7B61FF"></i>
+        <i style="width:23%;background:#B9A8FF"></i>
+      </div>
+      <div class="skey">
+        <div class="r"><i style="background:#3A3F47"></i><span class="nm">Awake</span><b>0h 37m</b><span class="pc">8%</span></div>
+        <div class="r"><i style="background:#4B3FA8"></i><span class="nm">Light</span><b>3h 32m</b><span class="pc">46%</span></div>
+        <div class="r"><i style="background:#7B61FF"></i><span class="nm">REM</span><b>1h 46m</b><span class="pc">23%</span></div>
+        <div class="r"><i style="background:#B9A8FF"></i><span class="nm">Deep</span><b>1h 47m</b><span class="pc">23%</span></div>
+      </div>
+    </div>
+
+    <h2>Quality</h2>
+    <div class="stats" data-flow-el="sleep-stats">
+      <div class="stat"><div class="k">Efficiency</div><div class="v">92<small>%</small></div></div>
+      <div class="stat"><div class="k">Disturbances</div><div class="v">11</div></div>
+      <div class="stat"><div class="k">Latency</div><div class="v">9<small> min</small></div></div>
+    </div>
+  </body>
+</html>

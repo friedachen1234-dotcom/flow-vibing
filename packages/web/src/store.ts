@@ -43,10 +43,19 @@ export interface FlowState {
   previewVersion: string | null;
   composerDraft: string;
   /** The single right panel. null hides it. */
-  panel: "inspect" | "claude" | "history" | null;
+  panel: "preview" | "inspect" | "claude" | "history" | null;
   setPanel(p: FlowState["panel"]): void;
   showMinimap: boolean;
   setShowMinimap(v: boolean): void;
+  /** Flow view: edge-case cards and their dashed lines. */
+  showEdgeCases: boolean;
+  setShowEdgeCases(v: boolean): void;
+  /** Hand tool: dragging anywhere pans the board. */
+  hand: boolean;
+  setHand(v: boolean): void;
+  /** When the project was last written, for the status in the top bar. null before the first save this session. */
+  savedAt: number | null;
+  saving: boolean;
 
   openProject(id: string): Promise<void>;
   closeProject(): void;
@@ -89,7 +98,8 @@ function flushCanvas(projectId: string) {
   if (!pendingCanvas) return;
   const c = pendingCanvas;
   pendingCanvas = null;
-  api.saveCanvas(projectId, c).catch((e) => useFlow.getState().showToast(`Could not save canvas: ${e.message}`));
+  useFlow.setState({ saving: true });
+  api.saveCanvas(projectId, c).then(() => useFlow.setState({ saving: false, savedAt: Date.now() })).catch((e) => { useFlow.setState({ saving: false }); useFlow.getState().showToast(`Could not save canvas: ${e.message}`); });
 }
 
 export const useFlow = create<FlowState>((set, get) => ({
@@ -111,10 +121,17 @@ export const useFlow = create<FlowState>((set, get) => ({
   toast: null,
   previewVersion: null,
   composerDraft: "",
-  panel: (readStr("panel", "claude") || null) as FlowState["panel"],
+  // Closed by default: the canvas is the primary surface. Selecting something opens Inspect; the CTA opens Claude.
+  panel: (readStr("panel", "") || null) as FlowState["panel"],
   setPanel(panel) { set({ panel }); writeStr("panel", panel ?? ""); },
-  showMinimap: readPref("showMinimap", false),
+  showMinimap: readPref("showMinimap", true),
   setShowMinimap(v) { set({ showMinimap: v }); writePref("showMinimap", v); },
+  showEdgeCases: readPref("showEdgeCases", true),
+  setShowEdgeCases(v) { set({ showEdgeCases: v }); writePref("showEdgeCases", v); },
+  hand: false,
+  setHand(hand) { set({ hand }); if (hand) set({ picker: { enabled: false, picked: get().picker.picked } }); },
+  savedAt: null,
+  saving: false,
 
   async openProject(id) {
     set({ loading: true, error: null, projectId: id, selection: null, pendingChanges: [], frames: {}, agent: { running: false, runId: null, intent: null, items: [], streaming: "", status: "", totalCost: 0 } });
@@ -132,7 +149,7 @@ export const useFlow = create<FlowState>((set, get) => ({
   closeProject() {
     const id = get().projectId;
     if (id) flushCanvas(id);
-    set({ projectId: null, bundle: null, selection: null, pendingChanges: [] });
+    set({ projectId: null, bundle: null, selection: null, pendingChanges: [], savedAt: null, saving: false });
     history.replaceState(null, "", "#");
   },
   async refresh() {
@@ -152,7 +169,10 @@ export const useFlow = create<FlowState>((set, get) => ({
     const cur = get().selection;
     if (cur === selection || (cur && selection && cur.kind === selection.kind && cur.id === selection.id)) return;
     set({ selection });
-    if (selection && get().panel !== "claude") get().setPanel("inspect");
+    if (!selection || get().panel === "claude") return;
+    const previewable = selection.kind === "node" && (selection.id.startsWith("screen:") || selection.id.startsWith("edgecase:"));
+    if (get().view === "flow" && previewable) get().setPanel("preview");
+    else if (get().panel !== "preview" || !previewable) get().setPanel("inspect");
   },
   updateCanvas(fn, persist = true) {
     const { bundle, projectId } = get();
@@ -170,15 +190,16 @@ export const useFlow = create<FlowState>((set, get) => ({
     if (saveTimer) { window.clearTimeout(saveTimer); saveTimer = null; }
     const c = pendingCanvas;
     pendingCanvas = null;
-    try { await api.saveCanvas(projectId, c); } catch (e) { get().showToast(`Could not save canvas: ${(e as Error).message}`); }
+    set({ saving: true });
+    try { await api.saveCanvas(projectId, c); set({ saving: false, savedAt: Date.now() }); } catch (e) { set({ saving: false }); get().showToast(`Could not save canvas: ${(e as Error).message}`); }
   },
   async saveSpec(fn, summary) {
     const { bundle, projectId } = get();
     if (!bundle || !projectId) return;
     const spec = fn(bundle.spec);
-    set({ bundle: { ...bundle, spec } });
-    try { await api.saveSpec(projectId, spec, summary); await get().refresh(); }
-    catch (e) { get().showToast(`Could not save: ${(e as Error).message}`); }
+    set({ bundle: { ...bundle, spec }, saving: true });
+    try { await api.saveSpec(projectId, spec, summary); set({ saving: false, savedAt: Date.now() }); await get().refresh(); }
+    catch (e) { set({ saving: false }); get().showToast(`Could not save: ${(e as Error).message}`); }
   },
   addChange(cr) {
     const full = { ...cr, id: nanoid(8), createdAt: new Date().toISOString() } as ChangeRequest;
@@ -200,7 +221,7 @@ export const useFlow = create<FlowState>((set, get) => ({
     if (projectId) socket.send({ type: "agent:cancel", projectId });
   },
   setFrame(screenId, fs) { set({ frames: { ...get().frames, [screenId]: fs } }); },
-  setPicker(enabled) { set({ picker: { enabled, picked: enabled ? get().picker.picked : null } }); },
+  setPicker(enabled) { set({ picker: { enabled, picked: enabled ? get().picker.picked : null } }); if (enabled) set({ hand: false }); },
   setPicked(picked) {
     set({ picker: { ...get().picker, picked } });
     if (picked) { set({ selection: { kind: "node", id: `screen:${picked.screenId}` } }); }
@@ -278,6 +299,7 @@ function handleServerMessage(m: ServerMessage) {
       useFlow.setState({ agent: { ...cur, running: false, runId: null, streaming: "", status: "", totalCost: cur.totalCost + m.costUsd } });
       push({ kind: "done", text: m.ok ? `Done in ${(m.durationMs / 1000).toFixed(0)}s, ${m.numTurns} turns, $${m.costUsd.toFixed(3)}.` : `Finished with problems after ${(m.durationMs / 1000).toFixed(0)}s, $${m.costUsd.toFixed(3)}.`, ok: m.ok, issues: m.issues, costUsd: m.costUsd, durationMs: m.durationMs });
       if (cur.intent === "regenerate") useFlow.setState({ pendingChanges: [] });
+      if (m.ok) useFlow.setState({ savedAt: Date.now() });
       break;
     }
     case "agent:error": {
@@ -287,6 +309,7 @@ function handleServerMessage(m: ServerMessage) {
       break;
     }
     case "project:updated":
+      useFlow.setState({ savedAt: Date.now() });
       void useFlow.getState().refresh();
       break;
     case "agent:replay": {

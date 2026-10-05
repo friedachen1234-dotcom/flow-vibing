@@ -6,17 +6,23 @@
  * Data sources, in order:
  *   1. window.__FLOW__ = { spec, screens: { [file]: html }, agent: "<screen-agent.js source>" }  (exported prototype)
  *   2. ?project=ID  → fetches /api/projects/ID/files/flow.json and screen files from the FLOW server
+ *   3. ?example=ID  → same, from /api/examples/ID/files/ (a shipped example, run in place)
+ *   4. ?base=/path/ → same, from any static folder holding flow.json and screens/ (the hosted demo)
  */
 (function () {
   const params = new URLSearchParams(location.search);
   const projectId = params.get("project");
+  const exampleId = params.get("example"); // run a shipped example in place, without copying it into a project
   const startScreen = params.get("screen");
   const startState = params.get("state");
   const follow = params.get("follow") !== "0"; // when false, transitions are reported but not performed
   const version = params.get("version");
   const inline = window.__FLOW__ || null;
-  const filesBase = projectId
+  const base = params.get("base"); // any folder that holds flow.json and screens/, for static hosting
+  const filesBase = base ? (base.endsWith("/") ? base : base + "/")
+    : projectId
     ? (version ? `/api/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(version)}/files/` : `/api/projects/${encodeURIComponent(projectId)}/files/`)
+    : exampleId ? `/api/examples/${encodeURIComponent(exampleId)}/files/`
     : "./";
   const stage = document.getElementById("stage");
   const missing = document.getElementById("missing");
@@ -87,6 +93,7 @@
     current = { screenId, stateId: targetState, frame };
     frame.addEventListener("load", () => {
       send(frame, { type: "flow:setState", stateId: targetState });
+      send(frame, { type: "flow:scroll-mode", mode: scrollMode });
       send(frame, { type: "flow:picker", enabled: pickerEnabled });
       if (highlightEl) send(frame, { type: "flow:highlight", elementId: highlightEl });
     });
@@ -101,6 +108,22 @@
     }
     post({ type: "flow:navigated", screenId, stateId: targetState, transitionId: transitionId || null });
   }
+
+  /**
+   * Wheel and pinch over a prototype. The board owns these gestures: plain scroll pans the canvas, pinch or
+   * modifier-scroll zooms it, and neither may reach the browser, which would zoom the whole page. Only when the host
+   * puts this screen in "scroll" mode (it is selected) does a plain scroll reach the document inside.
+   */
+  let scrollMode = "scroll";
+  function forwardWheel(ev, x, y) {
+    const zoom = ev.ctrlKey || ev.metaKey;
+    if (!zoom && scrollMode === "scroll") return; // let the screen scroll itself
+    ev.preventDefault();
+    post({ type: "flow:wheel", deltaX: ev.deltaX, deltaY: ev.deltaY, deltaMode: ev.deltaMode, ctrlKey: ev.ctrlKey, metaKey: ev.metaKey, x, y });
+  }
+  window.addEventListener("wheel", (ev) => forwardWheel(ev, ev.clientX, ev.clientY), { passive: false, capture: true });
+  // Safari reports trackpad pinch as gesture events; swallowing them stops the page from zooming.
+  for (const t of ["gesturestart", "gesturechange", "gestureend"]) window.addEventListener(t, (ev) => ev.preventDefault(), { passive: false });
 
   function send(frame, msg) {
     try { frame.contentWindow.postMessage({ source: "flow-shell", ...msg }, "*"); } catch (e) { /* frame not ready */ }
@@ -162,6 +185,7 @@
         if (known.length > 1) chooseBranch(known, d.elementId); else runTransition(ids[0], d.elementId);
       }
       else if (d.type === "flow:ready") post({ type: "flow:screen-ready", screenId: current.screenId, elements: d.elements, transitions: d.transitions });
+      else if (d.type === "flow:wheel") { if (d.zoom || scrollMode !== "scroll") post({ type: "flow:wheel", deltaX: d.deltaX, deltaY: d.deltaY, deltaMode: d.deltaMode, ctrlKey: d.ctrlKey, metaKey: d.metaKey, x: d.x, y: d.y }); }
       else if (d.type === "flow:pick") post({ type: "flow:picked", screenId: current.screenId, elementId: d.elementId, label: d.label, rect: d.rect, tag: d.tag });
       else if (d.type === "flow:hover") post({ type: "flow:hover", screenId: current.screenId, elementId: d.elementId, rect: d.rect });
       return;
@@ -174,6 +198,7 @@
       else if (d.type === "flow:highlight") { highlightEl = d.elementId || null; if (current.frame) send(current.frame, { type: "flow:highlight", elementId: highlightEl }); }
       else if (d.type === "flow:back") { const prev = history.pop(); if (prev) mount(prev.screenId, prev.stateId, "pop", null); }
       else if (d.type === "flow:reload") boot(current.screenId, current.stateId);
+      else if (d.type === "flow:scroll-mode") { scrollMode = d.mode === "scroll" ? "scroll" : "pan"; document.documentElement.setAttribute("data-flow-scroll", scrollMode); if (current.frame) send(current.frame, { type: "flow:scroll-mode", mode: scrollMode }); }
       else if (d.type === "flow:preview" || d.type === "flow:preview-tokens") { if (current.frame) send(current.frame, d); }
       else if (d.type === "flow:transition") runTransition(d.transitionId, null);
     }

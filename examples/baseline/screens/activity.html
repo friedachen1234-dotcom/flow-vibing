@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en" data-flow-screen="activity">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Activity</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body { font-family: var(--font-body, system-ui); background: var(--color-bg, #0A0B0D); color: var(--color-ink, #fff); -webkit-font-smoothing: antialiased; padding-bottom: 40px; }
+      button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+      .status { display: flex; justify-content: space-between; align-items: center; padding: 13px 22px 0; font-size: 14px; font-weight: 600; }
+      .status .bars { display: flex; gap: 4px; align-items: flex-end; }
+      .status i { width: 3px; background: #fff; border-radius: 1px; display: block; }
+      .status .batt { width: 22px; height: 11px; border: 1.5px solid #fff; border-radius: 3px; position: relative; margin-left: 5px; }
+      .status .batt::after { content: ""; position: absolute; inset: 2px; right: 5px; background: #fff; border-radius: 1px; }
+      .top { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: 8px 10px 0; }
+      .top h1 { margin: 0; text-align: center; font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+      .ic { width: 40px; height: 40px; display: grid; place-items: center; }
+      .ic svg { width: 20px; height: 20px; }
+      .hero { padding: 14px var(--space-page, 18px) 0; }
+      .hero .k { font-size: 9.5px; font-weight: 700; letter-spacing: .18em; color: var(--color-dim, #5A6069); text-transform: uppercase; }
+      .hero h2 { margin: 7px 0 0; font-size: 24px; font-weight: 800; letter-spacing: -.03em; }
+      .hero .meta { font-size: 12.5px; color: var(--color-muted, #8B9099); margin-top: 5px; }
+      .headline { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px var(--space-page, 18px) 0; }
+      .headline div { background: var(--color-surface, #141619); border: 1px solid var(--color-line, #24272D); border-radius: var(--radius-card, 16px); padding: 14px; }
+      .headline .k { font-size: 9px; font-weight: 700; letter-spacing: .14em; color: var(--color-dim, #5A6069); text-transform: uppercase; }
+      .headline .v { font-size: 32px; font-weight: 800; letter-spacing: -.035em; margin-top: 7px; font-variant-numeric: tabular-nums; line-height: 1; }
+      .headline .v.strain { color: var(--color-strain, #0093E7); }
+      h3 { font-size: 9.5px; font-weight: 700; letter-spacing: .18em; color: var(--color-dim, #5A6069); text-transform: uppercase; margin: 24px var(--space-page, 18px) 9px; }
+      .zones { margin: 0 var(--space-page, 18px); background: var(--color-surface, #141619); border: 1px solid var(--color-line, #24272D); border-radius: var(--radius-card, 16px); padding: 15px 14px; display: grid; gap: 11px; }
+      .z { display: flex; align-items: center; gap: 10px; }
+      .z .lbl { width: 54px; flex: none; }
+      .z .lbl b { display: block; font-size: 11.5px; font-weight: 700; }
+      .z .lbl span { display: block; font-size: 9.5px; color: var(--color-dim, #5A6069); font-variant-numeric: tabular-nums; }
+      .z .track { flex: 1; height: 16px; border-radius: 4px; background: var(--color-surface-2, #1C1F24); overflow: hidden; }
+      .z .track i { display: block; height: 100%; border-radius: 4px; }
+      .z .t { width: 46px; text-align: right; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .gap { margin: 10px var(--space-page, 18px) 0; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--color-muted, #8B9099); }
+      .gap i { width: 14px; height: 6px; border-radius: 2px; background: repeating-linear-gradient(90deg,#3A3F47 0 3px,transparent 3px 6px); flex: none; }
+      .stats { margin: 0 var(--space-page, 18px); display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .stat { background: var(--color-surface, #141619); border: 1px solid var(--color-line, #24272D); border-radius: var(--radius-control, 10px); padding: 12px; }
+      .stat .k { font-size: 9px; font-weight: 700; letter-spacing: .14em; color: var(--color-dim, #5A6069); text-transform: uppercase; }
+      .stat .v { font-size: 19px; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+      .stat .v small { font-size: 11px; color: var(--color-muted, #8B9099); font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div class="status"><span>17:21</span><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i><span class="batt"></span></span></div>
+    <div class="top">
+      <button class="ic" aria-label="Back" data-flow-el="back-button" data-flow-transition="activity-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h1>SESSION</h1><span></span>
+    </div>
+
+    <div class="hero" data-flow-el="session-hero">
+      <div class="k">Tue 8 Sep · 06:58</div>
+      <h2>Morning run</h2>
+      <div class="meta">42m 18s · 7.4 km · 5:43 / km</div>
+    </div>
+    <div class="headline">
+      <div><div class="k">Strain</div><div class="v strain">11.3</div></div>
+      <div><div class="k">Avg HR</div><div class="v">148</div></div>
+    </div>
+
+    <h3>Time in heart rate zones</h3>
+    <div class="zones" data-flow-el="zone-bars">
+      <div class="z"><span class="lbl"><b>Zone 5</b><span>171+</span></span><span class="track"><i style="width:6%;background:#FF3B30"></i></span><span class="t">2:31</span></div>
+      <div class="z"><span class="lbl"><b>Zone 4</b><span>152–170</span></span><span class="track"><i style="width:34%;background:#FF8A00"></i></span><span class="t">14:22</span></div>
+      <div class="z"><span class="lbl"><b>Zone 3</b><span>133–151</span></span><span class="track"><i style="width:41%;background:#FFD500"></i></span><span class="t">17:20</span></div>
+      <div class="z"><span class="lbl"><b>Zone 2</b><span>114–132</span></span><span class="track"><i style="width:14%;background:#16EC06"></i></span><span class="t">5:55</span></div>
+      <div class="z"><span class="lbl"><b>Zone 1</b><span>95–113</span></span><span class="track"><i style="width:5%;background:#0093E7"></i></span><span class="t">2:10</span></div>
+    </div>
+    <div class="gap"><i></i>Signal dropped 18:04–18:22. That stretch is excluded, not estimated.</div>
+
+    <h3>Session</h3>
+    <div class="stats" data-flow-el="session-stats">
+      <div class="stat"><div class="k">Max HR</div><div class="v">176<small> bpm</small></div></div>
+      <div class="stat"><div class="k">Calories</div><div class="v">612</div></div>
+      <div class="stat"><div class="k">Cadence</div><div class="v">172<small> spm</small></div></div>
+    </div>
+  </body>
+</html>

@@ -8,6 +8,7 @@
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
+import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -37,19 +38,57 @@ const defs = {
 };
 const procs = {};
 let stopping = false;
+const stop = (code = 0) => { stopping = true; for (const p of Object.values(procs)) p.kill("SIGTERM"); process.exit(code); };
+process.on("SIGINT", () => stop(0));
+process.on("SIGTERM", () => stop(0));
+
+// A child that dies this fast never finished starting, so respawning it just repeats the same failure.
+const STARTUP_MS = 4000;
+const MAX_FAILURES = 3;
+const failures = {};
 function start(name) {
+  const startedAt = Date.now();
   const p = defs[name]();
   procs[name] = p;
   // If one side dies (or is killed to pick up new code), bring it back instead of taking the other down.
   p.on("exit", (code, signal) => {
     if (stopping) return;
+    failures[name] = Date.now() - startedAt < STARTUP_MS ? (failures[name] ?? 0) + 1 : 0;
+    if (failures[name] >= MAX_FAILURES) {
+      console.error(`[dev] ${name} failed to start ${MAX_FAILURES} times in a row. Stopping so the error above stays readable.`);
+      stop(1);
+      return;
+    }
     console.error(`[dev] ${name} exited (${signal ?? code}); restarting in 1s`);
     setTimeout(() => start(name), 1000);
   });
 }
-const stop = () => { stopping = true; for (const p of Object.values(procs)) p.kill("SIGTERM"); process.exit(0); };
-process.on("SIGINT", stop);
-process.on("SIGTERM", stop);
+
+/** Resolves true when something already listens on the port. Both children exit instantly in that case. */
+function portInUse(port) {
+  return new Promise((resolve) => {
+    const probe = createServer();
+    probe.once("error", (e) => resolve(e.code === "EADDRINUSE"));
+    probe.once("listening", () => probe.close(() => resolve(false)));
+    probe.listen(Number(port), "127.0.0.1");
+  });
+}
+
+// Checked up front: without this the only symptom is both children restarting forever, which reads as a bug in the app.
+const taken = [];
+for (const [port, what] of [[webPort, "web dev server, set with PORT"], [apiPort, "API server, set with FLOW_PORT"]]) {
+  if (await portInUse(port)) taken.push(`  ${port} — needed by the ${what}`);
+}
+if (taken.length) {
+  console.error(
+    `[dev] These ports are already in use:\n${taken.join("\n")}\n` +
+    `[dev] Another "pnpm dev" is probably still running. Find it with:  lsof -ti tcp:${webPort},${apiPort}\n` +
+    `[dev] Stop it with:  kill $(lsof -ti tcp:${webPort},${apiPort})\n` +
+    `[dev] Or run alongside it on free ports:  PORT=5280 FLOW_PORT=5291 pnpm dev`
+  );
+  process.exit(1);
+}
+
 start("server");
 start("web");
 console.log(`[dev] web http://localhost:${webPort}  api http://localhost:${apiPort}`);

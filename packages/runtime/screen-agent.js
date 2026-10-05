@@ -26,6 +26,14 @@
     overlay = document.createElement("div");
     overlay.setAttribute("data-flow-ui", "");
     overlay.style.cssText = "position:fixed;pointer-events:none;z-index:2147483646;border:2px solid #2C4FDB;border-radius:4px;background:rgba(44,79,219,.08);display:none;box-sizing:border-box;transition:all 80ms ease";
+    // Eight handles, like a selection in a design tool. Shown only for the element the host is working on.
+    for (const pos of ["-5px -5px", "-5px calc(50% - 4px)", "-5px auto", "calc(50% - 4px) -5px", "calc(50% - 4px) auto", "auto -5px", "auto calc(50% - 4px)", "auto auto"]) {
+      const h = document.createElement("i");
+      const [top, left] = pos.split(" ");
+      h.setAttribute("data-flow-handle", "");
+      h.style.cssText = "position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid #2C4FDB;border-radius:2px;box-sizing:border-box;display:none;top:" + top + ";left:" + left + ";" + (top === "auto" ? "bottom:-5px;" : "") + (left === "auto" ? "right:-5px;" : "");
+      overlay.appendChild(h);
+    }
     label = document.createElement("div");
     label.setAttribute("data-flow-ui", "");
     label.style.cssText = "position:fixed;pointer-events:none;z-index:2147483647;background:#2C4FDB;color:#fff;font:600 11px/1.4 system-ui,sans-serif;padding:2px 6px;border-radius:3px;display:none;white-space:nowrap";
@@ -33,10 +41,12 @@
     document.body.appendChild(label);
   }
 
-  function frameOn(el, color) {
+  function frameOn(el, color, handles) {
     ensureOverlay();
     const r = el.getBoundingClientRect();
     overlay.style.display = "block";
+    overlay.style.borderWidth = handles ? "1.5px" : "2px";
+    for (const h of overlay.querySelectorAll("[data-flow-handle]")) { h.style.display = handles ? "block" : "none"; h.style.borderColor = color; }
     overlay.style.left = r.left + "px"; overlay.style.top = r.top + "px";
     overlay.style.width = r.width + "px"; overlay.style.height = r.height + "px";
     overlay.style.borderColor = color; overlay.style.background = color === "#2C4FDB" ? "rgba(44,79,219,.08)" : "rgba(184,54,139,.10)";
@@ -81,8 +91,9 @@
     const el = elFor(ev.target);
     if (el === hovered) return;
     hovered = el;
-    if (el) { frameOn(el, "#2C4FDB"); post({ type: "flow:hover", elementId: el.getAttribute("data-flow-el"), rect: rectOf(el) }); }
-    else if (!highlighted) frameOff();
+    if (el) { frameOn(el, "#2C4FDB", false); post({ type: "flow:hover", elementId: el.getAttribute("data-flow-el"), rect: rectOf(el) }); }
+    else if (highlighted) { const h = document.querySelector('[data-flow-el="' + CSS.escape(highlighted) + '"]'); if (h) frameOn(h, "#2C4FDB", true); else frameOff(); }
+    else frameOff();
   }, true);
 
   let previewed = null; // { el, original }
@@ -108,13 +119,25 @@
     if (d.type === "flow:preview") previewElement(d.elementId, d.html);
     else if (d.type === "flow:preview-tokens") previewTokens(d.css);
     else if (d.type === "flow:setState") setState(d.stateId);
+    else if (d.type === "flow:scroll-mode") { scrollMode = d.mode === "scroll" ? "scroll" : "pan"; root.setAttribute("data-flow-scroll", scrollMode); }
     else if (d.type === "flow:picker") { pickerEnabled = !!d.enabled; document.body && (document.body.style.cursor = pickerEnabled ? "crosshair" : ""); if (!pickerEnabled) { hovered = null; if (!highlighted) frameOff(); } }
     else if (d.type === "flow:highlight") {
       highlighted = d.elementId || null;
       const el = highlighted ? document.querySelector('[data-flow-el="' + CSS.escape(highlighted) + '"]') : null;
-      if (el) { frameOn(el, "#B8368B"); el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } else frameOff();
+      if (el) { frameOn(el, "#2C4FDB", true); el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } else frameOff();
     }
   });
+
+  // Scrolling belongs to the board unless the host says this screen is being scrolled on purpose. Pinch and
+  // modifier-scroll always go up as zoom, and never to the browser.
+  let scrollMode = "scroll";
+  window.addEventListener("wheel", (ev) => {
+    const zoom = ev.ctrlKey || ev.metaKey;
+    if (!zoom && scrollMode === "scroll") return;
+    ev.preventDefault();
+    post({ type: "flow:wheel", deltaX: ev.deltaX, deltaY: ev.deltaY, deltaMode: ev.deltaMode, ctrlKey: ev.ctrlKey, metaKey: ev.metaKey, zoom, x: ev.clientX, y: ev.clientY });
+  }, { passive: false, capture: true });
+  for (const t of ["gesturestart", "gesturechange", "gestureend"]) window.addEventListener(t, (ev) => ev.preventDefault(), { passive: false });
 
   function ready() {
     const elements = Array.from(document.querySelectorAll("[data-flow-el]")).map((el) => el.getAttribute("data-flow-el"));

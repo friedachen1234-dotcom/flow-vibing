@@ -1,0 +1,84 @@
+{
+  "nodes": [
+    {
+      "id": "ref-card",
+      "type": "inspiration",
+      "kind": "image",
+      "title": "Gradient balance card",
+      "caption": "Deep blue gradient, one big numeral, the account details whispered underneath.",
+      "description": "",
+      "path": "inspirations/balance-card.svg",
+      "position": {
+        "x": -420,
+        "y": 400
+      },
+      "width": 224
+    },
+    {
+      "id": "ref-flat",
+      "type": "inspiration",
+      "kind": "image",
+      "title": "Quiet surfaces",
+      "caption": "White cards, hairline borders, colour only on the number that matters.",
+      "description": "",
+      "path": "inspirations/quiet-surfaces.svg",
+      "position": {
+        "x": -420,
+        "y": 700
+      },
+      "width": 224
+    },
+    {
+      "id": "vp-balance-card",
+      "type": "variantPanel",
+      "target": {
+        "screenId": "home",
+        "elementId": "balance-card"
+      },
+      "direction": "Calmer, less like a credit card",
+      "options": [
+        {
+          "id": "flat",
+          "label": "Flat surface",
+          "rationale": "Drops the gradient. The amount does the work on a plain card.",
+          "file": "variants/vp-balance-card/flat.html"
+        },
+        {
+          "id": "strip",
+          "label": "Compact strip",
+          "rationale": "One line. Leaves room for contacts and activity above the fold.",
+          "file": "variants/vp-balance-card/strip.html"
+        },
+        {
+          "id": "hero",
+          "label": "Hero numeral",
+          "rationale": "Bigger figure, label above, nothing else competing with it.",
+          "file": "variants/vp-balance-card/hero.html"
+        }
+      ],
+      "position": {
+        "x": 0,
+        "y": 964
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "magic-ref-flat",
+      "type": "magic",
+      "source": "ref-flat",
+      "target": "screen:home",
+      "targetElementId": "balance-card",
+      "relation": "match-style",
+      "note": ""
+    },
+    {
+      "id": "link-vp-balance-card",
+      "type": "variantLink",
+      "source": "screen:home",
+      "target": "vp-balance-card",
+      "targetElementId": "balance-card",
+      "note": ""
+    }
+  ]
+}
