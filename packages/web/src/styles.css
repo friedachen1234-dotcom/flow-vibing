@@ -209,7 +209,8 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .ec-btn:hover { background: var(--surface-2); }
 .legend { display: flex; gap: 14px; font-size: var(--t-12); color: var(--ink-2); padding-right: 4px; }
 .legend span { display: inline-flex; align-items: center; gap: 7px; }
-.legend .ln { display: inline-block; width: 34px; height: 0; border-top: 1.5px solid var(--accent); }
+.legend .ln { display: inline-block; width: 34px; height: 0; border-top: 2px solid var(--accent); }
+.legend .ln.alt { border-top: 1.4px solid var(--accent); opacity: .38; }
 .legend .ln.ec { border-top: 1.5px dashed var(--warn); }
 .react-flow__minimap { position: absolute !important; right: 16px !important; bottom: 16px !important; margin: 0 !important; width: 220px !important; height: 140px !important; border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--surface) !important; }
 .react-flow__minimap svg { border-radius: 14px; }

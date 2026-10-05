@@ -64,7 +64,7 @@ export function TransitionEdge(props: EdgeProps) {
   return (
     <>
       <BaseEdge id={props.id} path={path} markerEnd={props.markerEnd} interactionWidth={18}
-        style={{ stroke: back ? "var(--ink-3)" : "var(--accent)", strokeWidth: props.selected || lit ? 2.2 : main ? 1.8 : 1.5, strokeDasharray: back ? "5 4" : active ? "6 4" : undefined, opacity: dim ? 0.12 : lit || props.selected || main ? 1 : 0.75, transition: "opacity .15s, stroke-width .15s" }} />
+        style={{ stroke: back ? "var(--ink-3)" : "var(--accent)", strokeWidth: props.selected || lit ? 2.2 : main ? 2 : 1.4, strokeDasharray: back ? "5 4" : active ? "6 4" : undefined, opacity: dim ? 0.12 : lit || props.selected || main ? 1 : 0.38, transition: "opacity .15s, stroke-width .15s" }} />
       {props.selected && (
         <EdgeLabelRenderer>
           <div className={`edge-label transition ${back ? "back" : ""} ${props.selected ? "selected" : ""} ${lit || props.selected || main ? "" : "quiet"} nodrag nopan`} style={{ position: "absolute", transform: `translate(0, -50%) translate(${lx}px, ${ly}px)` }} onClick={() => select({ kind: "transition", id: t.id })}>

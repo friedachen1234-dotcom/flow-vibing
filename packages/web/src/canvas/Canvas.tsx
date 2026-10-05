@@ -161,7 +161,7 @@ export function Canvas() {
           id: `t:${t.id}`, type: "transition", source: `screen:${t.from.screenId}`, target: `screen:${t.to.screenId}`, sourceHandle: `out:${t.id}`, targetHandle: "in",
           data: { transition: t, kind, dim: !!focusScreen && !touches, lit: touches, main: mains.has(t.id), orbitY },
           selected: selection?.kind === "transition" && selection.id === t.id,
-          markerEnd: { type: MarkerType.ArrowClosed, color: "#2C4FDB", width: 10, height: 10 }, zIndex: touches ? 4 : 3
+          markerEnd: { type: MarkerType.ArrowClosed, color: mains.has(t.id) || touches ? "#2C4FDB" : "#AEBBEF", width: 10, height: 10 }, zIndex: touches ? 4 : mains.has(t.id) ? 3 : 2
         });
       }
       // Lines leaving one card take lanes in row order: the top row's line runs on the left, so stubs never cross trunks.
@@ -445,6 +445,7 @@ export function Canvas() {
           </button>
           <div className="legend">
             <span><i className="ln main" /> Main flow</span>
+            <span><i className="ln alt" /> Other moves</span>
             <span><i className="ln ec" /> Edge case</span>
           </div>
         </div>
