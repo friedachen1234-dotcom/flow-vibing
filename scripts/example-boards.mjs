@@ -143,7 +143,8 @@ for (const [id, b] of Object.entries(boards)) {
   // The exploration sits under its screen. Screens land at x = n * (width + 140) when the example is loaded.
   const spec = JSON.parse(readFileSync(path.join(dir, "flow.json"), "utf8"));
   const n = spec.screens.findIndex((s) => s.id === b.panel.screenId);
-  nodes.push({ id: b.panel.id, type: "variantPanel", target: { screenId: b.panel.screenId, elementId: b.panel.elementId }, direction: b.panel.direction, options, position: { x: n * (spec.device.width + 140), y: spec.device.height + 120 } });
+  const panelW = 16 + options.length * 220;
+  nodes.push({ id: b.panel.id, type: "variantPanel", target: { screenId: b.panel.screenId, elementId: b.panel.elementId }, direction: b.panel.direction, options, position: { x: n * (spec.device.width + 140) + (spec.device.width - panelW) / 2, y: spec.device.height + 120 } });
   edges.push({ id: `magic-${b.panel.linkRef}`, type: "magic", source: b.panel.linkRef, target: `screen:${b.panel.screenId}`, targetElementId: b.panel.elementId, relation: "match-style", note: "" });
   edges.push({ id: `link-${b.panel.id}`, type: "variantLink", source: `screen:${b.panel.screenId}`, target: b.panel.id, targetElementId: b.panel.elementId, note: "" });
   writeFileSync(path.join(dir, "board.json"), JSON.stringify({ nodes, edges }, null, 2) + "\n");

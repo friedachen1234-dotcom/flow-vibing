@@ -8,7 +8,7 @@ import { EDGE_CASE_W, FLOW_CARD_W, edgeCaseStackHeight, flowCardHeight, tidyLayo
 import { Icon } from "../components/Icon";
 import { api } from "../api";
 import { useFlow } from "../store";
-import { nodeTypes } from "./nodes";
+import { nodeTypes, variantPanelWidth } from "./nodes";
 import { ask } from "../components/Dialog";
 import { edgeTypes } from "./edges";
 import { Composer } from "../components/Composer";
@@ -40,9 +40,10 @@ function panelPosition(n: Extract<CanvasNode, { type: "variantPanel" }>, canvas:
   const w = view === "flow" ? Math.max(FLOW_CARD_W, 36 + EDGE_CASE_W) : host.width ?? spec.device.width;
   const ecs = view === "flow" && showEdgeCases ? spec.edgeCases.filter((e) => hostScreen(spec, e.attachedTo) === host.screenId).length : 0;
   const bottom = host.position.y + (view === "flow" ? flowCardHeight(spec, host.screenId) + edgeCaseStackHeight(ecs) : (host.height ?? spec.device.height) + 40);
-  const overlapsX = n.position.x < host.position.x + w && n.position.x + 640 > host.position.x;
+  const pw = variantPanelWidth(n);
+  const overlapsX = n.position.x < host.position.x + w && n.position.x + pw > host.position.x;
   if (!overlapsX || n.position.y >= bottom + 40 || n.position.y + 330 <= host.position.y) return n.position;
-  return { x: n.position.x, y: bottom + 60 };
+  return { x: host.position.x + (w - pw) / 2, y: bottom + 60 };
 }
 
 /**
@@ -199,9 +200,16 @@ export function Canvas() {
     for (const e of canvas.edges) {
       if (e.type === "provenance" && !showInfluences) continue;
       if (!shown.has(e.source) || !shown.has(e.target)) continue;
-      // Explorations hang under their screen, so that line leaves from the bottom and lands on the panel's top.
-      const vertical = e.type === "variantLink";
-      edges.push({ id: e.id, type: e.type, source: e.source, target: e.target, sourceHandle: vertical ? "below" : "out", targetHandle: vertical ? "top" : "in", data: { edge: e }, selected: selection?.kind === "edge" && selection.id === e.id, zIndex: 3 });
+      // An exploration under its screen takes a drop from the bottom; one dragged beside it takes a side run instead.
+      let handles = { sourceHandle: "out", targetHandle: "in" };
+      if (e.type === "variantLink") {
+        const src = canvas.nodes.find((n) => n.id === e.source), tgt = nodes.find((n) => n.id === e.target);
+        const srcBottom = src?.type === "screen" ? src.position.y + (view === "flow" ? flowCardHeight(spec, src.screenId) : (src.height ?? spec.device.height) + 40) : 0;
+        const srcRight = src?.type === "screen" ? src.position.x + (view === "flow" ? FLOW_CARD_W : src.width ?? spec.device.width) : 0;
+        const below = !src || !tgt || tgt.position.y >= srcBottom - 60;
+        handles = below ? { sourceHandle: "below", targetHandle: "top" } : tgt.position.x >= srcRight - 40 ? { sourceHandle: "out", targetHandle: "side" } : { sourceHandle: "in", targetHandle: "side-r" };
+      }
+      edges.push({ id: e.id, type: e.type, source: e.source, target: e.target, ...handles, data: { edge: e }, selected: selection?.kind === "edge" && selection.id === e.id, zIndex: 3 });
     }
     if (showInfluences) {
       // Provenance drawn live from the spec so it always reflects the latest generation.

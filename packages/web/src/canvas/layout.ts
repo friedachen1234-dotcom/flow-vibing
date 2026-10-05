@@ -66,7 +66,9 @@ export function tidyLayout(spec: DesignSpec, canvas: CanvasDoc, view: "prototype
       const p = pos.get(n.target.screenId);
       if (!p) return n;
       const cardH = view === "flow" ? flowCardHeight(spec, n.target.screenId) + edgeCaseStackHeight(ecRows.get(n.target.screenId) ?? 0) : spec.device.height + 40;
-      return { ...n, position: { x: p.x, y: p.y + cardH + 60 } };
+      const screenW = view === "flow" ? FLOW_CARD_W : spec.device.width;
+      const panelW = n.width ?? Math.min(940, 16 + Math.max(1, n.options.length + (n.originalFile ? 1 : 0)) * 220);
+      return { ...n, position: { x: p.x + (screenW - panelW) / 2, y: p.y + cardH + 60 } };
     }
     return n;
   });

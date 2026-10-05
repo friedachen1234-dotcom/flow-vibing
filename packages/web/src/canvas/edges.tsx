@@ -116,7 +116,8 @@ export function MagicEdge(props: EdgeProps) {
 
 /** Screen down to its exploration: a straight drop when the panel sits under the screen, one bend when it does not. */
 export function VariantLinkEdge(props: EdgeProps) {
-  const [path] = getSmoothStepPath({ sourceX: props.sourceX, sourceY: props.sourceY, targetX: props.targetX, targetY: props.targetY, sourcePosition: Position.Bottom, targetPosition: Position.Top, borderRadius: 10, offset: 16, centerY: props.targetY - 28 });
+  const vertical = props.sourcePosition === Position.Bottom;
+  const [path] = getSmoothStepPath({ sourceX: props.sourceX, sourceY: props.sourceY, targetX: props.targetX, targetY: props.targetY, sourcePosition: props.sourcePosition, targetPosition: props.targetPosition, borderRadius: 10, offset: 16, ...(vertical ? { centerY: props.targetY - 28 } : {}) });
   return <BaseEdge id={props.id} path={path} interactionWidth={14} style={{ stroke: "var(--accent)", strokeWidth: props.selected ? 2.2 : 1.5, opacity: props.selected ? 1 : 0.7 }} />;
 }
 

@@ -8,8 +8,8 @@ import { Icon } from "../components/Icon";
 type N<T extends CanvasNode["type"]> = NodeProps & { data: { node: Extract<CanvasNode, { type: T }>; spec: DesignSpec } };
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
-/** Where the line to a screen's exploration leaves and lands: the same x on the screen and on the panel below it, right of the edge-case stack. */
-export const RAIL_X = 282;
+/** Width of an exploration panel, so it can be centred under its screen. */
+export const variantPanelWidth = (n: { options: unknown[]; originalFile?: string; width?: number }) => n.width ?? Math.min(940, 16 + Math.max(1, n.options.length + (n.originalFile ? 1 : 0)) * 220);
 
 /** While a connection is being dragged, the whole node becomes a drop target, so lines can land anywhere on it. */
 function DropTarget() {
@@ -102,7 +102,7 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
       <DropTarget />
       <Handle type="target" position={Position.Left} id="in" className="magic side" />
       <Handle type="source" position={Position.Right} id="out" className="magic side" />
-      <Handle type="source" position={Position.Bottom} id="below" className="ec-port" style={{ left: RAIL_X }} />
+      <Handle type="source" position={Position.Bottom} id="below" className="ec-port" />
       <div className="hdr" onDoubleClick={() => select({ kind: "node", id: node.id })}>
         {showing.id !== screen.id
           ? <button className="icon nodrag" onClick={() => post({ type: "flow:goto", screenId: screen.id })} title={`Back to ${screen.name}`} aria-label="Back"><Icon name="arrow-left" size={14} /></button>
@@ -189,7 +189,7 @@ export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N
       <DropTarget />
       <Handle type="target" position={Position.Left} id="in" className="card-in" />
       <Handle type="source" position={Position.Bottom} id="ec" className="ec-port" style={{ left: 18 }} />
-      <Handle type="source" position={Position.Bottom} id="below" className="ec-port" style={{ left: RAIL_X }} />
+      <Handle type="source" position={Position.Bottom} id="below" className="ec-port" />
       <div className="hdr" onDoubleClick={() => select({ kind: "node", id: node.id })}>
         <Thumb screenId={screen.id} width={84} />
         <div className="hdr-text">
@@ -357,11 +357,13 @@ export const VariantPanelNode = memo(function VariantPanelNode({ data, selected 
   const options = [...(n.originalFile ? [{ id: "original", label: "Original", rationale: "Before any variant was applied.", file: n.originalFile }] : []), ...n.options];
   const current = n.appliedId ?? (n.originalFile ? "original" : undefined);
   return (
-    <div className={`variant-panel ${selected ? "selected" : ""}`} style={{ width: n.width ?? Math.min(940, 16 + Math.max(1, options.length) * 220) }}>
+    <div className={`variant-panel ${selected ? "selected" : ""}`} style={{ width: variantPanelWidth(n) }}>
       <DropTarget />
       <Handle type="source" position={Position.Right} id="out" className="flow" />
       <Handle type="target" position={Position.Left} id="in" className="magic" style={{ top: 24 }} />
-      <Handle type="target" position={Position.Top} id="top" className="ec-port" style={{ left: RAIL_X }} />
+      <Handle type="target" position={Position.Top} id="top" className="ec-port" />
+      <Handle type="target" position={Position.Left} id="side" className="ec-port" style={{ top: "50%" }} />
+      <Handle type="target" position={Position.Right} id="side-r" className="ec-port" style={{ top: "50%" }} />
       <div className="hdr">
         <span className="vp-mark"><Icon name="hexagon" size={16} strokeWidth={2} /></span>
         <span className="name">{subject} exploration</span>
