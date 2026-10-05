@@ -3,7 +3,7 @@ import { Icon } from "./Icon";
 
 /**
  * Top bar: where you are (left), which view (centre), and the one thing to do next (right).
- * Modes live in the tool rail, panels in the right panel. Nothing else competes here.
+ * Modes live in the tool rail; panels are switched inside the right panel itself, so this bar never duplicates them.
  */
 export function TopBar() {
   const bundle = useFlow((s) => s.bundle)!;
@@ -56,10 +56,6 @@ export function TopBar() {
       </div>
       <div className="tb-right">
         <button className="btn" onClick={exportProto} disabled={!hasScreens} title="Write a single-file prototype that runs without a server"><Icon name="download" size={14} /> Export</button>
-        <div className="seg icons" role="tablist" aria-label="Panel">
-          <button role="tab" aria-selected={panel === "inspect"} className={panel === "inspect" ? "on" : ""} onClick={() => setPanel(panel === "inspect" ? null : "inspect")} title="Inspect (I)" aria-label="Inspect"><Icon name="sliders" size={15} /></button>
-          <button role="tab" aria-selected={panel === "history"} className={panel === "history" ? "on" : ""} onClick={() => setPanel(panel === "history" ? null : "history")} title="History (H)" aria-label="History"><Icon name="history" size={15} /></button>
-        </div>
         <button className={`btn primary cta ${running ? "working" : ""} ${panel === "claude" ? "open" : ""}`} onClick={claudeCta} title={running ? "Open Claude to watch or stop the run (C)" : "Claude (C)"} aria-pressed={panel === "claude"}>
           {running ? <span className="pulse light" /> : <Icon name={ctaIcon!} size={15} />} {ctaLabel}
           {pending.length > 0 && !running && <span className="cta-count">{pending.length}</span>}

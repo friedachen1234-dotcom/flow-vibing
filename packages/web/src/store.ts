@@ -111,7 +111,8 @@ export const useFlow = create<FlowState>((set, get) => ({
   toast: null,
   previewVersion: null,
   composerDraft: "",
-  panel: (readStr("panel", "claude") || null) as FlowState["panel"],
+  // Closed by default: the canvas is the primary surface. Selecting something opens Inspect; the CTA opens Claude.
+  panel: (readStr("panel", "") || null) as FlowState["panel"],
   setPanel(panel) { set({ panel }); writeStr("panel", panel ?? ""); },
   showMinimap: readPref("showMinimap", false),
   setShowMinimap(v) { set({ showMinimap: v }); writePref("showMinimap", v); },

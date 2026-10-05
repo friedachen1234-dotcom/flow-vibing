@@ -78,7 +78,7 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
       <div className="hdr" onDoubleClick={() => select({ kind: "node", id: node.id })}>
         <span className="name">{screen.name}</span>
         {showing.id !== screen.id && <button className="btn sm ghost" onClick={() => post({ type: "flow:goto", screenId: screen.id })} title="Back to this screen">↩ {showing.name}</button>}
-        {edgeCases.length > 0 && <span className="pill warn" title={edgeCases.map((e) => e.scenario).join("\n")}>{edgeCases.length} edge {edgeCases.length === 1 ? "case" : "cases"}</span>}
+        {edgeCases.length > 0 && <button className="pill warn nodrag" title={edgeCases.map((e) => e.scenario).join("\n") + "\n\nClick to inspect"} onClick={() => select({ kind: "node", id: node.id })}>{edgeCases.length} edge {edgeCases.length === 1 ? "case" : "cases"}</button>}
         <div className="state">
           {showing.states.length > 0 && (
             <select className="nodrag" value={frame?.stateId ?? showing.states.find((s) => s.isDefault)?.id ?? ""} onChange={(e) => post({ type: "flow:setState", stateId: e.target.value })} title="State">

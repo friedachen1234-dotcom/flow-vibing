@@ -4,24 +4,6 @@ import { api } from "../api";
 import { useFlow } from "../store";
 import { ask, confirm } from "./Dialog";
 
-export function VersionBar() {
-  const versions = useFlow((s) => s.bundle!.versions);
-  const setPreviewVersion = useFlow((s) => s.setPreviewVersion);
-  return (
-    <div className="versionbar">
-      <span className="lbl">Versions</span>
-      {versions.map((v, i) => (
-        <button key={v.id} className={`v ${i === 0 ? "head" : ""}`} onClick={() => setPreviewVersion(v.id)} title={new Date(v.createdAt).toLocaleString()}>
-          {v.pinned && <span>📌</span>}
-          <span className="k">{v.kind}</span>
-          <span>{v.label ?? v.summary}</span>
-          <span className="t">{v.id.slice(0, 7)}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export function VersionPreview({ sha }: { sha: string }) {
   const projectId = useFlow((s) => s.projectId)!;
   const versions = useFlow((s) => s.bundle!.versions);

@@ -54,6 +54,17 @@ The runtime depends on these, and the validator checks them:
 - States are styled with `html[data-flow-state="<state-id>"]` selectors. The default state renders with no attribute.
 - No external scripts, fonts, or images.
 
+## Interface
+
+The canvas is the primary surface; everything else appears when you act on it.
+
+- **Top bar**: where you are, the Prototype / Flow toggle, Export, and one accent button that always opens Claude and starts the obvious next job (Generate, Apply changes, or Ask).
+- **Rail** (left): what the pointer does (Select, Pick an element, Present) and what you add by hand (Note, Reference).
+- **Panel** (right): Inspect, Claude, History. Closed by default. Selecting anything opens Inspect; a slim edge tab reopens it when closed. Edits in Inspect queue as changes and are applied from Claude.
+- **Canvas bar** (bottom): zoom, fit, tidy (flow view), influences, minimap, and `?` for the full shortcut list.
+
+Projects reopen on their content: if the saved viewport frames empty board, the canvas fits to what exists instead.
+
 ## Testing without Claude
 
 Open the demo project from the home screen. Its placeholder screens follow the contract, so navigation, states, the picker, magic lines, and change requests all work offline.

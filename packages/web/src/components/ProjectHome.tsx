@@ -61,14 +61,11 @@ export function ProjectHome() {
                 <option value="desktop">Desktop · 1280×800</option>
               </select>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn primary" disabled={busy || !name.trim()} onClick={create}>Create project</button>
-              <button className="btn" disabled={busy} onClick={demo}>Open demo project</button>
-            </div>
+            <button className="btn primary" disabled={busy || !name.trim()} onClick={create}>Create project</button>
           </div>
           <div className="card">
             <h2>Recent</h2>
-            {projects.length === 0 && <div className="muted small">No projects yet. Create one, or open the demo to see the canvas working without Claude.</div>}
+            {projects.length === 0 && <div className="muted small">Nothing yet. Create a project, or load an example below to see the canvas working without Claude.</div>}
             {projects.map((p) => (
               <div key={p.id} className="proj" onClick={() => openProject(p.id)} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && openProject(p.id)}>
                 <div className="n">{p.name}</div>
@@ -79,7 +76,7 @@ export function ProjectHome() {
           {examples.length > 0 && (
             <div className="card examples">
               <h2>Example prototypes</h2>
-              <div className="muted small" style={{ marginBottom: 10 }}>Hand-built prototypes that follow the screen contract. Load one to try navigation, states, branches, the picker, and change requests without Claude.</div>
+              <div className="muted small" style={{ marginBottom: 10 }}>Real prototypes that run without Claude. Load one to try navigation, states, branches, the picker, and change requests. Each load is its own copy with its own history.</div>
               <div className="ex-grid">
                 {examples.map((ex) => (
                   <div key={ex.id} className="ex">
@@ -91,6 +88,9 @@ export function ProjectHome() {
                     <button className="btn sm" disabled={busy} onClick={() => loadExample(ex.id)}>Load example</button>
                   </div>
                 ))}
+              </div>
+              <div className="muted small" style={{ marginTop: 12 }}>
+                Just want placeholder screens? <button className="link" disabled={busy} onClick={demo}>Open the bare demo</button>.
               </div>
             </div>
           )}

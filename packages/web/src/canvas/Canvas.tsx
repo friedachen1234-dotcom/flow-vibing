@@ -3,7 +3,7 @@ import {
   Background, BackgroundVariant, MiniMap, ReactFlow, applyEdgeChanges, applyNodeChanges, useReactFlow, useViewport,
   type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type OnSelectionChangeParams, MarkerType
 } from "@xyflow/react";
-import { MAGIC_RELATION_LABELS, classifyTransitions, mainMoves, type CanvasNode, type MagicRelation } from "@flow/shared";
+import { FLOW_CARD_WIDTH, MAGIC_RELATION_LABELS, classifyTransitions, mainMoves, type CanvasDoc, type CanvasNode, type DesignSpec, type MagicRelation, type ViewMode } from "@flow/shared";
 import { flowCardHeight, tidyLayout } from "./layout";
 import { Icon } from "../components/Icon";
 
@@ -27,6 +27,38 @@ const CONN_LINE_STYLE = { stroke: "var(--magic)", strokeDasharray: "7 5" };
 const PRO_OPTS = { hideAttribution: true };
 const minimapColor = (n: Node) => (n.type === "screen" || n.type === "screenCard" ? "#2C4FDB" : n.type === "inspiration" || n.type === "skill" ? "#B8368B" : "#C9CFD8");
 
+/**
+ * True when the saved viewport has at least one node's centre on screen. A viewport is saved on every pan, so a
+ * project can be left looking at empty board, or at the corner of one card at high zoom; opening it there shows
+ * nothing useful and gives no clue where the work went. A sliver at the edge does not count as oriented.
+ */
+function viewportShowsSomething(canvas: CanvasDoc, spec: DesignSpec, view: ViewMode, pane: { w: number; h: number }): boolean {
+  const { x, y, zoom } = canvas.viewport;
+  for (const n of canvas.nodes) {
+    if (n.type === "edgeCase") continue;
+    const w = n.type === "screen" ? (view === "flow" ? FLOW_CARD_WIDTH : n.width ?? spec.device.width) : n.width ?? 240;
+    const h = n.type === "screen" ? (view === "flow" ? flowCardHeight(spec, n.screenId) : (n.height ?? spec.device.height) + 36) : n.height ?? 160;
+    const cx = (n.position.x + w / 2) * zoom + x, cy = (n.position.y + h / 2) * zoom + y;
+    if (cx > 0 && cy > 0 && cx < pane.w && cy < pane.h) return true;
+  }
+  return false;
+}
+
+const SHORTCUTS: [string, string][] = [
+  ["1 / 2", "Prototype view / Flow view"],
+  ["V", "Select"],
+  ["P", "Pick an element inside a prototype"],
+  ["W", "Present the flow full screen"],
+  ["N", "New note"],
+  ["I / C / H", "Inspect / Claude / History panel"],
+  ["⇧1", "Fit everything on screen"],
+  ["+ / −", "Zoom in / out"],
+  ["⌫", "Remove the selected note, reference, or line"],
+  ["Esc", "Deselect, stop picking, close this"],
+  ["⌘↵", "Send to Claude from the composer"],
+  ["?", "This list"],
+];
+
 export function Canvas() {
   const bundle = useFlow((s) => s.bundle)!;
   const projectId = useFlow((s) => s.projectId)!;
@@ -48,6 +80,7 @@ export function Canvas() {
   const { spec, canvas } = bundle;
   const [pending, setPending] = useState<Pending | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [showKeys, setShowKeys] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   /* Derive React Flow nodes and edges from the spec and canvas for the active view. */
@@ -249,7 +282,8 @@ export function Canvas() {
       if (ev.key === "!" || (ev.key === "1" && ev.shiftKey)) fit();
       if (ev.key === "=" || ev.key === "+") rf.zoomIn({ duration: 150 });
       if (ev.key === "-") rf.zoomOut({ duration: 150 });
-      if (ev.key === "Escape") { useFlow.getState().setPicker(false); select(null); setPending(null); }
+      if (ev.key === "?") setShowKeys((v) => !v);
+      if (ev.key === "Escape") { useFlow.getState().setPicker(false); select(null); setPending(null); setShowKeys(false); }
       if ((ev.key === "Delete" || ev.key === "Backspace") && selection) {
         if (selection.kind === "node") {
           const n = canvas.nodes.find((x) => x.id === selection.id);
@@ -288,6 +322,10 @@ export function Canvas() {
         nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onNodeDragStop={onNodeDragStop} onConnect={onConnect} onSelectionChange={onSelectionChange}
         defaultViewport={initialViewport} onMoveEnd={onMoveEnd}
+        onInit={(inst) => {
+          const box = wrapRef.current?.getBoundingClientRect();
+          if (box && !isDefaultViewport && canvas.nodes.length > 0 && !viewportShowsSomething(canvas, spec, view, { w: box.width, h: box.height })) void inst.fitView(FIT_OPTS);
+        }}
         connectionRadius={40} minZoom={0.05} maxZoom={2} fitView={isDefaultViewport && canvas.nodes.length > 0} fitViewOptions={FIT_OPTS} panOnScroll selectionOnDrag={false} zoomOnDoubleClick={false} deleteKeyCode={null} connectionLineStyle={CONN_LINE_STYLE} proOptions={PRO_OPTS}
         onPaneClick={onPaneClick}
       >
@@ -304,11 +342,24 @@ export function Canvas() {
         <span className="cb-sep" />
         <button className={`cb-btn ${showInfluences ? "on" : ""}`} onClick={() => setShowInfluences(!showInfluences)} title="Show which references shaped each screen" aria-label="Show influences" aria-pressed={showInfluences}><Icon name="sparkles" size={15} /></button>
         <button className={`cb-btn ${showMinimap ? "on" : ""}`} onClick={() => setShowMinimap(!showMinimap)} title="Minimap" aria-label="Minimap" aria-pressed={showMinimap}><Icon name="map" size={15} /></button>
+        <span className="cb-sep" />
+        <button className={`cb-btn cb-keys ${showKeys ? "on" : ""}`} onClick={() => setShowKeys(!showKeys)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" aria-pressed={showKeys}>?</button>
       </div>
+      {showKeys && (
+        <div className="keys-overlay" onClick={() => setShowKeys(false)} role="dialog" aria-label="Keyboard shortcuts">
+          <div className="keys" onClick={(e) => e.stopPropagation()}>
+            <div className="keys-head">Keyboard shortcuts <button className="btn sm ghost" onClick={() => setShowKeys(false)}>Close</button></div>
+            <div className="keys-grid">
+              {SHORTCUTS.map(([k, what]) => <div key={k} className="keys-row"><span className="kbd">{k}</span><span>{what}</span></div>)}
+            </div>
+            <div className="muted small" style={{ marginTop: 10, lineHeight: 1.5 }}>Drop or paste images, markdown, text, or a URL anywhere on the board to add it as a reference. Drag from a reference's right handle to a screen to say how it should influence it.</div>
+          </div>
+        </div>
+      )}
       {spec.screens.length === 0 && !dragOver && (
         <div className="canvas-empty">
-          <div className="ce-title">Nothing generated yet</div>
-          <div className="ce-body">Write the brief on the card, drop references on the canvas and connect them, then press <b>Generate</b>.</div>
+          <div className="ce-title">No screens yet</div>
+          <div className="ce-body">Write the brief on the card above. Drop any references beside it and draw a line to the brief. Then press <b>Generate</b>.</div>
         </div>
       )}
       {dragOver && <div className="drop-hint">Drop images, markdown skills, or text</div>}

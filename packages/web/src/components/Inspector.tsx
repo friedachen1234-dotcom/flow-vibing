@@ -35,6 +35,33 @@ export function Inspector() {
   );
 }
 
+/** Click-to-edit text. Enter or blur commits, Escape cancels. Keeps one-field edits out of modal dialogs. */
+function InlineText({ value, onCommit, multiline, allowEmpty, placeholder, className }: { value: string; onCommit: (v: string) => void; multiline?: boolean; allowEmpty?: boolean; placeholder?: string; className?: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
+  const cancel = () => { setDraft(value); setEditing(false); };
+  const commit = () => {
+    setEditing(false);
+    const v = draft.trim();
+    if (v === value.trim()) return;
+    if (v || allowEmpty) onCommit(v); else setDraft(value);
+  };
+  if (!editing) {
+    return (
+      <span className={`inline-text ${className ?? ""}`} title="Click to edit" role="button" tabIndex={0} onClick={() => setEditing(true)} onKeyDown={(e) => { if (e.key === "Enter") setEditing(true); }}>
+        {value || <span className="muted">{placeholder ?? "Empty"}</span>}
+      </span>
+    );
+  }
+  if (multiline) {
+    return <textarea className={`input ${className ?? ""}`} value={draft} autoFocus rows={3} placeholder={placeholder} onChange={(e) => setDraft(e.target.value)} onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Escape") cancel(); if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commit(); }} />;
+  }
+  return <input className={`input ${className ?? ""}`} value={draft} autoFocus placeholder={placeholder} onChange={(e) => setDraft(e.target.value)} onBlur={commit}
+    onKeyDown={(e) => { if (e.key === "Escape") cancel(); if (e.key === "Enter") commit(); }} />;
+}
+
 function ProjectOverview() {
   const bundle = useFlow((s) => s.bundle)!;
   const { spec, versions } = bundle;
@@ -54,7 +81,7 @@ function ProjectOverview() {
         <div className="small" style={{ lineHeight: 1.5, color: "var(--ink-2)" }}>{spec.brief || "No brief yet. Edit the Brief card on the canvas."}</div>
       </div>
       <div className="sec muted small" style={{ lineHeight: 1.6 }}>
-        Select a screen, transition, or reference to inspect it. Drag from a reference's right handle to a screen to draw a magic line. Press <span className="kbd">P</span> to pick elements inside prototypes, <span className="kbd">1</span>/<span className="kbd">2</span> to switch views.
+        Select a screen, transition, or reference to inspect it. Drag from a reference's right handle to a screen to say how it should influence it. Press <span className="kbd">?</span> for every shortcut.
       </div>
     </>
   );
@@ -80,8 +107,6 @@ function ScreenPanel({ node }: { node: Extract<CanvasNode, { type: "screen" }> }
   const ecs = spec.edgeCases.filter((e) => e.attachedTo.screenId === screen.id || outs.some((t) => t.id === e.attachedTo.transitionId));
   const touched = versions.filter((v) => v.screens.includes(screen.id));
   const pickedHere = picked && picked.screenId === screen.id ? picked : null;
-  const rename = async () => { const name = await ask("Rename screen", { initial: screen.name }); if (name && name.trim() && name !== screen.name) addChange({ op: "rename-screen", screenId: screen.id, name: name.trim() }); };
-  const purpose = async () => { const p = await ask("Purpose", { initial: screen.purpose, multiline: true }); if (p && p.trim() && p !== screen.purpose) addChange({ op: "update-screen-purpose", screenId: screen.id, purpose: p.trim() }); };
   const requestVariants = () => {
     const inspirationIds = canvas.edges.filter((e) => e.type === "magic" && e.target === node.id).map((e) => e.source);
     run("variants", { target: { screenId: screen.id, elementId: pickedHere?.elementId }, count: variantCount, direction: variantDir, inspirationIds }, `Variants of ${pickedHere ? pickedHere.elementId + " on " : ""}${screen.name}${variantDir ? `: ${variantDir}` : ""}`);
@@ -89,8 +114,9 @@ function ScreenPanel({ node }: { node: Extract<CanvasNode, { type: "screen" }> }
   return (
     <>
       <div className="sec">
-        <div className="row"><h2 style={{ flex: 1 }}>{screen.name}</h2><button className="btn sm ghost" onClick={rename}>Rename</button></div>
-        <div className="small" style={{ color: "var(--ink-2)", lineHeight: 1.45, cursor: "text" }} onDoubleClick={purpose} title="Double-click to edit">{screen.purpose}</div>
+        <h2><InlineText value={screen.name} onCommit={(name) => addChange({ op: "rename-screen", screenId: screen.id, name })} /></h2>
+        <div className="small" style={{ color: "var(--ink-2)", lineHeight: 1.45 }}><InlineText multiline value={screen.purpose} placeholder="What this screen is for" onCommit={(purpose) => addChange({ op: "update-screen-purpose", screenId: screen.id, purpose })} /></div>
+        <div className="muted small" style={{ marginTop: 4 }}>Edits here queue as changes. Apply them from the Claude panel.</div>
         <div className="row mono muted">{screen.file}</div>
       </div>
       <div className="sec">
@@ -164,20 +190,14 @@ function TransitionPanel({ t }: { t: TransitionSpec }) {
   const from = spec.screens.find((s) => s.id === t.from.screenId);
   const to = spec.screens.find((s) => s.id === t.to.screenId);
   const ecs = spec.edgeCases.filter((e) => e.attachedTo.transitionId === t.id);
-  const edit = async (field: "trigger" | "condition") => {
-    const v = await ask(field === "trigger" ? "Trigger" : "Condition", { label: field === "condition" ? "Leave empty to remove the condition." : undefined, initial: field === "trigger" ? t.trigger : t.condition ?? "" });
-    if (v == null) return;
-    if (field === "trigger" && v.trim()) addChange({ op: "update-transition", transitionId: t.id, patch: { trigger: v.trim() } });
-    if (field === "condition") addChange({ op: "update-transition", transitionId: t.id, patch: { condition: v.trim() || null } });
-  };
   return (
     <>
       <div className="sec"><span className="pill">Transition</span><h2 style={{ marginTop: 6 }}>{t.trigger}</h2><div className="mono muted">{t.id}</div></div>
       <div className="sec">
         <div className="row"><span className="muted">From</span><span className="grow" style={{ cursor: "pointer" }} onClick={() => from && select({ kind: "node", id: `screen:${from.id}` })}>{from?.name}{t.from.elementId && <span className="mono muted"> · {t.from.elementId}</span>}</span></div>
         <div className="row"><span className="muted">To</span><span className="grow" style={{ cursor: "pointer" }} onClick={() => to && select({ kind: "node", id: `screen:${to.id}` })}>{to?.name}{t.to.stateId && <span className="mono muted"> #{t.to.stateId}</span>}</span></div>
-        <div className="row"><span className="muted">Trigger</span><span className="grow">{t.trigger}</span><button className="btn sm ghost" onClick={() => edit("trigger")}>Edit</button></div>
-        <div className="row"><span className="muted">Condition</span><span className="grow">{t.condition ?? <span className="muted">none</span>}</span><button className="btn sm ghost" onClick={() => edit("condition")}>Edit</button></div>
+        <div className="row"><span className="muted">Trigger</span><span className="grow"><InlineText value={t.trigger} onCommit={(trigger) => addChange({ op: "update-transition", transitionId: t.id, patch: { trigger } })} /></span></div>
+        <div className="row"><span className="muted">Condition</span><span className="grow"><InlineText allowEmpty value={t.condition ?? ""} placeholder="none · click to add a branch condition" onCommit={(condition) => addChange({ op: "update-transition", transitionId: t.id, patch: { condition: condition || null } })} /></span></div>
         <div className="row"><span className="muted">Animation</span>
           <select className="input" style={{ width: 110 }} value={t.animation} onChange={(e) => addChange({ op: "update-transition", transitionId: t.id, patch: { animation: e.target.value as Animation } })}>
             {["push", "pop", "fade", "modal", "none"].map((a) => <option key={a} value={a}>{a}</option>)}

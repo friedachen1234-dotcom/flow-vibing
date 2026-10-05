@@ -3,7 +3,7 @@ import { useFlow } from "../store";
 import { api } from "../api";
 import { Icon } from "./Icon";
 
-/** Left rail: what the pointer does on the canvas, plus the two things you add by hand. */
+/** Left rail: what the pointer does on the canvas, plus the two things you add by hand. Labelled, so a first visit does not have to hover five icons. */
 export function ToolRail() {
   const picker = useFlow((s) => s.picker.enabled);
   const setPicker = useFlow((s) => s.setPicker);
@@ -38,12 +38,12 @@ export function ToolRail() {
 
   return (
     <nav className="rail" aria-label="Tools">
-      <button className={`rail-btn ${!picker && !walk.active ? "on" : ""}`} onClick={() => { setPicker(false); if (walk.active) setWalk({ active: false, screenId: null, stateId: null, lastTransitionId: null }); }} title="Select (V)" aria-label="Select"><Icon name="mouse-pointer" /></button>
-      <button className={`rail-btn ${picker ? "on" : ""}`} onClick={() => setPicker(!picker)} title="Pick an element inside a prototype (P)" aria-label="Pick element" disabled={spec.screens.length === 0}><Icon name="crosshair" /></button>
-      <button className={`rail-btn ${walk.active ? "on" : ""}`} onClick={() => setWalk({ active: !walk.active, screenId: walk.active ? null : (spec.screens[0]?.id ?? null), stateId: null, lastTransitionId: null })} title="Present: walk through the flow full screen (W)" aria-label="Present walkthrough" disabled={spec.screens.length === 0}><Icon name="play" /></button>
+      <button className={`rail-btn ${!picker && !walk.active ? "on" : ""}`} onClick={() => { setPicker(false); if (walk.active) setWalk({ active: false, screenId: null, stateId: null, lastTransitionId: null }); }} title="Select (V)" aria-label="Select"><Icon name="mouse-pointer" /><span className="rail-lbl">Select</span></button>
+      <button className={`rail-btn ${picker ? "on" : ""}`} onClick={() => setPicker(!picker)} title="Pick an element inside a prototype (P)" aria-label="Pick element" disabled={spec.screens.length === 0}><Icon name="crosshair" /><span className="rail-lbl">Pick</span></button>
+      <button className={`rail-btn ${walk.active ? "on" : ""}`} onClick={() => setWalk({ active: !walk.active, screenId: walk.active ? null : (spec.screens[0]?.id ?? null), stateId: null, lastTransitionId: null })} title="Present: walk through the flow full screen (W)" aria-label="Present walkthrough" disabled={spec.screens.length === 0}><Icon name="play" /><span className="rail-lbl">Present</span></button>
       <div className="rail-sep" />
-      <button className="rail-btn" onClick={addNote} title="Add a note (N)" aria-label="Add note"><Icon name="sticky-note" /></button>
-      <button className="rail-btn" onClick={() => fileRef.current?.click()} title="Add a reference image or a markdown skill (R)" aria-label="Add reference"><Icon name="image" /></button>
+      <button className="rail-btn" onClick={addNote} title="Add a note (N)" aria-label="Add note"><Icon name="sticky-note" /><span className="rail-lbl">Note</span></button>
+      <button className="rail-btn" onClick={() => fileRef.current?.click()} title="Add a reference image or a markdown skill" aria-label="Add reference"><Icon name="image" /><span className="rail-lbl">Reference</span></button>
       <input ref={fileRef} type="file" accept="image/*,.md,.markdown" multiple hidden onChange={(e) => { void addFiles(e.target.files); e.target.value = ""; }} />
     </nav>
   );
