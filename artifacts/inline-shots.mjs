@@ -27,13 +27,13 @@ if (!slug || !dir || (urlAt !== -1 && !urlBase)) {
   process.exit(1);
 }
 
-const entries = readdirSync(dir).filter((f) => /\.(jpe?g|png)$/i.test(f)).sort();
+const entries = readdirSync(dir).filter((f) => /\.(jpe?g|png|webp)$/i.test(f)).sort();
 if (!entries.length) { console.error(`no images in ${dir}`); process.exit(1); }
 
 const pairs = entries.map((f) => {
-  const key = f.replace(/\.(jpe?g|png)$/i, "");
+  const key = f.replace(/\.(jpe?g|png|webp)$/i, "");
   if (urlBase) return `  "${key}": "${urlBase.replace(/\/$/, "")}/${f}",`;
-  const mime = /\.png$/i.test(f) ? "image/png" : "image/jpeg";
+  const mime = /\.png$/i.test(f) ? "image/png" : /\.webp$/i.test(f) ? "image/webp" : "image/jpeg";
   const b64 = readFileSync(path.join(dir, f)).toString("base64");
   return `  "${key}": "data:${mime};base64,${b64}",`;
 });
