@@ -52,7 +52,8 @@ const SHORTCUTS: [string, string][] = [
   ["N", "New note"],
   ["I / C / H", "Inspect / Claude / History panel"],
   ["⇧1", "Fit everything on screen"],
-  ["+ / −", "Zoom in / out"],
+  ["⌘= / ⌘−", "Zoom in / out"],
+  ["⌘0", "Zoom to 100%"],
   ["⌫", "Remove the selected note, reference, or line"],
   ["Esc", "Deselect, stop picking, close this"],
   ["⌘↵", "Send to Claude from the composer"],
@@ -269,7 +270,13 @@ export function Canvas() {
     const onKey = (ev: KeyboardEvent) => {
       if ((ev.target as HTMLElement)?.closest("input, textarea, select, [contenteditable]")) return;
       const st = useFlow.getState();
-      if (ev.metaKey || ev.ctrlKey) return;
+      if (ev.metaKey || ev.ctrlKey) {
+        // The browser's own zoom chords zoom the board instead, as in any design tool.
+        if (ev.key === "=" || ev.key === "+") { ev.preventDefault(); rf.zoomIn({ duration: 150 }); }
+        else if (ev.key === "-") { ev.preventDefault(); rf.zoomOut({ duration: 150 }); }
+        else if (ev.key === "0") { ev.preventDefault(); void rf.zoomTo(1, { duration: 200 }); }
+        return;
+      }
       if (ev.key === "p" || ev.key === "P") st.setPicker(!st.picker.enabled);
       if (ev.key === "v" || ev.key === "V") { st.setPicker(false); if (st.walk.active) st.setWalk({ active: false, screenId: null, stateId: null, lastTransitionId: null }); }
       if (ev.key === "w" || ev.key === "W") st.setWalk({ active: !st.walk.active, screenId: st.walk.active ? null : (spec.screens[0]?.id ?? null), stateId: null, lastTransitionId: null });
@@ -294,6 +301,35 @@ export function Canvas() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [selection, canvas.nodes, updateCanvas, select, spec.screens, fit, rf]);
+
+  useEffect(() => {
+    const onCanvasWheel = (ev: Event) => {
+      const d = (ev as CustomEvent<{ deltaX: number; deltaY: number; deltaMode: number; zoom: boolean; pinch: boolean; clientX: number; clientY: number }>).detail;
+      const vp = rf.getViewport();
+      const unit = d.deltaMode === 1 ? 16 : d.deltaMode === 2 ? 400 : 1;
+      if (d.zoom) {
+        // Zoom about the pointer, matching the feel of the board's own wheel handling.
+        const factor = Math.pow(2, -d.deltaY * unit * (d.pinch ? 0.02 : 0.002));
+        const z = Math.max(0.05, Math.min(2, vp.zoom * factor));
+        const box = wrapRef.current?.getBoundingClientRect();
+        const px = d.clientX - (box?.left ?? 0), py = d.clientY - (box?.top ?? 0);
+        void rf.setViewport({ x: px - (px - vp.x) * (z / vp.zoom), y: py - (py - vp.y) * (z / vp.zoom), zoom: z });
+      } else {
+        void rf.setViewport({ x: vp.x - d.deltaX * unit * 0.5, y: vp.y - d.deltaY * unit * 0.5, zoom: vp.zoom });
+      }
+    };
+    // Pinch and modifier-scroll over the panels would still zoom the page; the board is the only thing that zooms here.
+    const guard = (ev: WheelEvent) => { if (ev.ctrlKey || ev.metaKey) ev.preventDefault(); };
+    const gesture = (ev: Event) => ev.preventDefault();
+    window.addEventListener("flow:canvas-wheel", onCanvasWheel);
+    window.addEventListener("wheel", guard, { passive: false });
+    for (const t of ["gesturestart", "gesturechange", "gestureend"]) window.addEventListener(t, gesture, { passive: false });
+    return () => {
+      window.removeEventListener("flow:canvas-wheel", onCanvasWheel);
+      window.removeEventListener("wheel", guard);
+      for (const t of ["gesturestart", "gesturechange", "gestureend"]) window.removeEventListener(t, gesture);
+    };
+  }, [rf]);
 
   const pickedFull = useFlow((s) => s.picker.picked);
   const frames = useFlow((s) => s.frames);
@@ -352,7 +388,7 @@ export function Canvas() {
             <div className="keys-grid">
               {SHORTCUTS.map(([k, what]) => <div key={k} className="keys-row"><span className="kbd">{k}</span><span>{what}</span></div>)}
             </div>
-            <div className="muted small" style={{ marginTop: 10, lineHeight: 1.5 }}>Drop or paste images, markdown, text, or a URL anywhere on the board to add it as a reference. Drag from a reference's right handle to a screen to say how it should influence it.</div>
+            <div className="muted small" style={{ marginTop: 10, lineHeight: 1.5 }}>Scroll pans the board. Pinch, or hold ⌘ while scrolling, to zoom. Select a screen to scroll inside it. Drop or paste images, markdown, text, or a URL anywhere to add a reference, then drag from its right handle to a screen to say how it should influence it.</div>
           </div>
         </div>
       )}

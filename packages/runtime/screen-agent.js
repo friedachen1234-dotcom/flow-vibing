@@ -108,6 +108,7 @@
     if (d.type === "flow:preview") previewElement(d.elementId, d.html);
     else if (d.type === "flow:preview-tokens") previewTokens(d.css);
     else if (d.type === "flow:setState") setState(d.stateId);
+    else if (d.type === "flow:scroll-mode") { scrollMode = d.mode === "scroll" ? "scroll" : "pan"; root.setAttribute("data-flow-scroll", scrollMode); }
     else if (d.type === "flow:picker") { pickerEnabled = !!d.enabled; document.body && (document.body.style.cursor = pickerEnabled ? "crosshair" : ""); if (!pickerEnabled) { hovered = null; if (!highlighted) frameOff(); } }
     else if (d.type === "flow:highlight") {
       highlighted = d.elementId || null;
@@ -115,6 +116,17 @@
       if (el) { frameOn(el, "#B8368B"); el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } else frameOff();
     }
   });
+
+  // Scrolling belongs to the board unless the host says this screen is being scrolled on purpose. Pinch and
+  // modifier-scroll always go up as zoom, and never to the browser.
+  let scrollMode = "scroll";
+  window.addEventListener("wheel", (ev) => {
+    const zoom = ev.ctrlKey || ev.metaKey;
+    if (!zoom && scrollMode === "scroll") return;
+    ev.preventDefault();
+    post({ type: "flow:wheel", deltaX: ev.deltaX, deltaY: ev.deltaY, deltaMode: ev.deltaMode, ctrlKey: ev.ctrlKey, metaKey: ev.metaKey, zoom, x: ev.clientX, y: ev.clientY });
+  }, { passive: false, capture: true });
+  for (const t of ["gesturestart", "gesturechange", "gestureend"]) window.addEventListener(t, (ev) => ev.preventDefault(), { passive: false });
 
   function ready() {
     const elements = Array.from(document.querySelectorAll("[data-flow-el]")).map((el) => el.getAttribute("data-flow-el"));

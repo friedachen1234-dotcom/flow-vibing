@@ -42,16 +42,25 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
       if (!ref.current || ev.source !== ref.current.contentWindow) return;
       const d = ev.data;
       if (!d || d.source !== "flow-shell") return;
-      if (d.type === "flow:navigated") { setFrame(node.screenId, { screenId: d.screenId, stateId: d.stateId }); setMissing(false); if (walk.active) setWalk({ screenId: d.screenId, stateId: d.stateId, lastTransitionId: d.transitionId ?? walk.lastTransitionId }); }
+      if (d.type === "flow:ready") { post({ type: "flow:scroll-mode", mode: selected ? "scroll" : "pan" }); post({ type: "flow:picker", enabled: picker }); }
+      else if (d.type === "flow:navigated") { setFrame(node.screenId, { screenId: d.screenId, stateId: d.stateId }); setMissing(false); if (walk.active) setWalk({ screenId: d.screenId, stateId: d.stateId, lastTransitionId: d.transitionId ?? walk.lastTransitionId }); }
       else if (d.type === "flow:missing") setMissing(true);
       else if (d.type === "flow:picked") { setPicked({ screenId: d.screenId, elementId: d.elementId, label: d.label, rect: d.rect }); }
+      else if (d.type === "flow:wheel") {
+        // The frame is scaled by the viewport, so its own pixels map onto the page through its rendered box.
+        const box = ref.current.getBoundingClientRect();
+        const k = box.width / (ref.current.offsetWidth || box.width);
+        window.dispatchEvent(new CustomEvent("flow:canvas-wheel", { detail: { deltaX: d.deltaX, deltaY: d.deltaY, deltaMode: d.deltaMode, zoom: !!(d.ctrlKey || d.metaKey), pinch: !!d.ctrlKey, clientX: box.left + d.x * k, clientY: box.top + d.y * k } }));
+      }
       else if (d.type === "flow:transition") { if (walk.active) setWalk({ lastTransitionId: d.transitionId }); }
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [node.screenId, setFrame, setPicked, walk.active, walk.lastTransitionId, setWalk]);
+  }, [node.screenId, setFrame, setPicked, walk.active, walk.lastTransitionId, setWalk, selected, picker]);
 
   useEffect(() => { post({ type: "flow:picker", enabled: picker }); }, [picker]);
+  // Selected: plain scroll reaches the prototype. Otherwise the board pans under it, like any other node.
+  useEffect(() => { post({ type: "flow:scroll-mode", mode: selected ? "scroll" : "pan" }); }, [selected]);
   useEffect(() => {
     const cur = frame?.screenId ?? node.screenId;
     post({ type: "flow:highlight", elementId: highlight && highlight.screenId === cur ? highlight.elementId : null });
