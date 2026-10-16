@@ -12,7 +12,7 @@ async function j<T>(res: Response): Promise<T> {
 const json = (body: unknown, method = "POST") => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 export type Bundle = ProjectBundle & { running: boolean };
-export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; width: number; height: number; screenCount: number; firstScreen: string | null };
+export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; width: number; height: number; screenCount: number; firstScreen: string | null; secondScreen: string | null };
 
 const liveApi = {
   listProjects: () => fetch("/api/projects").then((r) => j<ProjectMeta[]>(r)),

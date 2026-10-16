@@ -179,7 +179,14 @@ export async function createDemoProject(): Promise<ProjectBundle> {
   return loadProject(id);
 }
 
-export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; width: number; height: number; screenCount: number; firstScreen: string | null };
+export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; width: number; height: number; screenCount: number; firstScreen: string | null; secondScreen: string | null };
+
+/** The screen the first screen leads to: with the first, enough of a flow to preview. */
+export function secondScreenOf(spec: DesignSpec): string | null {
+  const first = spec.screens[0]?.id;
+  if (!first) return null;
+  return spec.transitions.find((t) => t.from.screenId === first && t.to.screenId !== first)?.to.screenId ?? spec.screens[1]?.id ?? null;
+}
 
 /** Sample projects shipped in the repo's examples/ folder. */
 export async function listExamples(): Promise<ExampleMeta[]> {
@@ -190,7 +197,7 @@ export async function listExamples(): Promise<ExampleMeta[]> {
     if (!e.isDirectory() || !SAFE_ID.test(e.name)) continue;
     try {
       const spec = DesignSpec.parse(JSON.parse(await fs.readFile(path.join(EXAMPLES_DIR, e.name, PROJECT_FILES.spec), "utf8")));
-      out.push({ id: e.name, name: spec.name, brief: spec.brief, device: spec.device.kind, width: spec.device.width, height: spec.device.height, screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null });
+      out.push({ id: e.name, name: spec.name, brief: spec.brief, device: spec.device.kind, width: spec.device.width, height: spec.device.height, screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null, secondScreen: secondScreenOf(spec) });
     } catch { /* skip malformed */ }
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));

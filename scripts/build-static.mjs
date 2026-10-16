@@ -26,7 +26,7 @@ for (const id of readdirSync(exDir).sort()) {
   if (!existsSync(flow)) continue;
   cpSync(path.join(exDir, id), path.join(dist, "examples", id), { recursive: true });
   const spec = JSON.parse(readFileSync(flow, "utf8"));
-  index.push({ id, name: spec.name, brief: spec.brief, device: spec.device.kind, width: spec.device.width, height: spec.device.height, screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null });
+  index.push({ id, name: spec.name, brief: spec.brief, device: spec.device.kind, width: spec.device.width, height: spec.device.height, screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null, secondScreen: spec.transitions.find((t) => t.from.screenId === spec.screens[0]?.id && t.to.screenId !== spec.screens[0]?.id)?.to.screenId ?? spec.screens[1]?.id ?? null });
 }
 index.sort((a, b) => a.name.localeCompare(b.name));
 writeFileSync(path.join(dist, "examples", "index.json"), JSON.stringify(index, null, 2));

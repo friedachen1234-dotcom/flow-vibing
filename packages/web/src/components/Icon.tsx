@@ -49,7 +49,11 @@ const PATHS: Record<string, string> = {
   paperclip: "M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5",
   heart: "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z",
   card: "M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM2 10h20M6 15h4",
-  "play-circle": "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM10 8l6 4-6 4V8z"
+  "play-circle": "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM10 8l6 4-6 4V8z",
+  info: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01",
+  "arrow-up-right": "M7 17L17 7M8 7h9v9",
+  /* One idea, two screens, the lines between them: the home page mark. */
+  flow: "M12 7a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6 22a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18 22a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM12 7v4M12 11l-6 6M12 11l6 6"
 };
 
 export function Icon({ name, size = 16, strokeWidth = 1.8, className }: { name: keyof typeof PATHS | string; size?: number; strokeWidth?: number; className?: string }) {

@@ -6,13 +6,8 @@ import { Icon } from "./Icon";
 import { IS_STATIC, LOCAL_APP_URL } from "../static";
 
 const DEVICE_LABEL: Record<DeviceKind, string> = { mobile: "Mobile", tablet: "Tablet", desktop: "Desktop" };
-/** One-line summaries for the cards; the brief itself is a paragraph. */
-const TAGLINE: Record<string, string> = {
-  baseline: "Daily readiness, recovery, and training.",
-  "lumen-bank": "Everyday banking with a simpler flow.",
-  plated: "From tonight's inspiration to the first bite.",
-  "relay-desk": "A support inbox that keeps the team moving."
-};
+/** What each example is, for the card; the product name inside stays its own. */
+const EXAMPLE_TITLE: Record<string, string> = { baseline: "Health companion", "lumen-bank": "Everyday banking", plated: "Recipe collection", "relay-desk": "Support inbox" };
 const STARTERS: { icon: string; label: string; brief: string }[] = [
   { icon: "heart", label: "A health companion", brief: "A wearable companion for people who train hard and want to know whether their body is ready for it. One number every morning and an honest reason behind it. Dark, data-dense, no cheerleading." },
   { icon: "card", label: "A banking app", brief: "A mobile banking app for people who move money between friends a few times a week. Sending a transfer should take under twenty seconds without ever feeling unsure about what happened. Calm, precise, trustworthy." },
@@ -38,15 +33,44 @@ function nameFrom(brief: string): string {
   return name || "Untitled project";
 }
 
-/** A screen's first viewport inside a device-shaped frame, scaled to a given width. */
-function DeviceFrame({ src, device, width, className }: { src: string; device: { kind: string; width: number; height: number }; width: number; className?: string }) {
-  const scale = width / device.width;
+type Device = { kind: string; width: number; height: number };
+
+/**
+ * A screen's first viewport inside a device-shaped frame. `width` is the frame; `scale` defaults to fitting the device
+ * into it, and a smaller frame at a given scale shows a crop, from the right edge when `align` says so.
+ */
+function DeviceFrame({ src, device, width, scale, align = "left", className }: { src: string; device: Device; width: number; scale?: number; align?: "left" | "right"; className?: string }) {
+  const k = scale ?? width / device.width;
   const aspect = device.kind === "mobile" ? 1.95 : device.kind === "tablet" ? 1.2 : 0.62;
-  const h = Math.round(Math.min(device.height, device.width * aspect) * scale);
+  const h = Math.round(Math.min(device.height, device.width * aspect) * k);
+  const left = align === "right" ? Math.min(0, width - device.width * k) : 0;
   return (
     <div className={`device ${device.kind} ${className ?? ""}`} style={{ width, height: h }}>
-      <iframe title="" tabIndex={-1} loading="lazy" src={src} style={{ width: device.width, height: device.height, transform: `scale(${scale})` }} />
+      <iframe title="" tabIndex={-1} loading="lazy" src={src} style={{ width: device.width, height: device.height, transform: `scale(${k})`, left }} />
     </div>
+  );
+}
+
+/** The first two screens of an example, side by side, joined by one move. */
+function ExamplePreview({ ex }: { ex: ExampleMeta }) {
+  if (!ex.firstScreen) return null;
+  const device = { kind: ex.device, width: ex.width, height: ex.height };
+  const w = ex.device === "mobile" ? 108 : ex.device === "tablet" ? 150 : 232;
+  const k = w / ex.width;
+  return (
+    <>
+      <DeviceFrame src={api.exampleShellUrl(ex.id, ex.firstScreen)} device={device} width={w} />
+      {ex.secondScreen && (
+        <>
+          <svg className="ex-link" viewBox="0 0 56 44" aria-hidden="true">
+            <path d="M5 10 C 30 10, 26 34, 51 34" fill="none" stroke="currentColor" strokeWidth="2" />
+            <circle cx="5" cy="10" r="4" fill="currentColor" />
+            <circle cx="51" cy="34" r="4" fill="currentColor" />
+          </svg>
+          <DeviceFrame src={api.exampleShellUrl(ex.id, ex.secondScreen)} device={device} width={ex.device === "desktop" ? 96 : w} scale={k} align={ex.device === "desktop" ? "right" : "left"} className="second" />
+        </>
+      )}
+    </>
   );
 }
 
@@ -93,6 +117,7 @@ export function ProjectHome() {
     finally { setBusy(false); }
   };
   const loadExample = async (id: string) => {
+    if (busy) return;
     setBusy(true);
     try { const b = await api.createFromExample(id); await openProject(b.meta.id); }
     catch (e) { showToast((e as Error).message); }
@@ -117,13 +142,12 @@ export function ProjectHome() {
         <div className="hn-inner">
           <button className="brand" onClick={goTop}><span className="brand-mark" aria-hidden="true"><Icon name="hexagon" size={22} strokeWidth={2} /></span><span className="wordmark">Flow<span>Vibing</span></span></button>
           <span className="tb-sep" />
-          <span className="hn-space">Workspace</span>
           <nav className="hn-tabs" aria-label="Sections">
             <button className="on" onClick={goTop}>Projects</button>
             <button onClick={goExamples}>Examples</button>
           </nav>
           <span style={{ flex: 1 }} />
-          <a className="hn-help" href="https://github.com/friedachen1234-dotcom/flow-vibing#readme" target="_blank" rel="noreferrer"><Icon name="help" size={16} /> Help</a>
+          <a className="hn-help" href="https://github.com/friedachen1234-dotcom/flow-vibing#readme" target="_blank" rel="noreferrer"><Icon name="help" size={17} /> Help</a>
           <span className="avatar" aria-hidden="true"><Icon name="user" size={16} /></span>
         </div>
       </header>
@@ -131,84 +155,85 @@ export function ProjectHome() {
       <div className="inner">
         {IS_STATIC && (
           <div className="demo-note">
-            <Icon name="alert" size={16} /> <span>This is the hosted demo. Open the examples, edit the flow, and explore the variants; your edits stay in this tab. Generating with Claude needs the local app.</span>
-            <a href={LOCAL_APP_URL} target="_blank" rel="noreferrer">Get the local app <Icon name="arrow-right" size={14} /></a>
+            <Icon name="info" size={16} /> <span>Explore the demo. Create with the local app.</span>
+            <a href={LOCAL_APP_URL} target="_blank" rel="noreferrer">Get local app <Icon name="arrow-up-right" size={14} /></a>
           </div>
         )}
+
         <section className="hero">
-          <div className="hero-copy">
-            <div className="eyebrow">Your workspace</div>
-            <h1>Every prototype.<br />Connected to its flow.</h1>
-            <p className="lede">Start with an idea. Shape screens and flows together on one canvas.</p>
-            {error && <p className="home-error">{error}</p>}
-            <div className={`prompt ${busy ? "busy" : ""}`}>
-              <textarea ref={briefRef} rows={3} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="What would you like to prototype?"
-                onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void create(); }} />
-              <div className="prompt-foot">
-                <button className="attach" onClick={() => fileRef.current?.click()} title="Images you add here land on the board as references">
-                  <Icon name="paperclip" size={15} /> {files.length ? `${files.length} reference${files.length === 1 ? "" : "s"}` : "Add a reference"}
-                </button>
-                <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { setFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
-                <div className="seg mini" role="radiogroup" aria-label="Device">
-                  {(["mobile", "tablet", "desktop"] as DeviceKind[]).map((k) => <button key={k} role="radio" aria-checked={device === k} className={device === k ? "on" : ""} onClick={() => setDevice(k)}>{DEVICE_LABEL[k]}</button>)}
-                </div>
-                <span style={{ flex: 1 }} />
-                <button className="btn primary create" disabled={busy} onClick={create}>Create project <Icon name="arrow-right" size={15} /></button>
+          <div className="hero-mark" aria-hidden="true"><Icon name="flow" size={40} strokeWidth={1.6} /></div>
+          <div className="eyebrow"><span>Idea</span><Icon name="arrow-right" size={11} /><span>Screens</span><Icon name="arrow-right" size={11} /><span>Flow</span></div>
+          <h1>Every prototype.<br />Connected to its flow.</h1>
+          <p className="lede">Shape screens and flows together on one canvas.</p>
+          {error && <p className="home-error">{error}</p>}
+          <div className={`prompt ${busy ? "busy" : ""}`}>
+            <textarea ref={briefRef} rows={3} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="What would you like to prototype?"
+              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void create(); }} />
+            <div className="prompt-foot">
+              <button className="attach" onClick={() => fileRef.current?.click()} title="Images you add here land on the board as references">
+                <Icon name="paperclip" size={16} /> {files.length ? `${files.length} reference${files.length === 1 ? "" : "s"}` : "Add a reference"}
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { setFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
+              <div className="seg mini" role="radiogroup" aria-label="Device">
+                {(["mobile", "tablet", "desktop"] as DeviceKind[]).map((k) => <button key={k} role="radio" aria-checked={device === k} className={device === k ? "on" : ""} onClick={() => setDevice(k)}>{DEVICE_LABEL[k]}</button>)}
               </div>
-            </div>
-            <div className="starters">
-              {STARTERS.map((st) => (
-                <button key={st.label} className="starter" onClick={() => { setBrief(st.brief); briefRef.current?.focus(); }}><Icon name={st.icon} size={14} /> {st.label}</button>
-              ))}
+              <span style={{ flex: 1 }} />
+              <button className="btn primary create" disabled={busy} onClick={create}>Create project <Icon name="arrow-up-right" size={15} /></button>
             </div>
           </div>
-
-          <aside className="recent" aria-label="Recent projects">
-            <div className="recent-head">
-              <h2>Jump back in</h2>
-              {projects.length > 3 && <button className="link-btn" onClick={() => setShowAll(!showAll)}>{showAll ? "Show fewer" : "View all"} <Icon name="arrow-right" size={14} /></button>}
-            </div>
-            {recent.map((p) => (
-              <button key={p.id} className="proj" onClick={() => openProject(p.id)}>
-                <span className="proj-thumb">{p.firstScreen && p.device ? <DeviceFrame src={api.shellUrl(p.id, p.firstScreen, { follow: false })} device={p.device} width={72} className="tile" /> : <Icon name="layout-grid" size={18} />}</span>
-                <span className="proj-text">
-                  <span className="n">{p.name}</span>
-                  <span className="m">{p.screenCount} screen{p.screenCount === 1 ? "" : "s"} · Edited {ago(p.updatedAt)}</span>
-                </span>
-                <Icon name="chevron-right" size={16} className="chev" />
-              </button>
+          <div className="starters">
+            {STARTERS.map((st) => (
+              <button key={st.label} className="starter" onClick={() => { setBrief(st.brief); briefRef.current?.focus(); }}><Icon name={st.icon} size={15} /> {st.label}</button>
             ))}
-            {projects.length === 0 && <div className="muted small recent-empty">Nothing yet. Create a project, or open an example below.</div>}
-          </aside>
+          </div>
+        </section>
+
+        <section className="recent" aria-label="Recent projects">
+          <div className="sec-head">
+            <h2>Jump back in</h2>
+            <span style={{ flex: 1 }} />
+            {projects.length > 3 && <button className="link-btn" onClick={() => setShowAll(!showAll)}>{showAll ? "Show fewer" : "View all"} <Icon name="arrow-right" size={14} /></button>}
+          </div>
+          {projects.length > 0 ? (
+            <div className="recent-list">
+              {recent.map((p) => (
+                <button key={p.id} className="proj" onClick={() => openProject(p.id)}>
+                  <span className="proj-thumb">{p.firstScreen && p.device ? <DeviceFrame src={api.shellUrl(p.id, p.firstScreen, { follow: false })} device={p.device} width={72} className="tile" /> : <Icon name="layout-grid" size={18} />}</span>
+                  <span className="proj-text">
+                    <span className="n">{p.name}</span>
+                    <span className="m">{p.screenCount} screen{p.screenCount === 1 ? "" : "s"} · Edited {ago(p.updatedAt)}</span>
+                  </span>
+                  <span className="go">Continue <Icon name="arrow-right" size={15} /></span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="recent-list recent-empty muted">Nothing yet. Create a project above, or open an example below.</div>
+          )}
         </section>
 
         <section ref={examplesRef} className="examples">
           <div className="sec-head">
             <h2>Start with a working example</h2>
-            <span className="muted">Explore a live prototype, then make it yours.</span>
+            <span className="muted sub">Explore a live prototype, then make it yours.</span>
             <span style={{ flex: 1 }} />
             {kinds.length > 1 && (
               <div className="seg" role="radiogroup" aria-label="Device filter">
                 <button role="radio" aria-checked={filter === "all"} className={filter === "all" ? "on" : ""} onClick={() => setFilter("all")}>All</button>
-                {kinds.map((k) => <button key={k} role="radio" aria-checked={filter === k} className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>{DEVICE_LABEL[k]}</button>)}
+                {(["mobile", "tablet", "desktop"] as DeviceKind[]).map((k) => <button key={k} role="radio" aria-checked={filter === k} className={filter === k ? "on" : ""} disabled={!kinds.includes(k)} onClick={() => setFilter(k)}>{DEVICE_LABEL[k]}</button>)}
               </div>
             )}
           </div>
           <div className="ex-grid">
             {shown.map((ex) => (
-              <article key={ex.id} className={`ex ${ex.device}`}>
-                <div className="ex-stage">
-                  <span className="ex-live"><span className="dot" /> Live demo</span>
-                  {ex.firstScreen && <DeviceFrame src={api.exampleShellUrl(ex.id, ex.firstScreen)} device={{ kind: ex.device, width: ex.width, height: ex.height }} width={ex.device === "mobile" ? 200 : 330} />}
-                </div>
-                <div className="ex-body">
-                  <div className="n">{ex.name}</div>
-                  <div className="m">{DEVICE_LABEL[ex.device]} · {ex.screenCount} screens</div>
-                  <p className="ex-brief">{TAGLINE[ex.id] ?? ex.brief}</p>
-                </div>
+              <article key={ex.id} className={`ex ${ex.device}`} onClick={() => loadExample(ex.id)}>
+                <div className="ex-stage"><ExamplePreview ex={ex} /></div>
                 <div className="ex-foot">
-                  {ex.firstScreen && <a className="try" href={api.exampleShellUrl(ex.id, ex.firstScreen)} target="_blank" rel="noreferrer"><Icon name="play-circle" size={18} /> Try demo</a>}
-                  <button className="btn" disabled={busy} onClick={() => loadExample(ex.id)}>Open in canvas</button>
+                  <div className="ex-text">
+                    <div className="n">{EXAMPLE_TITLE[ex.id] ?? ex.name}</div>
+                    <div className="m">{DEVICE_LABEL[ex.device]} · {ex.screenCount} screens</div>
+                  </div>
+                  <button className="open" disabled={busy} onClick={(e) => { e.stopPropagation(); void loadExample(ex.id); }}>Open example <Icon name="arrow-up-right" size={15} /></button>
                 </div>
               </article>
             ))}
