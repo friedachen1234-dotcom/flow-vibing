@@ -108,7 +108,31 @@ export function Canvas() {
   const [dragOver, setDragOver] = useState(false);
   const [showKeys, setShowKeys] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const fit = useCallback(() => requestAnimationFrame(() => void rf.fitView({ padding: 0.15, duration: 300 })), [rf]);
+  const fit = useCallback(() => requestAnimationFrame(() => void rf.fitView({ padding: 0.15, duration: 500 })), [rf]);
+  // A layout change glides: every card eases to its new place over half a second while the view fits around them,
+  // so the eye follows each card instead of finding a new picture. Lines and explorations derive from positions
+  // each frame, so they keep up. The result is saved once, at the end.
+  const glideTimer = useRef(0);
+  const glide = useCallback((layout: (c: CanvasDoc) => CanvasDoc) => {
+    cancelAnimationFrame(glideTimer.current);
+    const { bundle: b, updateCanvas: update } = useFlow.getState();
+    if (!b) return;
+    const from = b.canvas, to = layout(from);
+    const start = new Map(from.nodes.map((n) => [n.id, n.position] as const));
+    const moving = to.nodes.filter((n) => { const a = start.get(n.id); return a && (Math.abs(a.x - n.position.x) > 0.5 || Math.abs(a.y - n.position.y) > 0.5); });
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!moving.length || reduce) { update(() => to); fit(); return; }
+    const at = (k: number) => ({ ...to, nodes: to.nodes.map((n) => { const a = start.get(n.id); return a ? { ...n, position: { x: a.x + (n.position.x - a.x) * k, y: a.y + (n.position.y - a.y) * k } } : n; }) });
+    const t0 = performance.now(), dur = 520;
+    const ease = (x: number) => 1 - Math.pow(1 - x, 3);
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / dur);
+      if (k < 1) { update(() => at(ease(k)), false); glideTimer.current = requestAnimationFrame(step); }
+      else update(() => to);
+    };
+    update(() => at(0), false); fit(); glideTimer.current = requestAnimationFrame(step);
+  }, [fit]);
+  useEffect(() => () => cancelAnimationFrame(glideTimer.current), []);
 
   /* Derive React Flow nodes and edges from the spec and canvas for the active view. */
   const derived = useMemo(() => {
@@ -239,7 +263,7 @@ export function Canvas() {
       const A = size(a), B = size(b);
       return a.position.x < b.position.x + B.w && b.position.x < a.position.x + A.w && a.position.y < b.position.y + B.h && b.position.y < a.position.y + A.h;
     }));
-    if (overlap) { updateCanvas((c) => tidyLayout(spec, c, view)); fit(); }
+    if (overlap) glide((c) => tidyLayout(spec, c, view));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
 
@@ -482,11 +506,11 @@ export function Canvas() {
 
       <div className="canvas-bar tips-up" role="toolbar" aria-label="Canvas">
         <button className="cb-btn" onClick={() => rf.zoomOut({ duration: 150 })} data-tip="Zoom out" data-key="−" aria-label="Zoom out"><Icon name="zoom-out" size={15} /></button>
-        <button className="cb-zoom" onClick={() => void rf.zoomTo(1, { duration: 200 })} data-tip="Zoom to 100%" data-key="⌘0">{Math.round(zoom * 100)}%</button>
+        <button className="cb-zoom" onClick={() => void rf.zoomTo(1, { duration: 200 })} data-tip="Zoom to 100%" data-key="⌘0"><span className="pop" key={Math.round(zoom * 100)}>{Math.round(zoom * 100)}%</span></button>
         <button className="cb-btn" onClick={() => rf.zoomIn({ duration: 150 })} data-tip="Zoom in" data-key="+" aria-label="Zoom in"><Icon name="zoom-in" size={15} /></button>
         <span className="cb-sep" />
         <button className="cb-btn" onClick={fit} data-tip="Fit to content" data-key="⇧1" aria-label="Fit to content"><Icon name="maximize" size={15} /></button>
-        <button className="cb-btn" onClick={() => { updateCanvas((c) => tidyLayout(spec, c, view)); fit(); }} disabled={spec.screens.length === 0} data-tip="Tidy the layout" aria-label="Tidy layout"><Icon name="layout-grid" size={15} /></button>
+        <button className="cb-btn" onClick={() => glide((c) => tidyLayout(spec, c, view))} disabled={spec.screens.length === 0} data-tip="Tidy the layout" aria-label="Tidy layout"><Icon name="layout-grid" size={15} /></button>
         <span className="cb-sep" />
         <button className={`cb-btn ${showInfluences ? "on" : ""}`} onClick={() => setShowInfluences(!showInfluences)} data-tip="Show which references shaped each screen" aria-label="Show influences" aria-pressed={showInfluences}><Icon name="sparkles" size={15} /></button>
         <button className={`cb-btn wide ${showMinimap ? "on" : ""}`} onClick={() => setShowMinimap(!showMinimap)} data-tip="Minimap" aria-pressed={showMinimap}><Icon name="map" size={15} /> Map</button>
