@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { flushSync } from "react-dom";
 import { nanoid } from "nanoid";
 import type { AgentIntent, CanvasDoc, ChangeRequest, DesignSpec, ServerMessage, ValidationIssue, VariantTarget, ViewMode } from "@flow/shared";
 import { api, socket, type Bundle, type RunPayload } from "./api";
@@ -58,6 +59,8 @@ export interface FlowState {
   saving: boolean;
   /** The line under the pointer, or the line of the card row under it, so both light the same way. */
   hoverEdge: string | null;
+  /** Resolves when the crossfade of the last view switch has finished; null when there was none. */
+  viewSwitch: Promise<void> | null;
   setHoverEdge(id: string | null): void;
 
   openProject(id: string): Promise<void>;
@@ -136,6 +139,7 @@ export const useFlow = create<FlowState>((set, get) => ({
   savedAt: null,
   saving: false,
   hoverEdge: null,
+  viewSwitch: null,
   setHoverEdge(hoverEdge) { if (get().hoverEdge !== hoverEdge) set({ hoverEdge }); },
 
   async openProject(id) {
@@ -167,8 +171,14 @@ export const useFlow = create<FlowState>((set, get) => ({
     } catch (e) { get().showToast((e as Error).message); }
   },
   setView(view) {
-    set({ view });
-    get().updateCanvas((c) => ({ ...c, view }));
+    if (get().view === view) return;
+    const apply = () => { set({ view }); get().updateCanvas((c) => ({ ...c, view })); };
+    // The two views draw the same screens differently, so the switch crossfades where the browser can do that.
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void> } };
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!doc.startViewTransition || reduce) { apply(); set({ viewSwitch: null }); return; }
+    const vt = doc.startViewTransition(() => flushSync(apply));
+    set({ viewSwitch: vt.finished.catch(() => undefined) });
   },
   select(selection) {
     const cur = get().selection;

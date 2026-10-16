@@ -1,3 +1,12 @@
+/* Motion. One ease for things that move into place (a long, soft exponential tail, the feel of iOS), and two springs:
+   a light bounce for things you touch, a settled one for things that arrive. Browsers without linear() keep the fallback. */
+:root { --ease-out-expo: cubic-bezier(.16,1,.3,1); --spring: cubic-bezier(.34,1.3,.64,1); --spring-soft: cubic-bezier(.2,.9,.3,1); }
+@supports (animation-timing-function: linear(0, 1)) {
+  :root { --spring: linear(0, 0.0177 2.5%, 0.0643 5%, 0.1314 7.5%, 0.2116 10%, 0.2992 12.5%, 0.3894 15%, 0.4785 17.5%, 0.5637 20%, 0.6432 22.5%, 0.7155 25%, 0.7801 27.5%, 0.8365 30%, 0.8848 32.5%, 0.9254 35%, 0.9587 37.5%, 0.9854 40%, 1.0062 42.5%, 1.0217 45%, 1.0328 47.5%, 1.04 50%, 1.0442 52.5%, 1.0459 55%, 1.0456 57.5%, 1.0438 60%, 1.041 62.5%, 1.0375 65%, 1.0336 67.5%, 1.0294 70%, 1.0253 72.5%, 1.0213 75%, 1.0176 77.5%, 1.0141 80%, 1.011 82.5%, 1.0083 85%, 1.006 87.5%, 1.004 90%, 1.0024 92.5%, 1.001 95%, 1 97.5%, 0.9992); --spring-soft: linear(0, 0.0095 2.5%, 0.0351 5%, 0.0725 7.5%, 0.1186 10%, 0.1704 12.5%, 0.2259 15%, 0.2831 17.5%, 0.3406 20%, 0.3972 22.5%, 0.4523 25%, 0.505 27.5%, 0.555 30%, 0.6019 32.5%, 0.6456 35%, 0.686 37.5%, 0.7231 40%, 0.757 42.5%, 0.7877 45%, 0.8154 47.5%, 0.8403 50%, 0.8625 52.5%, 0.8823 55%, 0.8998 57.5%, 0.9152 60%, 0.9287 62.5%, 0.9405 65%, 0.9508 67.5%, 0.9596 70%, 0.9672 72.5%, 0.9737 75%, 0.9793 77.5%, 0.9839 80%, 0.9878 82.5%, 0.9911 85%, 0.9938 87.5%, 0.996 90%, 0.9978 92.5%, 0.9992 95%, 1.0003 97.5%, 1.0012); }
+}
+/* Switching views crossfades the board instead of swapping it. */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .4s; animation-timing-function: var(--ease-out-expo); }
+
 :root {
   --bg: #F3F5FA;
   --canvas-dot: #D5DAE5;
@@ -50,7 +59,7 @@ a { color: var(--accent); }
 .app { display: grid; grid-template-rows: var(--topbar-h) 1fr; height: 100%; }
 .topbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 14px 0 12px; background: var(--surface); border-bottom: 1px solid var(--line); z-index: var(--z-panel); position: relative; }
 .canvas-wrap { position: relative; min-width: 0; min-height: 0; }
-.board { position: absolute; inset: 0; transition: right .28s cubic-bezier(.2,.8,.2,1); }
+.board { position: absolute; inset: 0; transition: right .45s var(--ease-out-expo); }
 /* The panel floats, but the board ends before it, so nothing it shows is ever hidden underneath. */
 .board:has(~ .rpanel) { right: calc(var(--rpanel-w) + 16px); }
 .board.hand .react-flow__pane { cursor: grab; }
@@ -60,28 +69,29 @@ a { color: var(--accent); }
 .board.interacting .react-flow__renderer::after { content: ""; position: absolute; inset: 0; z-index: 40; cursor: grabbing; }
 /* Dragging: the card lifts, its lines keep up, and nothing else reacts under it. */
 .react-flow__node.dragging { z-index: 1000 !important; }
-.react-flow__node.dragging > * { cursor: grabbing; transform: scale(1.015); box-shadow: 0 0 0 2px var(--accent), 0 24px 56px rgba(20,23,29,.22) !important; transition: transform .12s ease, box-shadow .12s ease; }
-/* Letting go settles with a small spring; a card that has just appeared rises into place. */
-.react-flow__node > * { transition: transform .38s cubic-bezier(.34,1.5,.64,1), box-shadow .22s ease; animation: node-in .34s cubic-bezier(.2,.8,.2,1) backwards; }
-@keyframes node-in { from { opacity: 0; transform: translateY(6px) scale(.985); } }
+.react-flow__node.dragging > * { cursor: grabbing; transform: scale(1.015); box-shadow: 0 0 0 2px var(--accent), 0 24px 56px rgba(20,23,29,.22) !important; transition: transform .22s var(--ease-out-expo), box-shadow .22s var(--ease-out-expo); }
+/* Letting go settles on a spring; a card that has just appeared scales up into place. */
+.react-flow__node > * { transition: transform .5s var(--spring), box-shadow .3s var(--ease-out-expo); animation: node-in .5s var(--ease-out-expo) backwards; }
+@keyframes node-in { from { opacity: 0; transform: scale(.96); } }
 .react-flow__node:not(.dragging) .hdr:hover { background: var(--surface-2); }
 /* Hover: flow cards lift a touch; a prototype shows a faint ring, so it reads as something you can pick up. */
 .react-flow__node:not(.dragging):not(.selected):hover > .screen-card, .react-flow__node:not(.dragging):not(.selected):hover > .edge-case-card, .react-flow__node:not(.dragging):not(.selected):hover > .ref-card { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 .react-flow__node:not(.dragging):not(.selected):hover > .screen-frame { box-shadow: 0 0 0 1.5px rgba(44,79,219,.28), var(--shadow-lg); }
 /* Selecting: the ring closes in from a wide, transparent halo onto the card. */
 @keyframes ring-in { from { box-shadow: 0 0 0 12px transparent; } }
-.screen-frame.selected, .screen-card.selected, .edge-case-card.selected, .ref-card.selected, .variant-panel.selected, .react-flow__node.selected .node-card { animation: ring-in .28s cubic-bezier(.2,.8,.2,1); }
+.screen-frame.selected, .screen-card.selected, .edge-case-card.selected, .ref-card.selected, .variant-panel.selected, .react-flow__node.selected .node-card { animation: ring-in .4s var(--ease-out-expo); }
 /* A light runs along a hovered or selected line toward its target. */
+.edge-runner.halo { opacity: .22; stroke: none; filter: none !important; }
 .edge-runner { fill: var(--accent); stroke: var(--surface); filter: drop-shadow(0 0 3px rgba(44,79,219,.55)); pointer-events: none; }
 .edge-runner.quiet { fill: var(--ink-3); filter: none; }
 .edge-runner.warn { fill: var(--warn); filter: drop-shadow(0 0 3px rgba(214,146,0,.5)); }
 .edge-runner.magic { fill: var(--magic); filter: drop-shadow(0 0 3px rgba(170,80,200,.5)); }
 /* Handles answer a connection in progress: the one you left glows, and a target that would accept it swells. */
-.react-flow__handle { transition: box-shadow .15s ease, background .15s ease; }
+.react-flow__handle { transition: box-shadow .25s var(--ease-out-expo), background .25s var(--ease-out-expo); }
 .react-flow__handle.connectingfrom { box-shadow: 0 0 0 4px var(--accent-soft); }
 .react-flow__handle.connectingto.valid { background: var(--ok) !important; box-shadow: 0 0 0 5px var(--ok-soft); }
 /* Labels fade up as they appear. */
-.edge-label { animation: fade-in .16s ease-out; }
+.edge-label { animation: fade-in .25s var(--ease-out-expo); }
 @keyframes fade-in { from { opacity: 0; } }
 /* Dashed lines flow toward their target while hovered or selected; the connection line while drawing does the same. */
 @keyframes dash-flow { to { stroke-dashoffset: -40; } }
@@ -200,8 +210,8 @@ button.crumb:hover { background: var(--surface-2); color: var(--ink); }
 .rp-tabs button:hover { color: var(--ink); }
 .rp-tabs button.on { color: var(--ink); background: var(--surface-2); }
 .rp-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.rpanel { animation: panel-in .28s cubic-bezier(.2,.8,.2,1); }
-@keyframes panel-in { from { opacity: 0; transform: translateX(20px); } }
+.rpanel { animation: panel-in .45s var(--ease-out-expo); }
+@keyframes panel-in { from { opacity: 0; transform: translateX(28px) scale(.98); } }
 .inspector { flex: 1; overflow-y: auto; }
 .agent { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .history { flex: 1; overflow-y: auto; padding: 8px 12px 16px; }
@@ -249,9 +259,9 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .cb-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
 .cb-btn.on { background: var(--accent-soft); color: var(--accent); }
 .cb-btn:disabled { opacity: .35; }
-.cb-btn, .rail-btn { transition: background .15s, color .15s, transform .1s ease; }
-.cb-btn:active:not(:disabled), .rail-btn:active:not(:disabled) { transform: scale(.9); }
-.cb-zoom .pop { display: inline-block; animation: pop .22s cubic-bezier(.2,.8,.2,1); }
+.cb-btn, .rail-btn { transition: background .18s, color .18s, transform .35s var(--spring); }
+.cb-btn:active:not(:disabled), .rail-btn:active:not(:disabled) { transform: scale(.9); transition-duration: .18s, .18s, .08s; }
+.cb-zoom .pop { display: inline-block; animation: pop .4s var(--spring); }
 @keyframes pop { from { transform: scale(1.18); color: var(--accent); } }
 .cb-zoom { height: 32px; min-width: 52px; border: 0; background: transparent; font-weight: 600; font-size: var(--t-13); color: var(--ink); border-radius: 8px; }
 .cb-zoom:hover { background: var(--surface-2); }
@@ -371,7 +381,7 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 
 /* Screen node, prototype view */
 /* minmax(0, 1fr): a header too wide for the frame must clip, never widen the column and push the prototype past the edge. */
-.screen-frame { background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-lg); border: 1px solid var(--line); overflow: hidden; display: grid; grid-template-rows: 44px 1fr; grid-template-columns: minmax(0, 1fr); transition: box-shadow .15s; }
+.screen-frame { background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-lg); border: 1px solid var(--line); overflow: hidden; display: grid; grid-template-rows: 44px 1fr; grid-template-columns: minmax(0, 1fr); }
 .screen-frame.selected { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
 .screen-frame .hdr { display: flex; align-items: center; gap: 6px; padding: 0 6px 0 6px; background: var(--surface); border-bottom: 1px solid var(--line-soft); cursor: grab; user-select: none; min-width: 0; overflow: hidden; }
 .screen-frame .hdr:active { cursor: grabbing; }
@@ -396,7 +406,7 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .screen-frame .empty { display: grid; place-items: center; color: var(--ink-3); font-size: 12px; text-align: center; padding: 24px; }
 
 /* Screen card, flow view */
-.screen-card { width: 300px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--card-radius); box-shadow: var(--shadow); overflow: visible; position: relative; transition: box-shadow .15s; }
+.screen-card { width: 300px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--card-radius); box-shadow: var(--shadow); overflow: visible; position: relative; }
 .screen-card.selected { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
 .screen-card.expanded { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
 .screen-card .hdr { display: flex; align-items: flex-start; gap: 12px; padding: 14px 10px 12px 14px; cursor: grab; }
@@ -410,9 +420,9 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .screen-card .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .screen-card .moves { border-top: 1px solid var(--line-soft); padding: 4px 0 6px; }
 .screen-card .move { position: relative; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px 0 14px; font-size: var(--t-13); cursor: pointer; }
-.screen-card .move { transition: background .12s ease; }
+.screen-card .move { transition: background .18s var(--ease-out-expo); }
 .screen-card .move:hover { background: var(--surface-2); }
-.screen-card .move .port { transition: transform .15s cubic-bezier(.34,1.5,.64,1), border-color .15s, background .15s; }
+.screen-card .move .port { transition: transform .4s var(--spring), border-color .2s, background .2s; }
 .screen-card .move:hover .port { transform: scale(1.3); }
 .screen-card .move .to { transition: color .12s; }
 .screen-card .move:hover .to { color: var(--ink); }
@@ -447,7 +457,7 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .screen-card .foot .add:hover { border-color: var(--accent); color: var(--accent); }
 
 /* Edge case card */
-.edge-case-card { width: 250px; position: relative; background: #FFFBF0; border: 1px solid var(--warn-line); border-radius: var(--card-radius); box-shadow: var(--shadow); padding: 12px 12px 12px; display: grid; gap: 10px; transition: box-shadow .15s; }
+.edge-case-card { width: 250px; position: relative; background: #FFFBF0; border: 1px solid var(--warn-line); border-radius: var(--card-radius); box-shadow: var(--shadow); padding: 12px 12px 12px; display: grid; gap: 10px; }
 .edge-case-card.selected { box-shadow: 0 0 0 2px var(--warn), var(--shadow-lg); }
 .edge-case-card .hdr { display: flex; gap: 10px; align-items: flex-start; cursor: grab; }
 .edge-case-card .hdr:active { cursor: grabbing; }
@@ -465,7 +475,7 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .edge-case-card.low { background: var(--surface); border-color: var(--line); }
 
 /* Reference card */
-.ref-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; width: 224px; transition: box-shadow .15s; }
+.ref-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; width: 224px; }
 .ref-card.selected { box-shadow: 0 0 0 2px var(--magic), var(--shadow-lg); }
 .ref-card .hdr { display: flex; align-items: center; gap: 8px; padding: 10px 8px 10px 14px; color: var(--ink); cursor: grab; }
 .ref-card .hdr:active { cursor: grabbing; }
@@ -483,7 +493,7 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .ref-card.skill .code { font-family: var(--font-mono); font-size: 11px; white-space: pre-wrap; max-height: 140px; overflow: hidden; color: var(--ink-2); margin-top: 4px; }
 
 /* Variant panel */
-.variant-panel { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); transition: box-shadow .15s; }
+.variant-panel { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
 .variant-panel.selected { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
 .variant-panel .hdr { display: flex; align-items: center; gap: 10px; padding: 12px 10px 12px 16px; cursor: grab; }
 .variant-panel .hdr:active { cursor: grabbing; }
@@ -660,8 +670,8 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .popover .opt b { font-size: 12.5px; color: var(--magic); }
 .popover .opt span { font-size: 11px; color: var(--ink-3); }
 .toast { position: fixed; right: 20px; bottom: 176px; display: flex; align-items: center; gap: 9px; background: var(--surface); color: var(--ink); padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; font-size: var(--t-13); font-weight: 500; box-shadow: var(--shadow-lg); z-index: var(--z-toast); max-width: 360px; }
-.toast { animation: toast-in .26s cubic-bezier(.2,.8,.2,1); }
-@keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
+.toast { animation: toast-in .5s var(--spring-soft); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(14px) scale(.97); } }
 .toast .tick { color: #2EBD6B; display: grid; flex: none; }
 .toast .close { margin-left: 4px; border: 0; background: none; color: var(--ink-3); display: grid; padding: 2px; border-radius: 5px; }
 .toast .close:hover { background: var(--surface-2); color: var(--ink); }

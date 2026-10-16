@@ -10,9 +10,14 @@ function Runner({ path, tone = "", dur = 1.4 }: { path: string; tone?: string; d
   const { zoom } = useViewport();
   const r = Math.min(10, Math.max(3, 3.4 / zoom));
   return (
-    <circle className={`edge-runner ${tone}`} r={r} style={{ strokeWidth: r / 2.4 }}>
-      <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={path} calcMode="linear" />
-    </circle>
+    <>
+      <circle className={`edge-runner halo ${tone}`} r={r * 2.1}>
+        <animateMotion dur={`${dur}s`} begin={`${-dur * 0.05}s`} repeatCount="indefinite" path={path} calcMode="linear" />
+      </circle>
+      <circle className={`edge-runner ${tone}`} r={r} style={{ strokeWidth: r / 2.4 }}>
+        <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={path} calcMode="linear" />
+      </circle>
+    </>
   );
 }
 
@@ -77,7 +82,7 @@ export function TransitionEdge(props: EdgeProps) {
   return (
     <>
       <BaseEdge id={props.id} path={path} markerEnd={props.markerEnd} interactionWidth={18} className={active ? "dash-flow" : undefined}
-        style={{ stroke: back ? "var(--ink-3)" : "var(--accent)", strokeWidth: props.selected || lit ? 2.4 : main ? 2 : 1.4, strokeDasharray: back ? "5 4" : active ? "6 4" : undefined, opacity: dim && !hover ? 0.12 : lit || props.selected || main ? 1 : 0.38, transition: "opacity .15s, stroke-width .15s" }} />
+        style={{ stroke: back ? "var(--ink-3)" : "var(--accent)", strokeWidth: props.selected || lit ? 2.4 : main ? 2 : 1.4, strokeDasharray: back ? "5 4" : active ? "6 4" : undefined, opacity: dim && !hover ? 0.12 : lit || props.selected || main ? 1 : 0.38, transition: "opacity .25s cubic-bezier(.16,1,.3,1), stroke-width .25s cubic-bezier(.16,1,.3,1)" }} />
       {(props.selected || hover || active) && <Runner path={path} tone={back ? "quiet" : ""} />}
       {(props.selected || hover) && (
         <EdgeLabelRenderer>
@@ -104,7 +109,7 @@ export function EdgeCaseEdge(props: EdgeProps) {
     : getSmoothStepPath({ sourceX: sx, sourceY: sy, targetX: tx, targetY: ty, sourcePosition: Position.Bottom, targetPosition: Position.Left, borderRadius: r, offset: 16 })[0];
   return (
     <>
-      <BaseEdge id={props.id} path={path} markerEnd={props.markerEnd} interactionWidth={14} className={hover || props.selected ? "dash-flow" : undefined} style={{ stroke: "var(--warn)", strokeWidth: props.selected || hover ? 2.2 : 1.5, strokeDasharray: "6 5", opacity: dim ? 0.15 : 0.95, transition: "opacity .15s, stroke-width .15s" }} />
+      <BaseEdge id={props.id} path={path} markerEnd={props.markerEnd} interactionWidth={14} className={hover || props.selected ? "dash-flow" : undefined} style={{ stroke: "var(--warn)", strokeWidth: props.selected || hover ? 2.2 : 1.5, strokeDasharray: "6 5", opacity: dim ? 0.15 : 0.95, transition: "opacity .25s cubic-bezier(.16,1,.3,1), stroke-width .25s cubic-bezier(.16,1,.3,1)" }} />
       {(props.selected || hover) && <Runner path={path} tone="warn" dur={1.1} />}
     </>
   );
@@ -125,7 +130,7 @@ export function MagicEdge(props: EdgeProps) {
   const label = rel === "free-text" ? (e.note || "…") : rel === "match-style" ? "Style reference" : MAGIC_RELATION_LABELS[rel].label;
   return (
     <>
-      <BaseEdge id={props.id} path={path} interactionWidth={16} className={hover || props.selected ? "dash-flow" : undefined} style={{ stroke: "var(--magic)", strokeWidth: props.selected || hover ? 2 : 1.3, strokeDasharray: "5 5", opacity: props.selected || hover ? 1 : 0.8, transition: "opacity .15s, stroke-width .15s" }} />
+      <BaseEdge id={props.id} path={path} interactionWidth={16} className={hover || props.selected ? "dash-flow" : undefined} style={{ stroke: "var(--magic)", strokeWidth: props.selected || hover ? 2 : 1.3, strokeDasharray: "5 5", opacity: props.selected || hover ? 1 : 0.8, transition: "opacity .25s cubic-bezier(.16,1,.3,1), stroke-width .25s cubic-bezier(.16,1,.3,1)" }} />
       {(props.selected || hover) && <Runner path={path} tone="magic" dur={1.8} />}
       <EdgeLabelRenderer>
         <div className={`edge-label magic ${props.selected || hover ? "selected" : ""} nodrag nopan`} style={{ position: "absolute", transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)` }} onClick={() => select({ kind: "edge", id: e.id })} title={e.targetElementId ? `${label} → ${e.targetElementId}${e.note ? `\n${e.note}` : ""}` : e.note}>
@@ -143,7 +148,7 @@ export function VariantLinkEdge(props: EdgeProps) {
   const [path] = getSmoothStepPath({ sourceX: props.sourceX, sourceY: props.sourceY, targetX: props.targetX, targetY: props.targetY, sourcePosition: props.sourcePosition, targetPosition: props.targetPosition, borderRadius: 10, offset: 16, ...(vertical ? { centerY: props.targetY - 28 } : {}) });
   return (
     <>
-      <BaseEdge id={props.id} path={path} interactionWidth={14} style={{ stroke: "var(--accent)", strokeWidth: props.selected || hover ? 2.2 : 1.5, opacity: props.selected || hover ? 1 : 0.7, transition: "opacity .15s, stroke-width .15s" }} />
+      <BaseEdge id={props.id} path={path} interactionWidth={14} style={{ stroke: "var(--accent)", strokeWidth: props.selected || hover ? 2.2 : 1.5, opacity: props.selected || hover ? 1 : 0.7, transition: "opacity .25s cubic-bezier(.16,1,.3,1), stroke-width .25s cubic-bezier(.16,1,.3,1)" }} />
       {(props.selected || hover) && <Runner path={path} dur={1.0} />}
     </>
   );
