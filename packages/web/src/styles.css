@@ -247,8 +247,9 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .cp-status { display: inline-flex; align-items: center; gap: 7px; font-size: var(--t-12); color: var(--ink-2); font-weight: 600; padding: 0 6px; }
 
 /* Canvas bar, edge-case toggle, minimap */
-.canvas-bar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 5px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); z-index: var(--z-canvas-ui); }
-.cb-btn { height: 34px; min-width: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-weight: 600; font-size: var(--t-13); transition: background .15s, color .15s; }
+/* One rail on the left with everything the board needs: the tools, then zoom, layout, overlays and help. */
+.canvas-bar { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); z-index: var(--z-canvas-ui); max-height: calc(100% - 32px); overflow: visible; }
+.cb-btn { height: 38px; width: 38px; min-width: 38px; padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-weight: 600; font-size: var(--t-13); transition: background .15s, color .15s; }
 .cb-btn.wide { padding: 0 10px; }
 .cb-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
 .cb-btn.on { background: var(--accent-soft); color: var(--accent); }
@@ -257,9 +258,9 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .cb-btn:active:not(:disabled) { transform: scale(.9); transition-duration: .18s, .18s, .08s; }
 .cb-zoom .pop { display: inline-block; animation: pop .4s var(--spring); }
 @keyframes pop { from { transform: scale(1.18); color: var(--accent); } }
-.cb-zoom { height: 34px; min-width: 52px; border: 0; background: transparent; font-weight: 600; font-size: var(--t-13); color: var(--ink); border-radius: 8px; }
+.cb-zoom { height: 30px; width: 38px; min-width: 38px; padding: 0; font-size: 11.5px; letter-spacing: -.01em; border: 0; background: transparent; font-weight: 600; font-size: var(--t-13); color: var(--ink); border-radius: 8px; }
 .cb-zoom:hover { background: var(--surface-2); }
-.cb-sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+.cb-sep { width: 22px; height: 1px; background: var(--line); margin: 3px 0; }
 .cb-keys { font-family: var(--font-mono); }
 .ec-toggle { position: absolute; right: 16px; top: 16px; z-index: var(--z-canvas-ui); display: grid; gap: 8px; justify-items: end; }
 .ec-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: var(--shadow); font-weight: 500; color: var(--ink-2); }

@@ -545,7 +545,7 @@ export function Canvas() {
 
       <Composer />
 
-      <div className="canvas-bar tips-up" role="toolbar" aria-label="Canvas">
+      <div className="canvas-bar tips-right" role="toolbar" aria-label="Canvas">
         <ToolRail />
         <button className="cb-btn" onClick={() => rf.zoomOut({ duration: 300, ease: EASE_OUT_EXPO })} data-tip="Zoom out" data-key="−" aria-label="Zoom out"><Icon name="zoom-out" size={15} /></button>
         <button className="cb-zoom" onClick={() => void rf.zoomTo(1, { duration: 400, ease: EASE_OUT_EXPO, interpolate: "linear" })} data-tip="Zoom to 100%" data-key="⌘0"><span className="pop" key={Math.round(zoom * 100)}>{Math.round(zoom * 100)}%</span></button>
@@ -555,7 +555,7 @@ export function Canvas() {
         <button className="cb-btn" onClick={() => glide((c) => tidyLayout(spec, c, view))} disabled={spec.screens.length === 0} data-tip="Tidy the layout" aria-label="Tidy layout"><Icon name="layout-grid" size={15} /></button>
         <span className="cb-sep" />
         <button className={`cb-btn ${showInfluences ? "on" : ""}`} onClick={() => setShowInfluences(!showInfluences)} data-tip="Show which references shaped each screen" aria-label="Show influences" aria-pressed={showInfluences}><Icon name="sparkles" size={15} /></button>
-        <button className={`cb-btn wide ${showMinimap ? "on" : ""}`} onClick={() => setShowMinimap(!showMinimap)} data-tip="Minimap" aria-pressed={showMinimap}><Icon name="map" size={15} /> Map</button>
+        <button className={`cb-btn ${showMinimap ? "on" : ""}`} onClick={() => setShowMinimap(!showMinimap)} data-tip="Minimap" aria-label="Minimap" aria-pressed={showMinimap}><Icon name="map" size={15} /></button>
         <span className="cb-sep" />
         <button className={`cb-btn cb-keys ${showKeys ? "on" : ""}`} onClick={() => setShowKeys(!showKeys)} data-tip="Keyboard shortcuts" data-key="?" aria-label="Keyboard shortcuts" aria-pressed={showKeys}>?</button>
       </div>
