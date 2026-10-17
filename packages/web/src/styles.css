@@ -70,16 +70,19 @@ a { color: var(--accent); }
 /* Dragging: the card lifts, its lines keep up, and nothing else reacts under it. */
 .react-flow__node.dragging { z-index: 1000 !important; }
 .react-flow__node.dragging > * { cursor: grabbing; transform: scale(1.015); box-shadow: 0 0 0 2px var(--accent), 0 24px 56px rgba(20,23,29,.22) !important; transition: transform .22s var(--ease-out-expo), box-shadow .22s var(--ease-out-expo); }
+.react-flow__node.dragging > .screen-frame { box-shadow: none !important; }
+.react-flow__node.dragging > .screen-frame .device-body { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent), 0 36px 72px rgba(20,23,29,.32); }
 /* Letting go settles on a spring; a card that has just appeared scales up into place. */
 .react-flow__node > * { transition: transform .5s var(--spring), box-shadow .3s var(--ease-out-expo); animation: node-in .5s var(--ease-out-expo) backwards; }
 @keyframes node-in { from { opacity: 0; transform: scale(.96); } }
 .react-flow__node:not(.dragging) .hdr:hover { background: var(--surface-2); }
 /* Hover: flow cards lift a touch; a prototype shows a faint ring, so it reads as something you can pick up. */
 .react-flow__node:not(.dragging):not(.selected):hover > .screen-card, .react-flow__node:not(.dragging):not(.selected):hover > .edge-case-card, .react-flow__node:not(.dragging):not(.selected):hover > .ref-card { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-.react-flow__node:not(.dragging):not(.selected):hover > .screen-frame { box-shadow: 0 0 0 1.5px rgba(44,79,219,.28), var(--shadow-lg); }
+.react-flow__node:not(.dragging):not(.selected):hover > .screen-frame .device-body { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px rgba(44,79,219,.35), var(--device-shadow); }
+.react-flow__node:not(.dragging):not(.selected):hover > .screen-frame .hdr { background: rgba(20,23,29,.05); }
 /* Selecting: the ring closes in from a wide, transparent halo onto the card. */
 @keyframes ring-in { from { box-shadow: 0 0 0 12px transparent; } }
-.screen-frame.selected, .screen-card.selected, .edge-case-card.selected, .ref-card.selected, .variant-panel.selected, .react-flow__node.selected .node-card { animation: ring-in .4s var(--ease-out-expo); }
+.screen-frame.selected .device-body, .screen-card.selected, .edge-case-card.selected, .ref-card.selected, .variant-panel.selected, .react-flow__node.selected .node-card { animation: ring-in .4s var(--ease-out-expo); }
 /* A light runs along a hovered or selected line toward its target. */
 .edge-runner.halo { opacity: .22; stroke: none; filter: none !important; }
 .edge-runner { fill: var(--accent); stroke: var(--surface); filter: drop-shadow(0 0 3px rgba(44,79,219,.55)); pointer-events: none; }
@@ -87,16 +90,13 @@ a { color: var(--accent); }
 .edge-runner.warn { fill: var(--warn); filter: drop-shadow(0 0 3px rgba(214,146,0,.5)); }
 .edge-runner.magic { fill: var(--magic); filter: drop-shadow(0 0 3px rgba(170,80,200,.5)); }
 /* Handles answer a connection in progress: the one you left glows, and a target that would accept it swells. */
-.react-flow__handle { transition: box-shadow .25s var(--ease-out-expo), background .25s var(--ease-out-expo); }
-.react-flow__handle.connectingfrom { box-shadow: 0 0 0 4px var(--accent-soft); }
-.react-flow__handle.connectingto.valid { background: var(--ok) !important; box-shadow: 0 0 0 5px var(--ok-soft); }
 /* Labels fade up as they appear. */
 .edge-label { animation: fade-in .25s var(--ease-out-expo); }
 @keyframes fade-in { from { opacity: 0; } }
 /* Dashed lines flow toward their target while hovered or selected; the connection line while drawing does the same. */
 @keyframes dash-flow { to { stroke-dashoffset: -40; } }
 .react-flow__edge-path.dash-flow, .react-flow__edge.selected .react-flow__edge-path.dash-flow { animation: dash-flow 1.2s linear infinite; }
-.react-flow__connection-path { stroke-dasharray: 7 5; animation: dash-flow 1s linear infinite; }
+.react-flow__connection-path { stroke: var(--accent) !important; stroke-width: 2.2 !important; stroke-linecap: round; stroke-dasharray: 7 6; animation: dash-flow 1s linear infinite; filter: drop-shadow(0 0 3px rgba(44,79,219,.35)); }
 .react-flow__edge { cursor: pointer; }
 .react-flow__edge:hover .react-flow__edge-path { filter: drop-shadow(0 0 2px rgba(44,79,219,.35)); }
 .react-flow__edge.selected .react-flow__edge-path { filter: drop-shadow(0 0 3px rgba(44,79,219,.45)); }
@@ -348,12 +348,32 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .react-flow { background: var(--bg); }
 .react-flow__attribution { display: none; }
 .react-flow__node { font-family: var(--font-ui); }
-.react-flow__handle { width: 10px; height: 10px; border: 2px solid var(--surface); background: var(--ink-3); }
+/* Connectors. A handle is a small dot with a white ring that only shows when it is useful: when the pointer is on its
+   card, when the card is selected, or while a line is being drawn, when every place it could land lights up. Its hit
+   area is much bigger than the dot, and hovering grows it and shows a plus: drag from here. */
+.react-flow__handle { width: 12px; height: 12px; border: 2px solid var(--surface); background: var(--ink-3); box-shadow: 0 1px 3px rgba(20,23,29,.25); opacity: 0; transform-origin: center; transition: opacity .2s var(--ease-out-expo), box-shadow .2s var(--ease-out-expo), background .2s, scale .35s var(--spring); scale: .6; }
+.react-flow__handle::after { content: ""; position: absolute; inset: -10px; border-radius: 50%; }
+.react-flow__handle::before { content: "+"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font: 700 10px/1 var(--font-ui); opacity: 0; transition: opacity .15s; }
+.react-flow__node:hover .react-flow__handle, .react-flow__node.selected .react-flow__handle, .board.connecting .react-flow__handle { opacity: 1; scale: 1; }
+.react-flow__handle:hover, .react-flow__handle.connectingfrom { scale: 1.45; box-shadow: 0 0 0 5px var(--accent-soft), 0 1px 3px rgba(20,23,29,.25); cursor: crosshair; }
+.react-flow__handle.source:hover::before { opacity: 1; }
+.board.connecting .react-flow__handle.target:not(.drop-target):not(.row-port):not(.ec-port) { background: var(--accent); scale: 1.2; box-shadow: 0 0 0 4px var(--accent-soft); animation: handle-call 1.4s ease-in-out infinite; }
+@keyframes handle-call { 50% { box-shadow: 0 0 0 8px rgba(44,79,219,.12); } }
+.react-flow__handle.connectingto.valid { background: var(--ok) !important; scale: 1.6; box-shadow: 0 0 0 6px var(--ok-soft); animation: none; }
+.react-flow__handle.row-port, .react-flow__handle.ec-port { opacity: 0 !important; scale: 1; box-shadow: none; animation: none; }
+/* While a line is drawn, every other card is a landing place: a soft tint over the whole card, firmer under the pointer. */
+.react-flow__handle.drop-target { position: absolute; inset: 0; width: 100%; height: 100%; transform: none; border-radius: inherit; border: 1.5px solid rgba(44,79,219,.35); background: rgba(44,79,219,.05); box-shadow: none; opacity: 1; scale: 1; z-index: 20; animation: drop-in .3s var(--ease-out-expo); transition: background .2s, border-color .2s, box-shadow .2s; }
+.react-flow__handle.drop-target::before, .react-flow__handle.drop-target::after { content: none; }
+.react-flow__handle.drop-target.connectingto, .react-flow__handle.drop-target:hover { background: rgba(44,79,219,.1); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.screen-frame .react-flow__handle.drop-target { border-radius: 34px; }
+@keyframes drop-in { from { opacity: 0; } }
+.react-flow__handle.row-port::before, .react-flow__handle.row-port::after, .react-flow__handle.ec-port::before, .react-flow__handle.ec-port::after { content: none; }
 .react-flow__handle.magic { background: var(--magic); }
+.react-flow__handle.magic:hover, .react-flow__handle.magic.connectingfrom { box-shadow: 0 0 0 5px var(--magic-soft), 0 1px 3px rgba(20,23,29,.25); }
 .react-flow__handle.magic.side { top: 50%; }
 .react-flow__handle.magic.side.react-flow__handle-left { left: 0; }
 .react-flow__handle.flow { background: var(--accent); }
-.react-flow__handle.card-in { width: 9px; height: 9px; border: 2px solid var(--surface); background: var(--accent); top: 40px; left: 0; transform: translate(-50%, -50%); }
+.react-flow__handle.card-in { width: 12px; height: 12px; border: 2px solid var(--surface); background: var(--accent); top: 40px; left: 0; transform: translate(-50%, -50%); }
 .react-flow__handle.state-in { top: 50%; }
 .react-flow__handle.row-port { width: 100%; height: 100%; right: 0; top: 0; transform: none; border-radius: 0; opacity: 0; background: transparent; border: 0; }
 .react-flow__handle.ec-port { width: 8px; height: 8px; border: 2px solid var(--surface); background: var(--warn); opacity: 0; }
@@ -381,12 +401,20 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 
 /* Screen node, prototype view */
 /* minmax(0, 1fr): a header too wide for the frame must clip, never widen the column and push the prototype past the edge. */
-.screen-frame { background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-lg); border: 1px solid var(--line); overflow: hidden; display: grid; grid-template-rows: 44px 1fr; grid-template-columns: minmax(0, 1fr); }
-.screen-frame.selected { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
-.screen-frame .hdr { display: flex; align-items: center; gap: 6px; padding: 0 6px 0 6px; background: var(--surface); border-bottom: 1px solid var(--line-soft); cursor: grab; user-select: none; min-width: 0; overflow: hidden; }
+/* A screen in prototype view is a device on the board: a floating label above it, a dark bezel around the live screen.
+   Label and bezel both pick it up, so a selected screen still drags from anywhere but the screen itself. */
+:root { --device-shadow: 0 2px 6px rgba(20,23,29,.12), 0 28px 60px rgba(20,23,29,.26); }
+.screen-frame { position: relative; display: grid; grid-template-rows: 40px 1fr; grid-template-columns: minmax(0, 1fr); }
+.screen-frame .hdr { display: flex; align-items: center; gap: 6px; padding: 0 6px 0 6px; margin-bottom: 0; border-radius: 10px; cursor: grab; user-select: none; min-width: 0; overflow: hidden; transition: background .2s var(--ease-out-expo); }
 .screen-frame .hdr:active { cursor: grabbing; }
-.screen-frame { position: relative; }
-.drag-veil { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; cursor: grab; }
+.device-body { position: relative; background: #0C0E12; border-radius: 34px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.07), var(--device-shadow); cursor: grab; transition: box-shadow .3s var(--ease-out-expo); }
+.device-body:active { cursor: grabbing; }
+.screen-glass { border-radius: 26px; overflow: hidden; background: #fff; }
+.screen-frame.tablet .device-body { border-radius: 20px; } .screen-frame.tablet .screen-glass { border-radius: 12px; }
+.screen-frame.desktop .device-body { border-radius: 14px; background: #1A1D24; } .screen-frame.desktop .screen-glass { border-radius: 6px; }
+.screen-frame.selected .device-body { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent), var(--device-shadow); }
+.screen-frame.walk .device-body { box-shadow: 0 0 0 2px var(--surface), 0 0 0 5px var(--accent), var(--device-shadow); }
+.drag-veil { position: absolute; inset: 0; z-index: 3; cursor: grab; border-radius: inherit; }
 .react-flow__node.dragging .drag-veil { cursor: grabbing; }
 .screen-card, .edge-case-card, .ref-card { cursor: grab; }
 .react-flow__node.dragging .screen-card, .react-flow__node.dragging .edge-case-card, .react-flow__node.dragging .ref-card { cursor: grabbing; }
@@ -398,18 +426,25 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .screen-frame .hdr .name { flex: 0 0 auto; max-width: 46%; }
 .screen-frame .hdr .icon { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; border: 0; background: transparent; color: var(--ink-2); flex: none; }
 .screen-frame .hdr .icon.dim { color: var(--line); }
+.screen-frame .hdr:hover .icon.dim { color: var(--ink-3); }
 .screen-frame .hdr button.icon:hover { background: var(--surface-2); color: var(--ink); }
 .state-select { position: relative; display: inline-flex; align-items: center; height: 28px; border: 1px solid var(--line); border-radius: 8px; padding: 0 6px 0 10px; font-size: var(--t-13); font-weight: 500; background: var(--surface); flex: none; }
 .state-select select { appearance: none; -webkit-appearance: none; border: 0; background: none; padding: 0 16px 0 0; font-size: var(--t-13); font-weight: 500; max-width: 140px; }
 .state-select > svg { position: absolute; right: 5px; pointer-events: none; color: var(--ink-3); }
 .screen-frame iframe { width: 100%; height: 100%; border: 0; background: #fff; display: block; }
+.screen-glass iframe { border-radius: inherit; }
 .screen-frame .empty { display: grid; place-items: center; color: var(--ink-3); font-size: 12px; text-align: center; padding: 24px; }
 
 /* Screen card, flow view */
-.screen-card { width: 300px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--card-radius); box-shadow: var(--shadow); overflow: visible; position: relative; }
+/* Every card shows a grabber when the pointer is over it: the drawer-handle bar at the top, the sign that it moves. */
+.screen-card::before, .edge-case-card::before, .ref-card::before, .variant-panel::before, .node-card::before { content: ""; position: absolute; top: 5px; left: 50%; width: 32px; height: 4px; border-radius: 2px; background: var(--ink-3); opacity: 0; transform: translateX(-50%) scaleX(.6); transition: opacity .25s var(--ease-out-expo), transform .35s var(--spring); pointer-events: none; z-index: 2; }
+.react-flow__node:hover > .screen-card::before, .react-flow__node:hover > .edge-case-card::before, .react-flow__node:hover > .ref-card::before, .react-flow__node:hover > .variant-panel::before, .react-flow__node:hover > .node-card::before { opacity: .45; transform: translateX(-50%) scaleX(1); }
+.react-flow__node.dragging > *::before { opacity: 1; background: var(--accent); }
+.screen-card { width: 300px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); overflow: visible; position: relative; }
 .screen-card.selected { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
 .screen-card.expanded { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
-.screen-card .hdr { display: flex; align-items: flex-start; gap: 12px; padding: 14px 10px 12px 14px; cursor: grab; }
+.screen-card .hdr { display: flex; align-items: flex-start; gap: 12px; padding: 16px 10px 12px 14px; cursor: grab; }
+.screen-card .hdr .thumb { border-radius: 14px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 6px 16px rgba(20,23,29,.18); }
 .screen-card .hdr:active { cursor: grabbing; }
 .screen-card .hdr-text { min-width: 0; flex: 1; display: grid; gap: 4px; }
 .name-row { display: flex; align-items: center; gap: 6px; }
@@ -457,7 +492,7 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .screen-card .foot .add:hover { border-color: var(--accent); color: var(--accent); }
 
 /* Edge case card */
-.edge-case-card { width: 250px; position: relative; background: #FFFBF0; border: 1px solid var(--warn-line); border-radius: var(--card-radius); box-shadow: var(--shadow); padding: 12px 12px 12px; display: grid; gap: 10px; }
+.edge-case-card { width: 250px; position: relative; background: #FFFBF0; border: 1px solid var(--warn-line); border-radius: 16px; box-shadow: var(--shadow); padding: 14px 12px 12px; display: grid; gap: 10px; }
 .edge-case-card.selected { box-shadow: 0 0 0 2px var(--warn), var(--shadow-lg); }
 .edge-case-card .hdr { display: flex; gap: 10px; align-items: flex-start; cursor: grab; }
 .edge-case-card .hdr:active { cursor: grabbing; }
@@ -477,7 +512,7 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 /* Reference card */
 .ref-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; width: 224px; }
 .ref-card.selected { box-shadow: 0 0 0 2px var(--magic), var(--shadow-lg); }
-.ref-card .hdr { display: flex; align-items: center; gap: 8px; padding: 10px 8px 10px 14px; color: var(--ink); cursor: grab; }
+.ref-card .hdr { display: flex; align-items: center; gap: 8px; padding: 12px 8px 10px 14px; color: var(--ink); cursor: grab; }
 .ref-card .hdr:active { cursor: grabbing; }
 .ref-card .hdr > svg { color: var(--ink-2); }
 .ref-card .hdr .kind { font-size: var(--t-13); font-weight: 600; }
@@ -495,7 +530,7 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 /* Variant panel */
 .variant-panel { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
 .variant-panel.selected { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
-.variant-panel .hdr { display: flex; align-items: center; gap: 10px; padding: 12px 10px 12px 16px; cursor: grab; }
+.variant-panel .hdr { display: flex; align-items: center; gap: 10px; padding: 14px 10px 12px 16px; cursor: grab; }
 .variant-panel .hdr:active { cursor: grabbing; }
 .vp-mark { color: var(--accent); display: grid; }
 .variant-panel .hdr .name { font-weight: 700; font-size: 16px; letter-spacing: -.01em; }
@@ -519,9 +554,9 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .variant-panel .opt .meta .btn:disabled { color: var(--ink-3); border-color: var(--line); }
 
 /* Generic node card: brief, note, version pin, group */
-.node-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--card-radius); box-shadow: var(--shadow); overflow: hidden; }
+.node-card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--card-radius); box-shadow: var(--shadow); overflow: hidden; }
 .react-flow__node.selected .node-card { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
-.node-card .hdr { display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-weight: 700; font-size: var(--t-13); border-bottom: 1px solid var(--line-soft); cursor: grab; }
+.node-card .hdr { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px; font-weight: 700; font-size: var(--t-13); border-bottom: 1px solid var(--line-soft); cursor: grab; }
 .node-card .hdr .kind { font-size: var(--t-11); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
 .node-card .body { padding: 12px; font-size: var(--t-13); line-height: 1.45; }
 .node-card.prompt { width: 320px; }
@@ -590,12 +625,14 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .hn-tabs button { background: none; border: 0; padding: 0 12px; font-weight: 500; font-size: var(--t-14); color: var(--ink-2); border-radius: 8px; transition: color .18s; }
 .hn-tabs button.on { color: var(--ink); font-weight: 600; }
 .hn-tabs button:hover { color: var(--ink); }
+.hn-demo { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 6px 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--ink-2); font-size: var(--t-13); margin-right: 6px; }
+.hn-demo a { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 999px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; }
+.hn-demo a:hover { background: var(--accent-soft); }
 .hn-help { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); text-decoration: none; font-weight: 500; font-size: var(--t-14); padding: 6px 10px; border-radius: 8px; }
 .hn-help:hover { background: var(--surface-2); }
 .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
 .home .inner { width: min(1288px, 100%); margin: 0 auto; padding: 16px 24px 64px; display: grid; gap: 44px; }
-.demo-note { display: flex; align-items: center; gap: 10px; padding: 11px 16px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); border-radius: 12px; font-size: var(--t-13); margin-bottom: -20px; }
-.demo-note a { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; }
+.home .examples { border-top: 1px solid var(--line); padding-top: 24px; }
 /* Hero: one column, centred, the prompt the only thing to do. */
 .home .hero { display: grid; justify-items: center; text-align: center; padding-top: 10px; }
 .hero-mark { color: var(--accent); margin-bottom: 6px; }
@@ -619,23 +656,10 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .starter:active { transform: scale(.97); }
 .starter svg { color: var(--accent); }
 /* Sections: a hairline, a title, then the content. */
-.home .recent { border-top: 1px solid var(--line); padding-top: 24px; }
 .sec-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; min-height: 40px; }
 .sec-head h2 { margin: 0; font-size: 22px; letter-spacing: -.02em; font-weight: 700; }
 .sec-head .sub { font-size: var(--t-14); }
 .link-btn { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; font-size: var(--t-13); display: inline-flex; align-items: center; gap: 4px; }
-.recent-list { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
-.recent-empty { padding: 18px 20px; font-size: var(--t-14); }
-.proj { display: flex; align-items: center; gap: 18px; width: 100%; text-align: left; padding: 14px 20px 14px 18px; border: 0; border-bottom: 1px solid var(--line-soft); background: var(--surface); border-radius: 0; transition: background .18s; }
-.proj:last-child { border-bottom: 0; }
-.proj:hover { background: var(--surface-2); }
-.proj-thumb { width: 72px; height: 72px; border-radius: 14px; background: #0A0B0D; display: grid; place-items: center; color: var(--ink-3); overflow: hidden; flex: none; position: relative; }
-.proj-thumb .device.tile { position: absolute; left: 0; top: 0; border-radius: 0; box-shadow: none; }
-.proj-text { display: grid; gap: 3px; min-width: 0; flex: 1; }
-.proj .n { font-weight: 700; font-size: 17px; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.proj .m { color: var(--ink-3); font-size: var(--t-13); }
-.proj .go { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 600; font-size: var(--t-14); flex: none; transition: gap .25s var(--ease-out-expo); }
-.proj:hover .go { gap: 9px; }
 /* Device-shaped frames around a screen's first viewport. */
 .device { position: relative; overflow: hidden; background: #0A0B0D; border-radius: 22px; box-shadow: 0 0 0 1px rgba(20,23,29,.12), 0 18px 40px rgba(20,23,29,.18); }
 .device.tablet { border-radius: 14px; }

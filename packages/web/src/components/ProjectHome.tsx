@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { DeviceKind, ProjectMeta } from "@flow/shared";
+import type { DeviceKind } from "@flow/shared";
 import { api, type ExampleMeta } from "../api";
 import { useFlow } from "../store";
 import { Icon } from "./Icon";
@@ -13,16 +13,6 @@ const STARTERS: { icon: string; label: string; brief: string }[] = [
   { icon: "card", label: "A banking app", brief: "A mobile banking app for people who move money between friends a few times a week. Sending a transfer should take under twenty seconds without ever feeling unsure about what happened. Calm, precise, trustworthy." },
   { icon: "plus", label: "Start from scratch", brief: "" }
 ];
-
-function ago(iso: string): string {
-  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (m < 1) return "just now";
-  if (m < 60) return `${m} min ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
-  const d = Math.round(h / 24);
-  return `${d} day${d === 1 ? "" : "s"} ago`;
-}
 
 /** A name from the first words of the brief, so starting a project is one box, not a form. */
 function nameFrom(brief: string): string {
@@ -78,13 +68,11 @@ function ExamplePreview({ ex }: { ex: ExampleMeta }) {
  * Home: a workspace. Start a project from one box, get back to recent work, or begin from an example that already runs.
  */
 export function ProjectHome() {
-  const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [examples, setExamples] = useState<ExampleMeta[]>([]);
   const [brief, setBrief] = useState("");
   const [device, setDevice] = useState<DeviceKind>("mobile");
   const [files, setFiles] = useState<File[]>([]);
   const [filter, setFilter] = useState<"all" | DeviceKind>("all");
-  const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState(false);
   const openProject = useFlow((s) => s.openProject);
   const showToast = useFlow((s) => s.showToast);
@@ -95,7 +83,6 @@ export function ProjectHome() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    api.listProjects().then((p) => setProjects([...p].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)))).catch((e) => showToast(e.message));
     api.listExamples().then(setExamples).catch(() => setExamples([]));
   }, [showToast]);
 
@@ -134,7 +121,6 @@ export function ProjectHome() {
 
   const shown = useMemo(() => examples.filter((ex) => filter === "all" || ex.device === filter), [examples, filter]);
   const kinds = useMemo(() => Array.from(new Set(examples.map((e) => e.device))) as DeviceKind[], [examples]);
-  const recent = showAll ? projects : projects.slice(0, 3);
 
   return (
     <div className="home" ref={topRef}>
@@ -147,19 +133,18 @@ export function ProjectHome() {
             <button onClick={goExamples}>Examples</button>
           </nav>
           <span style={{ flex: 1 }} />
+          {IS_STATIC && (
+            <div className="hn-demo">
+              <Icon name="info" size={15} /> <span>Explore the demo. Create with the local app.</span>
+              <a href={LOCAL_APP_URL} target="_blank" rel="noreferrer">Get local app <Icon name="arrow-up-right" size={13} /></a>
+            </div>
+          )}
           <a className="hn-help" href="https://github.com/friedachen1234-dotcom/flow-vibing#readme" target="_blank" rel="noreferrer"><Icon name="help" size={17} /> Help</a>
           <span className="avatar" aria-hidden="true"><Icon name="user" size={16} /></span>
         </div>
       </header>
 
       <div className="inner">
-        {IS_STATIC && (
-          <div className="demo-note">
-            <Icon name="info" size={16} /> <span>Explore the demo. Create with the local app.</span>
-            <a href={LOCAL_APP_URL} target="_blank" rel="noreferrer">Get local app <Icon name="arrow-up-right" size={14} /></a>
-          </div>
-        )}
-
         <section className="hero">
           <div className="hero-mark" aria-hidden="true"><Icon name="flow" size={40} strokeWidth={1.6} /></div>
           <div className="eyebrow"><span>Idea</span><Icon name="arrow-right" size={11} /><span>Screens</span><Icon name="arrow-right" size={11} /><span>Flow</span></div>
@@ -186,30 +171,6 @@ export function ProjectHome() {
               <button key={st.label} className="starter" onClick={() => { setBrief(st.brief); briefRef.current?.focus(); }}><Icon name={st.icon} size={15} /> {st.label}</button>
             ))}
           </div>
-        </section>
-
-        <section className="recent" aria-label="Recent projects">
-          <div className="sec-head">
-            <h2>Jump back in</h2>
-            <span style={{ flex: 1 }} />
-            {projects.length > 3 && <button className="link-btn" onClick={() => setShowAll(!showAll)}>{showAll ? "Show fewer" : "View all"} <Icon name="arrow-right" size={14} /></button>}
-          </div>
-          {projects.length > 0 ? (
-            <div className="recent-list">
-              {recent.map((p) => (
-                <button key={p.id} className="proj" onClick={() => openProject(p.id)}>
-                  <span className="proj-thumb">{p.firstScreen && p.device ? <DeviceFrame src={api.shellUrl(p.id, p.firstScreen, { follow: false })} device={p.device} width={72} className="tile" /> : <Icon name="layout-grid" size={18} />}</span>
-                  <span className="proj-text">
-                    <span className="n">{p.name}</span>
-                    <span className="m">{p.screenCount} screen{p.screenCount === 1 ? "" : "s"} · Edited {ago(p.updatedAt)}</span>
-                  </span>
-                  <span className="go">Continue <Icon name="arrow-right" size={15} /></span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="recent-list recent-empty muted">Nothing yet. Create a project above, or open an example below.</div>
-          )}
         </section>
 
         <section ref={examplesRef} className="examples">
