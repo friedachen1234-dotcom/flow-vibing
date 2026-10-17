@@ -187,12 +187,6 @@ button.crumb:hover { background: var(--surface-2); color: var(--ink); }
 .tips-down [data-tip]::after { top: calc(100% + 10px); left: 50%; transform: translateX(-50%); }
 
 /* Tool rail: a floating card over the board */
-.rail { position: absolute; left: 16px; top: 16px; z-index: var(--z-canvas-ui); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
-.rail-btn { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--ink-2); transition: background .15s, color .15s; }
-.rail-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
-.rail-btn.on { background: var(--accent-soft); color: var(--accent); }
-.rail-btn:disabled { opacity: .35; }
-.rail-sep { width: 22px; height: 1px; background: var(--line); margin: 4px 0; }
 
 /* Right panel: floating card */
 .rp-edge { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 30px; height: 64px; display: grid; place-items: center; border: 1px solid var(--line); border-right: 0; border-radius: 10px 0 0 10px; background: var(--surface); color: var(--ink-3); z-index: var(--z-canvas-ui); box-shadow: var(--shadow); transition: color .15s, background .15s; }
@@ -253,17 +247,17 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .cp-status { display: inline-flex; align-items: center; gap: 7px; font-size: var(--t-12); color: var(--ink-2); font-weight: 600; padding: 0 6px; }
 
 /* Canvas bar, edge-case toggle, minimap */
-.canvas-bar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); z-index: var(--z-canvas-ui); }
-.cb-btn { height: 32px; min-width: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-weight: 600; font-size: var(--t-13); transition: background .15s, color .15s; }
+.canvas-bar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 5px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); z-index: var(--z-canvas-ui); }
+.cb-btn { height: 34px; min-width: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-weight: 600; font-size: var(--t-13); transition: background .15s, color .15s; }
 .cb-btn.wide { padding: 0 10px; }
 .cb-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
 .cb-btn.on { background: var(--accent-soft); color: var(--accent); }
 .cb-btn:disabled { opacity: .35; }
-.cb-btn, .rail-btn { transition: background .18s, color .18s, transform .35s var(--spring); }
-.cb-btn:active:not(:disabled), .rail-btn:active:not(:disabled) { transform: scale(.9); transition-duration: .18s, .18s, .08s; }
+.cb-btn { transition: background .18s, color .18s, transform .35s var(--spring); }
+.cb-btn:active:not(:disabled) { transform: scale(.9); transition-duration: .18s, .18s, .08s; }
 .cb-zoom .pop { display: inline-block; animation: pop .4s var(--spring); }
 @keyframes pop { from { transform: scale(1.18); color: var(--accent); } }
-.cb-zoom { height: 32px; min-width: 52px; border: 0; background: transparent; font-weight: 600; font-size: var(--t-13); color: var(--ink); border-radius: 8px; }
+.cb-zoom { height: 34px; min-width: 52px; border: 0; background: transparent; font-weight: 600; font-size: var(--t-13); color: var(--ink); border-radius: 8px; }
 .cb-zoom:hover { background: var(--surface-2); }
 .cb-sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
 .cb-keys { font-family: var(--font-mono); }

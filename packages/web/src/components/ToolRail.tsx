@@ -3,7 +3,7 @@ import { useFlow } from "../store";
 import { api } from "../api";
 import { Icon } from "./Icon";
 
-/** Left rail: what the pointer does on the board, then the two things you add by hand, then the way out to a full-screen run. */
+/** The tools at the start of the bottom bar: what the pointer does on the board, the two things you add by hand, and the way out to a full-screen run. */
 export function ToolRail() {
   const picker = useFlow((s) => s.picker.enabled);
   const setPicker = useFlow((s) => s.setPicker);
@@ -40,16 +40,17 @@ export function ToolRail() {
   const selectTool = () => { setPicker(false); setHand(false); if (walk.active) setWalk({ active: false, screenId: null, stateId: null, lastTransitionId: null }); };
 
   return (
-    <nav className="rail tips-right" aria-label="Tools">
-      <button className={`rail-btn ${!picker && !hand && !walk.active ? "on" : ""}`} onClick={selectTool} data-tip="Select" data-key="V" aria-label="Select"><Icon name="mouse-pointer" size={18} /></button>
-      <button className={`rail-btn ${hand ? "on" : ""}`} onClick={() => setHand(!hand)} data-tip="Hand · drag to pan" data-key="H" aria-label="Hand"><Icon name="hand" size={18} /></button>
-      <button className={`rail-btn ${picker ? "on" : ""}`} onClick={() => setPicker(!picker)} data-tip="Pick an element" data-key="P" aria-label="Pick element" disabled={spec.screens.length === 0}><Icon name="crosshair" size={18} /></button>
-      <div className="rail-sep" />
-      <button className="rail-btn" onClick={addNote} data-tip="Add a note" data-key="N" aria-label="Add note"><Icon name="sticky-note" size={18} /></button>
-      <button className="rail-btn" onClick={() => fileRef.current?.click()} data-tip="Add a reference image or skill" aria-label="Add reference"><Icon name="image" size={18} /></button>
+    <>
+      <button className={`cb-btn ${!picker && !hand && !walk.active ? "on" : ""}`} onClick={selectTool} data-tip="Select" data-key="V" aria-label="Select"><Icon name="mouse-pointer" size={16} /></button>
+      <button className={`cb-btn ${hand ? "on" : ""}`} onClick={() => setHand(!hand)} data-tip="Hand · drag to pan" data-key="H" aria-label="Hand"><Icon name="hand" size={16} /></button>
+      <button className={`cb-btn ${picker ? "on" : ""}`} onClick={() => setPicker(!picker)} data-tip="Pick an element" data-key="P" aria-label="Pick element" disabled={spec.screens.length === 0}><Icon name="crosshair" size={16} /></button>
+      <span className="cb-sep" />
+      <button className="cb-btn" onClick={addNote} data-tip="Add a note" data-key="N" aria-label="Add note"><Icon name="sticky-note" size={16} /></button>
+      <button className="cb-btn" onClick={() => fileRef.current?.click()} data-tip="Add a reference image or skill" aria-label="Add reference"><Icon name="image" size={16} /></button>
       <input ref={fileRef} type="file" accept="image/*,.md,.markdown" multiple hidden onChange={(e) => { void addFiles(e.target.files); e.target.value = ""; }} />
-      <div className="rail-sep" />
-      <button className={`rail-btn ${walk.active ? "on" : ""}`} onClick={() => setWalk({ active: !walk.active, screenId: walk.active ? null : (spec.screens[0]?.id ?? null), stateId: null, lastTransitionId: null })} data-tip="Run the prototype full screen" data-key="W" aria-label="Present walkthrough" disabled={spec.screens.length === 0}><Icon name="play" size={18} /></button>
-    </nav>
+      <span className="cb-sep" />
+      <button className={`cb-btn ${walk.active ? "on" : ""}`} onClick={() => setWalk({ active: !walk.active, screenId: walk.active ? null : (spec.screens[0]?.id ?? null), stateId: null, lastTransitionId: null })} data-tip="Run the prototype full screen" data-key="W" aria-label="Present walkthrough" disabled={spec.screens.length === 0}><Icon name="play" size={16} /></button>
+      <span className="cb-sep" />
+    </>
   );
 }
