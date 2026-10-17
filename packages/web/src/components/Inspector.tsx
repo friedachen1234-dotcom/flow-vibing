@@ -143,7 +143,21 @@ function ScreenPanel({ node }: { node: Extract<CanvasNode, { type: "screen" }> }
   const { spec, canvas } = bundle;
   const screen = spec.screens.find((s) => s.id === node.screenId) as ScreenSpec | undefined;
   const [refsOpen, setRefsOpen] = useState(true);
+  const [exploring, setExploring] = useState(false);
+  const [direction, setDirection] = useState("");
+  const [count, setCount] = useState(3);
+  const run = useFlow((s) => s.run);
+  const running = useFlow((s) => s.agent.running);
+  const picked = useFlow((s) => s.picker.picked);
   if (!screen) return <div className="empty">Screen missing from the spec.</div>;
+  const pickedHere = picked && picked.screenId === screen.id ? picked : null;
+  const explorations = canvas.nodes.filter((n): n is Extract<CanvasNode, { type: "variantPanel" }> => n.type === "variantPanel" && n.target.screenId === screen.id);
+  const subjectOf = (n: Extract<CanvasNode, { type: "variantPanel" }>) => n.target.token ? `Tokens · ${n.target.token}` : screen.elements.find((e) => e.id === n.target.elementId)?.label ?? n.target.elementId ?? screen.name;
+  const explore = () => {
+    const inspirationIds = canvas.edges.filter((e) => e.type === "magic" && e.target === node.id).map((e) => e.source);
+    run("variants", { target: { screenId: screen.id, elementId: pickedHere?.elementId }, count, direction: direction.trim(), inspirationIds }, `Variants of ${pickedHere ? (pickedHere.label || pickedHere.elementId) + " on " : ""}${screen.name}${direction.trim() ? `: ${direction.trim()}` : ""}`);
+    setExploring(false); setDirection("");
+  };
   const outs = spec.transitions.filter((t) => t.from.screenId === screen.id && classifyTransition(t) !== "state");
   const mainId = mainMoves(spec, canvas.primaryMoves).get(screen.id);
   const ecs = spec.edgeCases.filter((e) => e.attachedTo.screenId === screen.id || outs.some((t) => t.id === e.attachedTo.transitionId));
@@ -177,6 +191,26 @@ function ScreenPanel({ node }: { node: Extract<CanvasNode, { type: "screen" }> }
           {ecs.map((e) => <Row key={e.id} mark={<span className={`mark ${e.severity === "high" ? "err" : e.severity === "low" ? "grey" : "warn"}`} />} onClick={() => select({ kind: "node", id: `edgecase:${e.id}` })}>{e.scenario}</Row>)}
         </Section>
       )}
+      <Section title="Variants" count={explorations.length} action={<button className="ins-action" disabled={running || !screen.file} onClick={() => setExploring(!exploring)}><Icon name="sparkles" size={13} /> Explore</button>}>
+        {explorations.map((n) => (
+          <Row key={n.id} mark={<span className="mark accent" />} onClick={() => select({ kind: "node", id: n.id })}>
+            <b>{subjectOf(n)}</b><span className="to">{n.options.length} variant{n.options.length === 1 ? "" : "s"}{n.appliedId ? " · applied" : ""}</span>
+          </Row>
+        ))}
+        {explorations.length === 0 && !exploring && <div className="ins-empty">None yet. Explore gives you a few directions for {pickedHere ? "the picked element" : "this screen"} to compare on the canvas.</div>}
+        {exploring && (
+          <div className="ins-explore">
+            <div className="ins-explore-target">{pickedHere ? <>Of <b>{pickedHere.label || pickedHere.elementId}</b> on {screen.name}</> : <>Of the whole screen · press <span className="kbd">P</span> and click to pick one element</>}</div>
+            <input className="input" value={direction} autoFocus onChange={(e) => setDirection(e.target.value)} placeholder="Direction, optional: warmer, denser, more editorial…" onKeyDown={(e) => { if (e.key === "Enter") explore(); if (e.key === "Escape") setExploring(false); }} />
+            <div className="ins-explore-row">
+              <label className="ins-select small"><select value={count} onChange={(e) => setCount(Number(e.target.value))}>{[2, 3, 4, 5, 6].map((k) => <option key={k} value={k}>{k} variants</option>)}</select><Icon name="chevron-down" size={13} /></label>
+              <span style={{ flex: 1 }} />
+              <button className="btn ghost sm" onClick={() => setExploring(false)}>Cancel</button>
+              <button className="btn dark sm" disabled={running} onClick={explore}>Explore <Icon name="sparkles" size={13} /></button>
+            </div>
+          </div>
+        )}
+      </Section>
       <Section title="References" count={refIds.length} open={refsOpen} onToggle={() => setRefsOpen(!refsOpen)}>
         <ReferenceTiles ids={refIds} />
       </Section>
@@ -200,7 +234,7 @@ function TransitionPanel({ t }: { t: TransitionSpec }) {
   const ecs = spec.edgeCases.filter((e) => e.attachedTo.transitionId === t.id);
   return (
     <>
-      <Head icon="arrow-right" title={<InlineText value={t.trigger} onCommit={(trigger) => addChange({ op: "update-transition", transitionId: t.id, patch: { trigger } })} />} sub={<>{from?.name} → {to?.name}{t.to.stateId ? ` · ${t.to.stateId}` : ""}</>} />
+      <Head icon="arrow-right" title={<InlineText className="cap" value={t.trigger} onCommit={(trigger) => addChange({ op: "update-transition", transitionId: t.id, patch: { trigger } })} />} sub={<>{from?.name} → {to?.name}{t.to.stateId ? ` · ${t.to.stateId}` : ""}</>} />
       <div className="sec">
         <div className="row"><span className="muted">From</span><span className="grow" style={{ cursor: "pointer" }} onClick={() => from && select({ kind: "node", id: `screen:${from.id}` })}>{from?.name}{t.from.elementId && <span className="mono muted"> · {t.from.elementId}</span>}</span></div>
         <div className="row"><span className="muted">To</span><span className="grow" style={{ cursor: "pointer" }} onClick={() => to && select({ kind: "node", id: `screen:${to.id}` })}>{to?.name}{t.to.stateId && <span className="mono muted"> #{t.to.stateId}</span>}</span></div>
@@ -307,15 +341,20 @@ function VariantPanel({ node }: { node: Extract<CanvasNode, { type: "variantPane
   const run = useFlow((s) => s.run);
   const running = useFlow((s) => s.agent.running);
   const updateCanvas = useFlow((s) => s.updateCanvas);
+  const select = useFlow((s) => s.select);
+  const spec = useFlow((s) => s.bundle!.spec);
+  const screenId = node.target.screenId;
+  const screenName = spec.screens.find((sc) => sc.id === screenId)?.name ?? "Project";
   const [dir, setDir] = useState(node.direction);
   return (
     <>
-      <div className="sec"><span className="pill">Variants</span><h2 style={{ marginTop: 6 }}>{node.target.elementId ?? node.target.token ?? node.target.screenId}</h2><div className="muted small">{node.options.length} options{node.appliedId ? ` · applied ${node.appliedId}` : ""}</div></div>
-      <div className="sec">
-        <div className="field"><label>Direction</label><input className="input" value={dir} onChange={(e) => setDir(e.target.value)} /></div>
-        <button className="btn primary" disabled={running} onClick={() => run("variants", { target: node.target, count: 3, direction: dir, nodeId: node.id }, `More variants: ${dir || "same direction"}`)}>Generate 3 more</button>
-      </div>
-      <div className="sec"><button className="btn danger ghost" style={{ width: "100%" }} onClick={() => { updateCanvas((c) => ({ ...c, nodes: c.nodes.filter((n) => n.id !== node.id), edges: c.edges.filter((e) => e.source !== node.id && e.target !== node.id) })); useFlow.getState().select(null); }}>Remove panel</button></div>
+      <Head icon="sparkles" title={`${node.target.token ? `Tokens · ${node.target.token}` : node.target.elementId ?? screenName} exploration`} sub={`${node.options.length} variant${node.options.length === 1 ? "" : "s"}${node.appliedId ? ` · ${node.options.find((o) => o.id === node.appliedId)?.label ?? "one"} applied` : ""}`} />
+      <Section title="Direction">
+        <input className="input" value={dir} onChange={(e) => setDir(e.target.value)} placeholder="warmer, denser, more editorial…" />
+        <button className="btn dark sm" style={{ marginTop: 10 }} disabled={running} onClick={() => run("variants", { target: node.target, count: 3, direction: dir, nodeId: node.id }, `More variants: ${dir || "same direction"}`)}>Three more <Icon name="sparkles" size={13} /></button>
+      </Section>
+      {screenId && <Section title="Screen"><Row mark={<span className="mark accent" />} onClick={() => select({ kind: "node", id: `screen:${screenId}` })}>{screenName}</Row></Section>}
+      <div className="ins-foot"><button className="link quiet" onClick={() => { updateCanvas((c) => ({ ...c, nodes: c.nodes.filter((n) => n.id !== node.id), edges: c.edges.filter((e) => e.source !== node.id && e.target !== node.id) })); useFlow.getState().select(null); }}>Remove exploration</button></div>
     </>
   );
 }

@@ -77,7 +77,6 @@ export function ProjectHome() {
   const openProject = useFlow((s) => s.openProject);
   const showToast = useFlow((s) => s.showToast);
   const error = useFlow((s) => s.error);
-  const examplesRef = useRef<HTMLElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const briefRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -110,13 +109,6 @@ export function ProjectHome() {
     catch (e) { showToast((e as Error).message); }
     finally { setBusy(false); }
   };
-  const demo = async () => {
-    setBusy(true);
-    try { const b = await api.createDemo(); await openProject(b.meta.id); }
-    catch (e) { showToast((e as Error).message); }
-    finally { setBusy(false); }
-  };
-  const goExamples = () => examplesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   const goTop = () => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   const shown = useMemo(() => examples.filter((ex) => filter === "all" || ex.device === filter), [examples, filter]);
@@ -127,11 +119,6 @@ export function ProjectHome() {
       <header className="home-nav">
         <div className="hn-inner">
           <button className="brand" onClick={goTop}><span className="brand-mark" aria-hidden="true"><Icon name="hexagon" size={22} strokeWidth={2} /></span><span className="wordmark">Flow<span>Vibing</span></span></button>
-          <span className="tb-sep" />
-          <nav className="hn-tabs" aria-label="Sections">
-            <button className="on" onClick={goTop}>Projects</button>
-            <button onClick={goExamples}>Examples</button>
-          </nav>
           <span style={{ flex: 1 }} />
           {IS_STATIC && (
             <div className="hn-demo">
@@ -140,7 +127,6 @@ export function ProjectHome() {
             </div>
           )}
           <a className="hn-help" href="https://github.com/friedachen1234-dotcom/flow-vibing#readme" target="_blank" rel="noreferrer"><Icon name="help" size={17} /> Help</a>
-          <span className="avatar" aria-hidden="true"><Icon name="user" size={16} /></span>
         </div>
       </header>
 
@@ -173,10 +159,9 @@ export function ProjectHome() {
           </div>
         </section>
 
-        <section ref={examplesRef} className="examples">
+        <section className="examples">
           <div className="sec-head">
             <h2>Start with a working example</h2>
-            <span className="muted sub">Explore a live prototype, then make it yours.</span>
             <span style={{ flex: 1 }} />
             {kinds.length > 1 && (
               <div className="seg" role="radiogroup" aria-label="Device filter">
@@ -201,10 +186,6 @@ export function ProjectHome() {
           </div>
         </section>
 
-        <footer className="home-foot muted small">
-          Projects are folders under <span className="mono">./projects</span>, each its own git repository. Generation uses your Claude Code login; the examples run without it.
-          {" "}Just want placeholder screens? <button className="link" disabled={busy} onClick={demo}>Open the bare demo</button>.
-        </footer>
       </div>
     </div>
   );

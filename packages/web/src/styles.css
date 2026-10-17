@@ -629,6 +629,15 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .ins-sec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; min-height: 24px; }
 .ins-sec-head h3 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.01em; text-transform: none; color: var(--ink); }
 .ins-sec-head h3 .count { color: var(--ink-3); font-weight: 500; }
+.ins-action { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: var(--t-12); transition: background .18s, transform .3s var(--spring); }
+.ins-action:hover:not(:disabled) { background: #D9E1F8; }
+.ins-action:active { transform: scale(.96); }
+.ins-action:disabled { opacity: .45; }
+.ins-explore { display: grid; gap: 8px; padding: 10px 0 4px; animation: fade-in .25s var(--ease-out-expo); }
+.ins-explore-target { font-size: var(--t-12); color: var(--ink-3); }
+.ins-explore-row { display: flex; align-items: center; gap: 6px; }
+.ins-select.small { height: 28px; padding: 0 6px 0 9px; border-radius: 8px; font-size: var(--t-12); }
+.inline-text.cap::first-letter, .cap::first-letter { text-transform: uppercase; }
 .ins-toggle { width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 7px; background: none; color: var(--ink-2); }
 .ins-toggle:hover { background: var(--surface-2); color: var(--ink); }
 .ins-row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 0; font-size: var(--t-14); border-bottom: 1px solid var(--line-soft); }
@@ -716,14 +725,6 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .ap-tool { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--ink-3); }
 .ap-tool:hover { background: var(--surface-2); color: var(--ink); }
 .ap-tool.on { background: var(--accent-soft); color: var(--accent); }
-.ap-count { position: relative; display: inline-flex; align-items: center; height: 28px; padding: 0 6px 0 8px; border: 1px solid var(--line); border-radius: 8px; font-size: var(--t-12); font-weight: 500; }
-.ap-count select { appearance: none; -webkit-appearance: none; border: 0; background: none; padding: 0 14px 0 0; font: inherit; }
-.ap-count > svg { position: absolute; right: 4px; pointer-events: none; color: var(--ink-3); }
-.ap-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.ap-modes button { height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--ink-2); font-weight: 600; font-size: var(--t-14); transition: background .2s, color .2s, transform .3s var(--spring); }
-.ap-modes button:hover:not(:disabled) { color: var(--ink); }
-.ap-modes button.on { background: var(--accent-soft); color: var(--accent); }
-.ap-modes button:disabled { opacity: .45; }
 .ap-go { height: 46px; width: 100%; justify-content: center; border-radius: 12px; font-size: 15px; font-weight: 700; gap: 8px; transition: transform .3s var(--spring), background .2s; }
 .ap-go:active:not(:disabled) { transform: scale(.985); }
 .ap-go:disabled { opacity: .45; }

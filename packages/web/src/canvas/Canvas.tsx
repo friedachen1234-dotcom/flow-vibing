@@ -330,7 +330,7 @@ export function Canvas() {
 
   // Reads the store directly: React Flow may call a stale closure, and select() is idempotent.
   const onSelectionChange = useCallback(({ nodes: sn, edges: se }: OnSelectionChangeParams) => {
-    const { select: sel } = useFlow.getState();
+    const { select: sel, selection: cur } = useFlow.getState();
     const node = sn.find((n) => n.id !== "start");
     if (node) sel({ kind: "node", id: node.id });
     else if (se.length) {
@@ -338,8 +338,17 @@ export function Canvas() {
       if (e.type === "transition") sel({ kind: "transition", id: e.id.slice(2) });
       else if (e.type === "edgeCase") sel({ kind: "node", id: `edgecase:${e.id.slice(3)}` });
       else if (e.type === "magic" || e.type === "variantLink") sel({ kind: "edge", id: e.id });
-    } else sel(null);
-  }, []);
+    } else {
+      // An empty selection from React Flow only counts when what the store holds is on this board. A transition
+      // chosen from the panel in prototype view, or an edge case while they are hidden, is not drawn here: React Flow
+      // reports nothing selected, and that must not undo the choice.
+      const onBoard = !cur ? true
+        : cur.kind === "node" ? rf.getNodes().some((n) => n.id === cur.id)
+        : cur.kind === "transition" ? rf.getEdges().some((e) => e.id === `t:${cur.id}`)
+        : rf.getEdges().some((e) => e.id === cur.id);
+      if (onBoard) sel(null);
+    }
+  }, [rf]);
 
   /** Connecting nodes: reference → anything is a magic line; screen → screen in flow view is a new transition. */
   const onConnect = useCallback(async (c: Connection) => {

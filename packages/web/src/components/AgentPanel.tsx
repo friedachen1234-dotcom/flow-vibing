@@ -4,8 +4,6 @@ import { useFlow } from "../store";
 import { Icon } from "./Icon";
 import { confirm } from "./Dialog";
 
-type Mode = "edit" | "variants";
-
 /** Edit with Claude: what is selected, what to change, and one button. The conversation stays above, out of the way. */
 export function AgentPanel() {
   const bundle = useFlow((s) => s.bundle)!;
@@ -24,8 +22,6 @@ export function AgentPanel() {
   const pickerOn = useFlow((s) => s.picker.enabled);
   const setPicker = useFlow((s) => s.setPicker);
   const [text, setText] = useState("");
-  const [mode, setMode] = useState<Mode>("edit");
-  const [count, setCount] = useState(3);
   const [menu, setMenu] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const { spec, canvas } = bundle;
@@ -43,20 +39,12 @@ export function AgentPanel() {
   const refTitles = screen
     ? canvas.edges.filter((e) => e.type === "magic" && e.target === `screen:${screen.id}`).map((e) => canvas.nodes.find((n) => n.id === e.source)).filter((n) => n?.type === "inspiration").map((n) => (n as { title: string }).title)
     : [];
-  const suggestions = mode === "variants"
-    ? ["Warmer and more editorial", "Denser, more data", "Calmer, more whitespace"]
-    : screen ? ["Simplify hierarchy", "Tighten the spacing", ...(refTitles[0] ? [`Lean into ${refTitles[0]}`] : [])] : ["Add a settings screen", "Make the flow shorter"];
+  const suggestions = screen ? ["Simplify hierarchy", "Tighten the spacing", ...(refTitles[0] ? [`Lean into ${refTitles[0]}`] : [])] : ["Add a settings screen", "Make the flow shorter"];
 
-  const canSend = !agent.running && (mode === "variants" ? !!screen?.file : !!text.trim());
+  const canSend = !agent.running && !!text.trim();
   const send = () => {
     if (!canSend) return;
     const t = text.trim();
-    if (mode === "variants" && screen) {
-      const inspirationIds = canvas.edges.filter((e) => e.type === "magic" && e.target === `screen:${screen.id}`).map((e) => e.source);
-      run("variants", { target: { screenId: screen.id, elementId: picked?.elementId }, count, direction: t, inspirationIds }, `Variants of ${picked ? picked.elementId + " on " : ""}${screen.name}${t ? `: ${t}` : ""}`);
-      setText("");
-      return;
-    }
     setText("");
     if (picked) run("chat", { text: t, target: { screenId: picked.screenId, elementId: picked.elementId } }, `${screen?.name ?? picked.screenId} · ${picked.elementId}: ${t}`);
     else if (screen) run("chat", { text: `On the ${screen.name} screen: ${t}`, target: { screenId: screen.id } }, `${screen.name}: ${t}`);
@@ -121,34 +109,22 @@ export function AgentPanel() {
         ) : (
           <div className="ap-subject whole">Whole project <span className="muted">· select a screen to focus</span></div>
         )}
-        <div className="ap-ask">{mode === "variants" ? "Which direction should the variants take?" : "What would you like to change?"}</div>
+        <div className="ap-ask">What would you like to change?</div>
         <div className="ap-chips">
           {suggestions.map((sg) => <button key={sg} className="ap-chip" onClick={() => setText(sg)}>{sg}</button>)}
         </div>
         <div className={`ap-box ${pickerOn ? "picking" : ""}`}>
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3}
-            placeholder={mode === "variants" ? `Optional. Describe the variants of ${screen?.name ?? "the screen"}…` : hasScreens ? `Describe a change${screen ? ` to ${screen.name}` : ""}…` : "Ask Claude about the brief, or generate from the menu"}
+            placeholder={hasScreens ? `Describe a change${screen ? ` to ${screen.name}` : ""}…` : "Ask Claude about the brief, or generate from the menu"}
             onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send(); }} />
           <div className="ap-box-foot">
             <button className={`ap-tool ${pickerOn ? "on" : ""}`} onClick={() => setPicker(!pickerOn)} data-tip={pickerOn ? "Stop picking" : "Pick an element in the prototype"} data-key="P" aria-label="Pick an element"><Icon name="crosshair" size={16} /></button>
-            {mode === "variants" && (
-              <label className="ap-count">
-                <select value={count} onChange={(e) => setCount(Number(e.target.value))}>{[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} variants</option>)}</select>
-                <Icon name="chevron-down" size={12} />
-              </label>
-            )}
             <span style={{ flex: 1 }} />
             <span className="muted small">⌘↵</span>
           </div>
         </div>
-        <div className="ap-modes" role="radiogroup" aria-label="Mode">
-          <button role="radio" aria-checked={mode === "edit"} className={mode === "edit" ? "on" : ""} onClick={() => setMode("edit")}><Icon name="wand" size={14} /> Edit</button>
-          <button role="radio" aria-checked={mode === "variants"} className={mode === "variants" ? "on" : ""} onClick={() => setMode("variants")} disabled={!screen} title={screen ? undefined : "Select a screen first"}><Icon name="sparkles" size={14} /> Explore variants</button>
-        </div>
-        <button className="btn dark ap-go" disabled={!canSend} onClick={send}>
-          {mode === "variants" ? <>Explore variants <Icon name="sparkles" size={15} /></> : <>Apply change <Icon name="arrow-right" size={15} className="up" /></>}
-        </button>
-        <div className="ap-note">{mode === "variants" ? "Variants land on the canvas under the screen. Nothing changes until you apply one." : "Changes create a restorable version."}</div>
+        <button className="btn dark ap-go" disabled={!canSend} onClick={send}>Apply change <Icon name="arrow-right" size={15} className="up" /></button>
+        <div className="ap-note">Changes create a restorable version. Variants live in Inspect.</div>
       </div>
     </div>
   );
