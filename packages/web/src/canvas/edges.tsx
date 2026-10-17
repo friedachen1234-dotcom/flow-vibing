@@ -1,6 +1,17 @@
 import { BaseEdge, EdgeLabelRenderer, Position, getBezierPath, getSmoothStepPath, useViewport, type EdgeProps } from "@xyflow/react";
 import { MAGIC_RELATION_LABELS, type CanvasEdge, type MagicRelation, type TransitionSpec } from "@flow/shared";
 import { useFlow } from "../store";
+import { Icon } from "../components/Icon";
+
+/** Where a line ends: a chevron pointing the way the line arrives, given the side of the node it lands on. */
+const TIP_ANGLE: Record<Position, number> = { [Position.Left]: 0, [Position.Right]: 180, [Position.Top]: 90, [Position.Bottom]: -90 };
+function Tip({ x, y, at, color, width = 2 }: { x: number; y: number; at: Position; color: string; width?: number }) {
+  return <path d="M-7 -4.5 L0 0 L-7 4.5" transform={`translate(${x} ${y}) rotate(${TIP_ANGLE[at]})`} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: "none" }} />;
+}
+/** Where a line starts: a dot with a white ring, the same mark the handles use. */
+function Dot({ x, y, color, r = 3.5 }: { x: number; y: number; color: string; r?: number }) {
+  return <circle cx={x} cy={y} r={r} fill={color} stroke="var(--surface)" strokeWidth={1.5} style={{ pointerEvents: "none" }} />;
+}
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
@@ -128,13 +139,18 @@ export function MagicEdge(props: EdgeProps) {
   const [path, lx, ly] = getBezierPath({ sourceX: props.sourceX, sourceY: props.sourceY, targetX: props.targetX, targetY: props.targetY, sourcePosition: props.sourcePosition, targetPosition: props.targetPosition });
   const rel = (e.relation ?? "free-text") as MagicRelation;
   const label = rel === "free-text" ? (e.note || "…") : rel === "match-style" ? "Style reference" : MAGIC_RELATION_LABELS[rel].label;
+  const lit = props.selected || hover;
   return (
     <>
-      <BaseEdge id={props.id} path={path} interactionWidth={16} className={hover || props.selected ? "dash-flow" : undefined} style={{ stroke: "var(--magic)", strokeWidth: props.selected || hover ? 2 : 1.3, strokeDasharray: "5 5", opacity: props.selected || hover ? 1 : 0.8, transition: "opacity .25s cubic-bezier(.16,1,.3,1), stroke-width .25s cubic-bezier(.16,1,.3,1)" }} />
-      {(props.selected || hover) && <Runner path={path} tone="magic" dur={1.8} />}
+      <BaseEdge id={props.id} path={path} interactionWidth={16} className={lit ? "dash-flow" : undefined} style={{ stroke: "var(--magic)", strokeWidth: lit ? 2 : 1.4, strokeDasharray: "6 5", strokeLinecap: "round", opacity: lit ? 1 : 0.75, transition: "opacity .25s cubic-bezier(.16,1,.3,1), stroke-width .25s cubic-bezier(.16,1,.3,1)" }} />
+      <g style={{ opacity: lit ? 1 : 0.85, transition: "opacity .25s" }}>
+        <Dot x={props.sourceX} y={props.sourceY} color="var(--magic)" />
+        <Tip x={props.targetX} y={props.targetY} at={props.targetPosition} color="var(--magic)" width={lit ? 2.2 : 1.8} />
+      </g>
+      {lit && <Runner path={path} tone="magic" dur={1.8} />}
       <EdgeLabelRenderer>
-        <div className={`edge-label magic ${props.selected || hover ? "selected" : ""} nodrag nopan`} style={{ position: "absolute", transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)` }} onClick={() => select({ kind: "edge", id: e.id })} title={e.targetElementId ? `${label} → ${e.targetElementId}${e.note ? `\n${e.note}` : ""}` : e.note}>
-          {label}
+        <div className={`edge-label magic ${lit ? "selected" : ""} nodrag nopan`} style={{ position: "absolute", transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)` }} onClick={() => select({ kind: "edge", id: e.id })} title={e.targetElementId ? `${label} → ${e.targetElementId}${e.note ? `\n${e.note}` : ""}` : e.note}>
+          <Icon name="sparkles" size={11} /> {label}
         </div>
       </EdgeLabelRenderer>
     </>
@@ -146,10 +162,13 @@ export function VariantLinkEdge(props: EdgeProps) {
   const hover = !!props.data?.hover;
   const vertical = props.sourcePosition === Position.Bottom;
   const [path] = getSmoothStepPath({ sourceX: props.sourceX, sourceY: props.sourceY, targetX: props.targetX, targetY: props.targetY, sourcePosition: props.sourcePosition, targetPosition: props.targetPosition, borderRadius: 10, offset: 16, ...(vertical ? { centerY: props.targetY - 28 } : {}) });
+  const lit = props.selected || hover;
   return (
     <>
-      <BaseEdge id={props.id} path={path} interactionWidth={14} style={{ stroke: "var(--accent)", strokeWidth: props.selected || hover ? 2.2 : 1.5, opacity: props.selected || hover ? 1 : 0.7, transition: "opacity .25s cubic-bezier(.16,1,.3,1), stroke-width .25s cubic-bezier(.16,1,.3,1)" }} />
-      {(props.selected || hover) && <Runner path={path} dur={1.0} />}
+      <BaseEdge id={props.id} path={path} interactionWidth={14} style={{ stroke: "var(--accent)", strokeWidth: lit ? 2.2 : 1.6, strokeDasharray: "1 6", strokeLinecap: "round", opacity: lit ? 1 : 0.8, transition: "opacity .25s cubic-bezier(.16,1,.3,1), stroke-width .25s cubic-bezier(.16,1,.3,1)" }} />
+      <Dot x={props.sourceX} y={props.sourceY} color="var(--accent)" />
+      <Dot x={props.targetX} y={props.targetY} color="var(--accent)" />
+      {lit && <Runner path={path} dur={1.0} />}
     </>
   );
 }

@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background, BackgroundVariant, MiniMap, ReactFlow, applyEdgeChanges, applyNodeChanges, useReactFlow, useViewport,
-  type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type OnSelectionChangeParams, MarkerType
-} from "@xyflow/react";
+  type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type OnSelectionChangeParams, MarkerType, useUpdateNodeInternals } from "@xyflow/react";
 import { MAGIC_RELATION_LABELS, classifyTransition, classifyTransitions, hostScreen, mainMoves, type CanvasDoc, type CanvasNode, type DesignSpec, type MagicRelation, type ViewMode } from "@flow/shared";
 import { EDGE_CASE_W, FLOW_CARD_W, edgeCaseStackHeight, flowCardHeight, screenH, screenW, tidyLayout } from "./layout";
 import { Icon } from "../components/Icon";
@@ -113,6 +112,14 @@ export function Canvas() {
   const pickerOn = useFlow((s) => s.picker.enabled);
   const showToast = useFlow((s) => s.showToast);
   const rf = useReactFlow();
+  // A card scales up as it appears, and React Flow measures its handles in that first frame, while it is still small.
+  // Measuring again when the entrance ends puts every line back on the centre of its dot.
+  const updateInternals = useUpdateNodeInternals();
+  const onAnimationEnd = useCallback((e: React.AnimationEvent) => {
+    if (e.animationName !== "node-in") return;
+    const id = (e.target as HTMLElement).closest(".react-flow__node")?.getAttribute("data-id");
+    if (id) updateInternals(id);
+  }, [updateInternals]);
   const { spec, canvas } = bundle;
   const [pending, setPending] = useState<Pending | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -492,7 +499,7 @@ export function Canvas() {
   const ecCount = spec.edgeCases.length;
 
   return (
-    <div ref={wrapRef} className={`board ${hand ? "hand" : ""} ${interacting ? "interacting" : ""} ${connecting ? "connecting" : ""}`} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}>
+    <div ref={wrapRef} className={`board ${hand ? "hand" : ""} ${interacting ? "interacting" : ""} ${connecting ? "connecting" : ""}`} onAnimationEnd={onAnimationEnd} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}>
       <ReactFlow
         nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onNodeDrag={onNodeDrag} onNodeDragStop={onNodeDragStop} onConnect={onConnect} onSelectionChange={onSelectionChange}
