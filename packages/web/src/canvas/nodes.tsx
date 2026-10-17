@@ -4,6 +4,7 @@ import { classifyTransition, mainMoves, type CanvasNode, type DesignSpec, type E
 import { api } from "../api";
 import { useFlow, useHeadVersion } from "../store";
 import { Icon } from "../components/Icon";
+import { SCREEN_BEZEL, SCREEN_CHROME_Y } from "./layout";
 
 type N<T extends CanvasNode["type"]> = NodeProps & { data: { node: Extract<CanvasNode, { type: T }>; spec: DesignSpec } };
 
@@ -16,7 +17,7 @@ function DropTarget() {
   const fromId = useConnection((c) => (c.inProgress ? c.fromNode?.id ?? "" : null));
   const id = useNodeId();
   if (fromId == null || fromId === id) return null;
-  return <Handle type="target" position={Position.Left} id="drop" className="drop-target" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", transform: "none", borderRadius: 14, background: "rgba(44,79,219,.06)", border: "2px dashed var(--accent)", zIndex: 20, opacity: 1 }} />;
+  return <Handle type="target" position={Position.Left} id="drop" className="drop-target" />;
 }
 
 /** A screen's first viewport, scaled into a small dark tile. Used on cards, edge cases, and chips. */
@@ -92,18 +93,19 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
   if (!screen) return null;
   const showing = spec.screens.find((s) => s.id === cur) ?? screen;
   const edgeCases = spec.edgeCases.filter((e) => e.attachedTo.screenId === screen.id || spec.transitions.some((t) => t.id === e.attachedTo.transitionId && t.from.screenId === screen.id));
-  const w = node.width ?? spec.device.width;
-  const h = (node.height ?? spec.device.height) + 40;
+  const dw = node.width ?? spec.device.width;
+  const dh = node.height ?? spec.device.height;
   const isWalkHere = walk.active && walk.screenId === screen.id;
   const inspect = () => { select({ kind: "node", id: node.id }); setPanel("inspect"); };
 
   return (
-    <div className={`screen-frame ${selected ? "selected" : ""}`} style={{ width: w, height: h, outline: isWalkHere ? "3px solid var(--accent)" : undefined }}>
+    <div className={`screen-frame ${spec.device.kind} ${selected ? "selected" : ""} ${isWalkHere ? "walk" : ""}`} style={{ width: dw + 2 * SCREEN_BEZEL, height: dh + SCREEN_CHROME_Y }}>
       <DropTarget />
       <Handle type="target" position={Position.Left} id="in" className="magic side" />
       <Handle type="source" position={Position.Right} id="out" className="magic side" />
       <Handle type="source" position={Position.Bottom} id="below" className="ec-port" />
-      <div className="hdr" onDoubleClick={() => select({ kind: "node", id: node.id })}>
+      {/* The label above the device and the bezel around it both pick the frame up, selected or not. */}
+      <div className="hdr grab" onDoubleClick={() => select({ kind: "node", id: node.id })}>
         {showing.id !== screen.id
           ? <button className="icon nodrag" onClick={() => post({ type: "flow:goto", screenId: screen.id })} title={`Back to ${screen.name}`} aria-label="Back"><Icon name="arrow-left" size={14} /></button>
           : <span className="icon dim" aria-hidden="true"><Icon name="arrow-left" size={14} /></span>}
@@ -124,14 +126,16 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
       </div>
       {/* Unselected: a veil over the prototype, so the whole frame drags and a click selects. Selected or picking: the prototype takes the pointer.
           It sits outside the nodrag wrapper on purpose; inside it, the node would refuse to drag. */}
-      {!selected && !picker && <div className="drag-veil" style={{ top: 40 }} />}
-      <div className="nodrag nowheel nopan" style={{ position: "relative", height: h - 40 }}>
-        <iframe ref={ref} key={head} title={screen.name} src={api.shellUrl(projectId, screen.id)} />
-        {missing && (
-          <div className="empty" style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,.92)" }}>
-            <div>This screen has no file yet, or it could not be loaded.<br /><button className="btn sm" style={{ marginTop: 8 }} onClick={() => { setMissing(false); post({ type: "flow:reload" }); }}>Retry</button></div>
-          </div>
-        )}
+      <div className="device-body grab" style={{ padding: SCREEN_BEZEL }}>
+        {!selected && !picker && <div className="drag-veil" style={{ top: 0 }} />}
+        <div className="screen-glass nodrag nowheel nopan" style={{ position: "relative", width: dw, height: dh }}>
+          <iframe ref={ref} key={head} title={screen.name} src={api.shellUrl(projectId, screen.id)} />
+          {missing && (
+            <div className="empty" style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,.92)" }}>
+              <div>This screen has no file yet, or it could not be loaded.<br /><button className="btn sm" style={{ marginTop: 8 }} onClick={() => { setMissing(false); post({ type: "flow:reload" }); }}>Retry</button></div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

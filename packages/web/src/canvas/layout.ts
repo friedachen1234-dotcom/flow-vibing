@@ -2,6 +2,12 @@ import dagre from "@dagrejs/dagre";
 import { classifyTransition, hostScreen, mainMoves, type CanvasDoc, type DesignSpec } from "@flow/shared";
 
 export const FLOW_CARD_W = 300;
+/** The prototype view's frame around a screen: a label row above and a device bezel around the live screen. */
+export const SCREEN_LABEL_H = 40;
+export const SCREEN_BEZEL = 10;
+export const SCREEN_CHROME_Y = SCREEN_LABEL_H + 2 * SCREEN_BEZEL;
+export const screenW = (spec: DesignSpec, n: { width?: number }) => (n.width ?? spec.device.width) + 2 * SCREEN_BEZEL;
+export const screenH = (spec: DesignSpec, n: { height?: number }) => (n.height ?? spec.device.height) + SCREEN_CHROME_Y;
 export const EDGE_CASE_W = 240;
 export const EDGE_CASE_H = 226;
 /** Edge cases stack under their screen, shifted right so the rail from the card's corner runs beside them. */
@@ -23,7 +29,7 @@ export function flowCardHeight(spec: DesignSpec, screenId: string): number {
 export function tidyLayout(spec: DesignSpec, canvas: CanvasDoc, view: "prototype" | "flow"): CanvasDoc {
   if (spec.screens.length === 0) return canvas;
   const g = new dagre.graphlib.Graph();
-  const w = view === "flow" ? FLOW_CARD_W : spec.device.width;
+  const w = view === "flow" ? FLOW_CARD_W : spec.device.width + 2 * SCREEN_BEZEL;
   const ecRows = new Map<string, number>();
   for (const ec of spec.edgeCases) { const h = hostScreen(spec, ec.attachedTo); if (h) ecRows.set(h, (ecRows.get(h) ?? 0) + 1); }
   g.setGraph({ rankdir: "LR", nodesep: view === "flow" ? 56 : 80, ranksep: view === "flow" ? 170 : 180, marginx: 0, marginy: 0 });
@@ -33,7 +39,7 @@ export function tidyLayout(spec: DesignSpec, canvas: CanvasDoc, view: "prototype
     // A screen's slot includes what hangs under it: its edge cases in flow view, and its exploration in either view.
     const ecH = view === "flow" ? edgeCaseStackHeight(ecRows.get(s.id) ?? 0) : 0;
     const vpH = panelFor(s.id) ? 60 + 330 : 0;
-    g.setNode(s.id, { width: Math.max(w, panelFor(s.id) ? 640 : 0), height: (view === "flow" ? flowCardHeight(spec, s.id) : spec.device.height + 40) + ecH + vpH });
+    g.setNode(s.id, { width: Math.max(w, panelFor(s.id) ? 640 : 0), height: (view === "flow" ? flowCardHeight(spec, s.id) : spec.device.height + SCREEN_CHROME_Y) + ecH + vpH });
   }
   const mains = new Set(mainMoves(spec, canvas.primaryMoves).values());
   for (const t of spec.transitions) {
@@ -65,8 +71,8 @@ export function tidyLayout(spec: DesignSpec, canvas: CanvasDoc, view: "prototype
     if (n.type === "variantPanel" && n.target.screenId) {
       const p = pos.get(n.target.screenId);
       if (!p) return n;
-      const cardH = view === "flow" ? flowCardHeight(spec, n.target.screenId) + edgeCaseStackHeight(ecRows.get(n.target.screenId) ?? 0) : spec.device.height + 40;
-      const screenW = view === "flow" ? FLOW_CARD_W : spec.device.width;
+      const cardH = view === "flow" ? flowCardHeight(spec, n.target.screenId) + edgeCaseStackHeight(ecRows.get(n.target.screenId) ?? 0) : spec.device.height + SCREEN_CHROME_Y;
+      const screenW = view === "flow" ? FLOW_CARD_W : spec.device.width + 2 * SCREEN_BEZEL;
       const panelW = n.width ?? Math.min(940, 16 + Math.max(1, n.options.length + (n.originalFile ? 1 : 0)) * 220);
       return { ...n, position: { x: p.x + (screenW - panelW) / 2, y: p.y + cardH + 60 } };
     }

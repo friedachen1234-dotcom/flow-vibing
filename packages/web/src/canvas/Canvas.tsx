@@ -4,7 +4,7 @@ import {
   type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type OnSelectionChangeParams, MarkerType
 } from "@xyflow/react";
 import { MAGIC_RELATION_LABELS, classifyTransition, classifyTransitions, hostScreen, mainMoves, type CanvasDoc, type CanvasNode, type DesignSpec, type MagicRelation, type ViewMode } from "@flow/shared";
-import { EDGE_CASE_W, FLOW_CARD_W, edgeCaseStackHeight, flowCardHeight, tidyLayout } from "./layout";
+import { EDGE_CASE_W, FLOW_CARD_W, edgeCaseStackHeight, flowCardHeight, screenH, screenW, tidyLayout } from "./layout";
 import { Icon } from "../components/Icon";
 import { api } from "../api";
 import { useFlow } from "../store";
@@ -43,9 +43,9 @@ function focusScreenOf(selection: { kind: string; id: string } | null, spec: Des
 function panelPosition(n: Extract<CanvasNode, { type: "variantPanel" }>, canvas: CanvasDoc, spec: DesignSpec, view: ViewMode, showEdgeCases: boolean): { x: number; y: number } {
   const host = n.target.screenId ? canvas.nodes.find((h) => h.type === "screen" && h.screenId === n.target.screenId) : undefined;
   if (!host || host.type !== "screen") return n.position;
-  const w = view === "flow" ? Math.max(FLOW_CARD_W, 36 + EDGE_CASE_W) : host.width ?? spec.device.width;
+  const w = view === "flow" ? Math.max(FLOW_CARD_W, 36 + EDGE_CASE_W) : screenW(spec, host);
   const ecs = view === "flow" && showEdgeCases ? spec.edgeCases.filter((e) => hostScreen(spec, e.attachedTo) === host.screenId).length : 0;
-  const bottom = host.position.y + (view === "flow" ? flowCardHeight(spec, host.screenId) + edgeCaseStackHeight(ecs) : (host.height ?? spec.device.height) + 40);
+  const bottom = host.position.y + (view === "flow" ? flowCardHeight(spec, host.screenId) + edgeCaseStackHeight(ecs) : screenH(spec, host));
   const pw = variantPanelWidth(n);
   const overlapsX = n.position.x < host.position.x + w && n.position.x + pw > host.position.x;
   if (!overlapsX || n.position.y >= bottom + 40 || n.position.y + 330 <= host.position.y) return n.position;
@@ -61,8 +61,8 @@ function viewportShowsSomething(canvas: CanvasDoc, spec: DesignSpec, view: ViewM
   const { x, y, zoom } = canvas.viewport;
   for (const n of canvas.nodes) {
     if (n.type === "edgeCase") continue;
-    const w = n.type === "screen" ? (view === "flow" ? FLOW_CARD_W : n.width ?? spec.device.width) : n.width ?? 240;
-    const h = n.type === "screen" ? (view === "flow" ? flowCardHeight(spec, n.screenId) : (n.height ?? spec.device.height) + 40) : n.height ?? 160;
+    const w = n.type === "screen" ? (view === "flow" ? FLOW_CARD_W : screenW(spec, n)) : n.width ?? 240;
+    const h = n.type === "screen" ? (view === "flow" ? flowCardHeight(spec, n.screenId) : screenH(spec, n)) : n.height ?? 160;
     const cx = (n.position.x + w / 2) * zoom + x, cy = (n.position.y + h / 2) * zoom + y;
     if (cx > 0 && cy > 0 && cx < pane.w && cy < pane.h) return true;
   }
@@ -104,6 +104,10 @@ export function Canvas() {
   const setHoverEdge = useFlow((s) => s.setHoverEdge);
   // While a node is dragged or the board is panned, prototypes stop taking the pointer: an iframe under the pointer would otherwise swallow the move and stall the drag.
   const [interacting, setInteracting] = useState(false);
+  // While a line is being drawn, every handle it could land on shows itself.
+  const [connecting, setConnecting] = useState(false);
+  const onConnectStart = useCallback(() => setConnecting(true), []);
+  const onConnectEnd = useCallback(() => setConnecting(false), []);
   const { zoom } = useViewport();
   const picked = useFlow((s) => s.picker.picked);
   const pickerOn = useFlow((s) => s.picker.enabled);
@@ -180,7 +184,7 @@ export function Canvas() {
       if (flow && (n.type === "inspiration" || n.type === "skill" || n.type === "variantPanel")) continue; // references and explorations belong to the prototype reading; the flow view is about moves
       const common = { id: n.id, position: n.position, data: { node: n, spec, primaryMoves: canvas.primaryMoves }, selected: isSel };
       // A whole card drags. A screen that is selected, or being picked inside, hands its body to the prototype and keeps the header as the handle.
-      if (n.type === "screen") nodes.push({ ...common, data: { ...common.data, moveOrder: flow ? moveOrder.get(n.screenId) : undefined }, type: flow ? "screenCard" : "screen", dragHandle: !flow && (isSel || pickerOn) ? ".hdr" : undefined, zIndex: 1 });
+      if (n.type === "screen") nodes.push({ ...common, data: { ...common.data, moveOrder: flow ? moveOrder.get(n.screenId) : undefined }, type: flow ? "screenCard" : "screen", dragHandle: !flow && (isSel || pickerOn) ? ".grab" : undefined, zIndex: 1 });
       else if (n.type === "variantPanel") nodes.push({ ...common, position: panelPosition(n, canvas, spec, view, showEdgeCases), type: n.type, dragHandle: ".hdr", zIndex: 2 });
       else if (n.type === "group") nodes.push({ ...common, type: "group", zIndex: -1, style: { width: n.width, height: n.height } });
       else nodes.push({ ...common, type: n.type, zIndex: 2 });
@@ -253,8 +257,8 @@ export function Canvas() {
       let handles = { sourceHandle: "out", targetHandle: "in" };
       if (e.type === "variantLink") {
         const src = canvas.nodes.find((n) => n.id === e.source), tgt = nodes.find((n) => n.id === e.target);
-        const srcBottom = src?.type === "screen" ? src.position.y + (view === "flow" ? flowCardHeight(spec, src.screenId) : (src.height ?? spec.device.height) + 40) : 0;
-        const srcRight = src?.type === "screen" ? src.position.x + (view === "flow" ? FLOW_CARD_W : src.width ?? spec.device.width) : 0;
+        const srcBottom = src?.type === "screen" ? src.position.y + (view === "flow" ? flowCardHeight(spec, src.screenId) : screenH(spec, src)) : 0;
+        const srcRight = src?.type === "screen" ? src.position.x + (view === "flow" ? FLOW_CARD_W : screenW(spec, src)) : 0;
         const below = !src || !tgt || tgt.position.y >= srcBottom - 60;
         handles = below ? { sourceHandle: "below", targetHandle: "top" } : tgt.position.x >= srcRight - 40 ? { sourceHandle: "out", targetHandle: "side" } : { sourceHandle: "in", targetHandle: "side-r" };
       }
@@ -277,7 +281,7 @@ export function Canvas() {
   // the other. When a view switch leaves two screens overlapping, tidy for this view rather than show the pile.
   useEffect(() => {
     const screens = canvas.nodes.filter((n): n is Extract<CanvasNode, { type: "screen" }> => n.type === "screen");
-    const size = (n: (typeof screens)[number]) => view === "flow" ? { w: FLOW_CARD_W, h: flowCardHeight(spec, n.screenId) } : { w: n.width ?? spec.device.width, h: (n.height ?? spec.device.height) + 40 };
+    const size = (n: (typeof screens)[number]) => view === "flow" ? { w: FLOW_CARD_W, h: flowCardHeight(spec, n.screenId) } : { w: screenW(spec, n), h: screenH(spec, n) };
     const overlap = screens.some((a, i) => screens.slice(i + 1).some((b) => {
       const A = size(a), B = size(b);
       return a.position.x < b.position.x + B.w && b.position.x < a.position.x + A.w && a.position.y < b.position.y + B.h && b.position.y < a.position.y + A.h;
@@ -488,12 +492,12 @@ export function Canvas() {
   const ecCount = spec.edgeCases.length;
 
   return (
-    <div ref={wrapRef} className={`board ${hand ? "hand" : ""} ${interacting ? "interacting" : ""}`} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}>
+    <div ref={wrapRef} className={`board ${hand ? "hand" : ""} ${interacting ? "interacting" : ""} ${connecting ? "connecting" : ""}`} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDrop}>
       <ReactFlow
         nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onNodeDrag={onNodeDrag} onNodeDragStop={onNodeDragStop} onConnect={onConnect} onSelectionChange={onSelectionChange}
         onEdgeMouseEnter={onEdgeMouseEnter} onEdgeMouseLeave={onEdgeMouseLeave}
-        defaultViewport={initialViewport} onMoveStart={onMoveStart} onMoveEnd={onMoveEnd}
+        defaultViewport={initialViewport} onMoveStart={onMoveStart} onMoveEnd={onMoveEnd} onConnectStart={onConnectStart} onConnectEnd={onConnectEnd}
         onInit={(inst) => {
           const box = wrapRef.current?.getBoundingClientRect();
           if (box && !isDefaultViewport && canvas.nodes.length > 0 && !viewportShowsSomething(canvas, spec, view, { w: box.width, h: box.height })) void inst.fitView(FIT_OPTS);
