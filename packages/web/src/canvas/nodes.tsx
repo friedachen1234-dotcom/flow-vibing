@@ -81,6 +81,12 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
   }, [node.screenId, setFrame, setPicked, walk.active, walk.lastTransitionId, setWalk, selected, picker, framed]);
 
   useEffect(() => { post({ type: "flow:picker", enabled: picker }); }, [picker]);
+  // The inspect panel offers the same state menu as the label; it reaches the prototype through here.
+  useEffect(() => {
+    const on = (ev: Event) => { const d = (ev as CustomEvent<{ screenId: string; stateId: string }>).detail; if (d.screenId === node.screenId) post({ type: "flow:setState", stateId: d.stateId }); };
+    window.addEventListener("flow:set-state", on);
+    return () => window.removeEventListener("flow:set-state", on);
+  }, [node.screenId]);
   // Selected: plain scroll reaches the prototype. Otherwise the board pans under it, like any other node.
   useEffect(() => { post({ type: "flow:scroll-mode", mode: selected ? "scroll" : "pan" }); }, [selected]);
   useEffect(() => { post({ type: "flow:highlight", elementId: framed }); }, [framed]);
