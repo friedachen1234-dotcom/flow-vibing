@@ -262,12 +262,20 @@ export const InspirationNode = memo(function InspirationNode({ data, selected }:
   const setPanel = useFlow((s) => s.setPanel);
   const kind = n.kind === "url" ? "Web reference" : n.kind === "style" ? "Style token" : n.kind === "text" ? "Text reference" : "Style reference";
   return (
-    <div className={`ref-card ${selected ? "selected" : ""}`} style={{ width: n.width ?? 224 }}>
+    <div className={`ref-card ${n.kind} ${selected ? "selected" : ""}`} style={{ width: n.width ?? 224 }}>
       <DropTarget />
       <Handle type="source" position={Position.Right} id="out" className="magic" />
       <Handle type="target" position={Position.Left} id="in" className="magic" />
-      <div className="hdr"><Icon name="image" size={14} /><span className="kind">{kind}</span><span style={{ flex: 1 }} /><button className="icon nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: n.id }); setPanel("inspect"); }} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button></div>
-      {n.kind === "image" && n.path && <img src={api.fileUrl(projectId, n.path)} alt={n.caption || n.title} draggable={false} />}
+      {/* An image reference is the image: it fills the card and its kind sits on it as a chip. Other kinds keep a header row. */}
+      {n.kind === "image" && n.path ? (
+        <div className="media">
+          <img src={api.fileUrl(projectId, n.path)} alt={n.caption || n.title} draggable={false} />
+          <span className="kind-chip"><Icon name="image" size={12} /> {kind}</span>
+          <button className="icon more nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: n.id }); setPanel("inspect"); }} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button>
+        </div>
+      ) : (
+        <div className="hdr"><Icon name={n.kind === "url" ? "share" : n.kind === "text" ? "sticky-note" : "sliders"} size={14} /><span className="kind">{kind}</span><span style={{ flex: 1 }} /><button className="icon nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: n.id }); setPanel("inspect"); }} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button></div>
+      )}
       {n.kind === "style" && n.text && <div className="swatch">{/^#[0-9a-f]{3,8}$/i.test(n.text) && <span className="chip" style={{ background: n.text }} />}<span className="mono">{n.text}</span></div>}
       {n.kind === "text" && <div className="text">{n.text}</div>}
       {n.kind === "url" && <div className="text"><a href={n.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{n.url}</a></div>}
@@ -373,22 +381,29 @@ export const VariantPanelNode = memo(function VariantPanelNode({ data, selected 
       <Handle type="target" position={Position.Left} id="side" className="ec-port" style={{ top: "50%" }} />
       <Handle type="target" position={Position.Right} id="side-r" className="ec-port" style={{ top: "50%" }} />
       <div className="hdr">
-        <span className="vp-mark"><Icon name="hexagon" size={16} strokeWidth={2} /></span>
-        <span className="name">{subject} exploration</span>
-        <span className="pill blue">{n.options.length} variant{n.options.length === 1 ? "" : "s"}</span>
+        <span className="vp-mark"><Icon name="sparkles" size={15} strokeWidth={2} /></span>
+        <span className="hdr-text">
+          <span className="eyebrow">Exploration · {n.options.length} variant{n.options.length === 1 ? "" : "s"}</span>
+          <span className="name">{subject}{n.direction ? <span className="direction" title={n.direction}> · {n.direction}</span> : null}</span>
+        </span>
         <span style={{ flex: 1 }} />
-        {n.direction && <span className="direction" title={n.direction}>{n.direction}</span>}
         <button className="icon nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: n.id }); setPanel("inspect"); }} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button>
       </div>
       {n.options.length === 0 && <div className="vp-empty muted">No options yet. Claude is working, or the run failed. Check the Claude panel.</div>}
       {options.length > 0 && (
         <div className="options nowheel">
-          {options.map((o) => {
+          {options.map((o, i) => {
             const applied = current === o.id;
             const focus = hover === o.id;
+            const num = o.id === "original" ? 0 : i + 1 - (n.originalFile ? 1 : 0);
             return (
               <div key={o.id} className={`opt ${applied ? "applied" : ""} ${focus ? "focus" : ""} ${o.id === "original" ? "original" : ""}`} onMouseEnter={() => hoverIn(o.id, o.file)} onMouseLeave={hoverOut} title={o.id === "original" ? "What was there before" : "Hover to preview in the prototype"}>
-                <VariantPreview projectId={projectId} head={head} spec={spec} screen={screen} elementId={n.target.elementId} file={o.file} />
+                <div className="shot-wrap">
+                  <VariantPreview projectId={projectId} head={head} spec={spec} screen={screen} elementId={n.target.elementId} file={o.file} />
+                  <span className="num">{o.id === "original" ? "Original" : String(num).padStart(2, "0")}</span>
+                  {applied ? <span className="tag applied"><Icon name="check" size={11} /> {o.id === "original" ? "In place" : "Applied"}</span>
+                    : focus && screen ? <span className="tag live"><Icon name="eye" size={11} /> Previewing</span> : null}
+                </div>
                 <div className="meta">
                   <b>{o.label}</b>
                   <div className="r">{o.rationale}</div>
