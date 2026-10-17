@@ -229,7 +229,7 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .pv-sim-row .input { flex: 1; min-width: 0; }
 
 /* Composer: the way to Claude from the board */
-.composer-bar { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); width: min(560px, calc(100% - 300px)); min-width: 420px; z-index: var(--z-canvas-ui); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 8px; display: grid; gap: 8px; }
+.composer-bar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(560px, calc(100% - 300px)); min-width: 420px; z-index: var(--z-canvas-ui); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 8px; display: grid; gap: 8px; }
 .cp-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .cp-input { flex: 1; min-width: 0; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); font-size: var(--t-13); }
 .cp-input:focus { background: var(--surface); border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
