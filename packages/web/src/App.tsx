@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useFlow } from "./store";
 import { ProjectHome } from "./components/ProjectHome";
 import { TopBar } from "./components/TopBar";
-import { ToolRail } from "./components/ToolRail";
 import { Canvas } from "./canvas/Canvas";
 import { RightPanel } from "./components/RightPanel";
 import { VersionPreview } from "./components/VersionBar";
@@ -44,7 +43,6 @@ export function App() {
       <TopBar />
       <main className="canvas-wrap">
         <Canvas />
-        <ToolRail />
         <RightPanel />
       </main>
       {previewVersion && <VersionPreview sha={previewVersion} />}

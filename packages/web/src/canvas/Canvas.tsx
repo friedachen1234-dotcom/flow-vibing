@@ -5,6 +5,7 @@ import {
 import { MAGIC_RELATION_LABELS, classifyTransition, classifyTransitions, hostScreen, mainMoves, type CanvasDoc, type CanvasNode, type DesignSpec, type MagicRelation, type ViewMode } from "@flow/shared";
 import { EDGE_CASE_W, FLOW_CARD_W, edgeCaseStackHeight, flowCardHeight, screenH, screenW, tidyLayout } from "./layout";
 import { Icon } from "../components/Icon";
+import { ToolRail } from "../components/ToolRail";
 import { api } from "../api";
 import { useFlow } from "../store";
 import { nodeTypes, variantPanelWidth } from "./nodes";
@@ -545,6 +546,7 @@ export function Canvas() {
       <Composer />
 
       <div className="canvas-bar tips-up" role="toolbar" aria-label="Canvas">
+        <ToolRail />
         <button className="cb-btn" onClick={() => rf.zoomOut({ duration: 300, ease: EASE_OUT_EXPO })} data-tip="Zoom out" data-key="−" aria-label="Zoom out"><Icon name="zoom-out" size={15} /></button>
         <button className="cb-zoom" onClick={() => void rf.zoomTo(1, { duration: 400, ease: EASE_OUT_EXPO, interpolate: "linear" })} data-tip="Zoom to 100%" data-key="⌘0"><span className="pop" key={Math.round(zoom * 100)}>{Math.round(zoom * 100)}%</span></button>
         <button className="cb-btn" onClick={() => rf.zoomIn({ duration: 300, ease: EASE_OUT_EXPO })} data-tip="Zoom in" data-key="+" aria-label="Zoom in"><Icon name="zoom-in" size={15} /></button>
