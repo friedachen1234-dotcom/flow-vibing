@@ -5,8 +5,7 @@ import { HistoryPanel } from "./HistoryPanel";
 import { PreviewPanel } from "./PreviewPanel";
 import { Icon } from "./Icon";
 
-const TITLES = { preview: "Live preview", inspect: "Inspect", claude: "Claude", history: "History" } as const;
-const ICONS = { preview: "smartphone", inspect: "sliders", claude: "sparkles", history: "history" } as const;
+const TITLES = { preview: "Preview", inspect: "Inspect", claude: "Claude", history: "History" } as const;
 
 /** One floating panel on the right, four tabs. Only one thing at a time, so the board keeps its width. */
 export function RightPanel() {
@@ -27,17 +26,14 @@ export function RightPanel() {
   const tabs = (canPreview ? ["preview", "inspect", "claude", "history"] : ["inspect", "claude", "history"]) as (typeof active)[];
   return (
     <aside className="rpanel" aria-label={TITLES[active]}>
-      <div className="rp-head">
-        <span className="rp-icon"><Icon name={ICONS[active]} size={16} /></span>
-        <span className="rp-title">{TITLES[active]}</span>
-        {active === "preview" && <span className={`pill ${isEdgeCase ? "warn" : "ok"}`}><span className="pill-dot" /> {isEdgeCase ? "Edge case" : "Live"}</span>}
-        <span style={{ flex: 1 }} />
-        <button className="rp-close" onClick={() => setPanel(null)} data-tip="Hide panel" data-key="I" aria-label="Hide panel"><Icon name="x" size={20} strokeWidth={2} /></button>
-      </div>
       <div className="rp-tabs" role="tablist">
         {tabs.map((k) => (
-          <button key={k} role="tab" aria-selected={active === k} className={active === k ? "on" : ""} onClick={() => setPanel(k)}>{TITLES[k]}</button>
+          <button key={k} role="tab" aria-selected={active === k} className={active === k ? "on" : ""} onClick={() => setPanel(k)}>
+            {k === "preview" ? <><span className={`live-dot ${isEdgeCase ? "warn" : ""}`} />{TITLES[k]}</> : TITLES[k]}
+          </button>
         ))}
+        <span style={{ flex: 1 }} />
+        <button className="rp-close" onClick={() => setPanel(null)} data-tip="Hide panel" data-key="I" aria-label="Hide panel"><Icon name="x" size={20} strokeWidth={2} /></button>
       </div>
       <div className="rp-body">
         {active === "preview" && <PreviewPanel />}
