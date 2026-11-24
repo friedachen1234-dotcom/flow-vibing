@@ -5,6 +5,8 @@
  *   node scripts/example-boards.mjs
  *
  * The fragments keep the element's data-flow-el and its class, so the screen's states keep working after Apply.
+ *
+ * Baseline is not here: its screens, board and variants are rendered from a working prototype, not written by hand.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -15,31 +17,6 @@ const svg = (body, bg = "#0A0B0D") => `<svg xmlns="http://www.w3.org/2000/svg" w
 const f = "font-family=\"system-ui, -apple-system, sans-serif\"";
 
 const boards = {
-  baseline: {
-    refs: [
-      { id: "ref-ring", title: "Recovery ring", caption: "One band, thick stroke, round caps. The figure sits alone in the middle.", file: "recovery-ring.svg", body: svg(`<circle cx="200" cy="150" r="92" fill="none" stroke="#1C1F24" stroke-width="18"/><circle cx="200" cy="150" r="92" fill="none" stroke="#16EC06" stroke-width="18" stroke-linecap="round" stroke-dasharray="578" stroke-dashoffset="185" transform="rotate(-90 200 150)"/><text x="200" y="160" text-anchor="middle" ${f} font-size="54" font-weight="800" fill="#fff">68<tspan font-size="22" dy="-22">%</tspan></text><text x="200" y="192" text-anchor="middle" ${f} font-size="11" letter-spacing="3" fill="#8B9099">RECOVERY</text>`) },
-      { id: "ref-type", title: "Type & hierarchy", caption: "Numeral scale and metric styling for key health data.", file: "type-hierarchy.svg", body: svg(`<text x="40" y="110" ${f} font-size="64" font-weight="800" fill="#fff">68<tspan font-size="26" dy="-28">%</tspan></text><text x="40" y="140" ${f} font-size="12" letter-spacing="3" fill="#8B9099">RECOVERY</text><line x1="40" y1="165" x2="360" y2="165" stroke="#24272D"/><text x="40" y="200" ${f} font-size="12" letter-spacing="3" fill="#8B9099">HRV</text><text x="40" y="240" ${f} font-size="34" font-weight="700" fill="#fff">74 <tspan font-size="16" fill="#8B9099">ms</tspan></text><text x="40" y="268" ${f} font-size="14" font-weight="700" fill="#16EC06">+6 vs base</text>`) }
-    ],
-    panel: { id: "vp-recovery-ring", screenId: "today", elementId: "recovery-ring", direction: "Keep the verdict readable", linkRef: "ref-ring" },
-    ring: (stroke, off, extra = "") => `<button class="ring" data-flow-el="recovery-ring" data-flow-transition="today-to-recovery" aria-label="Recovery 68 per cent"${extra}>
-  <svg width="208" height="208" viewBox="0 0 208 208">
-    <circle cx="104" cy="104" r="92" fill="none" stroke="#1C1F24" stroke-width="${stroke}" />
-    <circle class="track-fill" cx="104" cy="104" r="92" fill="none" stroke="#16EC06" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="578" stroke-dashoffset="${off}" />
-  </svg>
-  <span class="mid"><span class="pct">68<sup>%</sup></span><span class="lbl">Recovery</span></span>
-</button>`,
-    options: (b) => [
-      { id: "full", label: "Full ring", rationale: "Same idea, more weight. Reads from further away.", html: b.ring(22, 185) },
-      { id: "arc", label: "Open arc", rationale: "Frees vertical space for the cards underneath.", html: b.ring(16, 330, ' style="transform:rotate(-40deg)"').replace('<span class="mid">', '<span class="mid" style="transform:rotate(40deg)">') },
-      { id: "bar", label: "Minimal bar", rationale: "Drops the gauge. The figure and a scale carry it.", html: `<div class="ring" data-flow-el="recovery-ring" data-flow-transition="today-to-recovery" style="width:auto;height:auto;display:grid;gap:10px;padding:8px 0">
-  <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8B9099">Recovery</span>
-  <span class="pct" style="font-size:56px;font-weight:800;letter-spacing:-.045em;line-height:1">68<sup style="font-size:22px;vertical-align:24px">%</sup></span>
-  <div style="height:8px;border-radius:999px;background:#1C1F24;overflow:hidden"><i style="display:block;width:68%;height:100%;background:#16EC06;border-radius:999px"></i></div>
-  <div style="display:flex;justify-content:space-between;font-size:10px;color:#5A6069"><span>0</span><span>34</span><span>67</span><span>100</span></div>
-</div>` }
-    ]
-  },
-
   "lumen-bank": {
     refs: [
       { id: "ref-card", title: "Gradient balance card", caption: "Deep blue gradient, one big numeral, the account details whispered underneath.", file: "balance-card.svg", body: svg(`<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3B4FE4"/><stop offset="1" stop-color="#1F2A8F"/></linearGradient></defs><rect x="40" y="50" width="320" height="200" rx="22" fill="url(#g)"/><circle cx="340" cy="60" r="90" fill="rgba(255,255,255,.08)"/><text x="66" y="96" ${f} font-size="13" fill="rgba(255,255,255,.8)">Everyday account</text><text x="66" y="150" ${f} font-size="44" font-weight="700" fill="#fff">£4,286<tspan font-size="22">.20</tspan></text><text x="66" y="218" ${f} font-size="13" fill="rgba(255,255,255,.85)">Available £4,286.20</text><text x="334" y="218" text-anchor="end" ${f} font-size="13" fill="rgba(255,255,255,.85)">•• 4821</text>`, "#F4F6FB") },

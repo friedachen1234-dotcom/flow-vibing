@@ -7,7 +7,7 @@ import { IS_STATIC, LOCAL_APP_URL } from "../static";
 
 const DEVICE_LABEL: Record<DeviceKind, string> = { mobile: "Mobile", tablet: "Tablet", desktop: "Desktop" };
 /** What each example is, for the card; the product name inside stays its own. */
-const EXAMPLE_TITLE: Record<string, string> = { baseline: "Health companion", "lumen-bank": "Everyday banking", plated: "Recipe collection", "relay-desk": "Support inbox" };
+const EXAMPLE_TITLE: Record<string, string> = { baseline: "Training program", "lumen-bank": "Everyday banking", plated: "Recipe collection", "relay-desk": "Support inbox" };
 /** Each example's stage takes a tint from its own design, so the gallery has colour without decoration. */
 const EXAMPLE_TINT: Record<string, string> = { baseline: "#16181D", "lumen-bank": "#E6ECFF", plated: "#F5EADF", "relay-desk": "#E3F1EB" };
 const STARTERS: { label: string; brief: string }[] = [
@@ -73,11 +73,11 @@ function HeroBoard({ ex }: { ex?: ExampleMeta }) {
   return (
     <div className="hero-board" aria-hidden="true">
       <div className="hb-frame" style={{ left: 28, top: 58 }}>
-        <div className="hb-label">{cap(first)}</div>
+        <div className="hb-label">{ex.firstMove?.from ?? cap(first)}</div>
         <DeviceFrame src={api.exampleShellUrl(ex.id, first)} device={device} width={160} />
       </div>
       <div className="hb-frame selected" style={{ left: 318, top: 26 }}>
-        <div className="hb-label">{cap(second)}</div>
+        <div className="hb-label">{ex.firstMove?.to ?? cap(second)}</div>
         <div className="hb-dev">
           <DeviceFrame src={api.exampleShellUrl(ex.id, second)} device={device} width={160} />
           <span className="hb-h tl" /><span className="hb-h tr" /><span className="hb-h bl" /><span className="hb-h br" />
@@ -89,8 +89,8 @@ function HeroBoard({ ex }: { ex?: ExampleMeta }) {
         <path d="M 307 141.5 L 314 146 L 307 150.5" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         <circle className="hb-runner" r="3.5" fill="var(--accent)"><animateMotion dur="2.4s" repeatCount="indefinite" path="M 188 196 H 236 Q 248 196 248 184 V 158 Q 248 146 260 146 H 314" /></circle>
       </svg>
-      <span className="hb-pill" style={{ left: 196, top: 206 }}>Tap the ring</span>
-      <div className="hb-sticky" style={{ left: 236, top: 330 }}>Ring could take more room. Try a full-width version?</div>
+      <span className="hb-pill" style={{ left: 196, top: 206 }}>{ex.firstMove ? ex.firstMove.trigger[0].toUpperCase() + ex.firstMove.trigger.slice(1) : "Tap"}</span>
+      <div className="hb-sticky" style={{ left: 236, top: 330 }}>The next session could lead. Try it above the targets?</div>
       <div className="hb-cursor" style={{ left: 452, top: 300 }}>
         <svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 1.5 L13.5 8 L8.3 9.2 L5.6 14 Z" fill="var(--magic)" stroke="#fff" strokeWidth="1.2" strokeLinejoin="round" /></svg>
         <span>Claude</span>

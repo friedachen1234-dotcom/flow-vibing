@@ -26,7 +26,10 @@ for (const id of readdirSync(exDir).sort()) {
   if (!existsSync(flow)) continue;
   cpSync(path.join(exDir, id), path.join(dist, "examples", id), { recursive: true });
   const spec = JSON.parse(readFileSync(flow, "utf8"));
-  index.push({ id, name: spec.name, brief: spec.brief, device: spec.device.kind, width: spec.device.width, height: spec.device.height, screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null, secondScreen: spec.transitions.find((t) => t.from.screenId === spec.screens[0]?.id && t.to.screenId !== spec.screens[0]?.id)?.to.screenId ?? spec.screens[1]?.id ?? null });
+  const first = spec.screens[0];
+  const move = first ? spec.transitions.find((t) => t.from.screenId === first.id && t.to.screenId !== first.id) : undefined;
+  const moveTo = move ? spec.screens.find((x) => x.id === move.to.screenId) : undefined;
+  index.push({ id, name: spec.name, brief: spec.brief, device: spec.device.kind, width: spec.device.width, height: spec.device.height, screenCount: spec.screens.length, firstScreen: first?.id ?? null, secondScreen: move?.to.screenId ?? spec.screens[1]?.id ?? null, firstMove: move && moveTo ? { trigger: move.trigger, from: first.name, to: moveTo.name } : null });
 }
 index.sort((a, b) => a.name.localeCompare(b.name));
 writeFileSync(path.join(dist, "examples", "index.json"), JSON.stringify(index, null, 2));
