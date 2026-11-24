@@ -8,10 +8,10 @@ import { IS_STATIC, LOCAL_APP_URL } from "../static";
 const DEVICE_LABEL: Record<DeviceKind, string> = { mobile: "Mobile", tablet: "Tablet", desktop: "Desktop" };
 /** What each example is, for the card; the product name inside stays its own. */
 const EXAMPLE_TITLE: Record<string, string> = { baseline: "Health companion", "lumen-bank": "Everyday banking", plated: "Recipe collection", "relay-desk": "Support inbox" };
-const STARTERS: { icon: string; label: string; brief: string }[] = [
-  { icon: "heart", label: "A health companion", brief: "A wearable companion for people who train hard and want to know whether their body is ready for it. One number every morning and an honest reason behind it. Dark, data-dense, no cheerleading." },
-  { icon: "card", label: "A banking app", brief: "A mobile banking app for people who move money between friends a few times a week. Sending a transfer should take under twenty seconds without ever feeling unsure about what happened. Calm, precise, trustworthy." },
-  { icon: "plus", label: "Start from scratch", brief: "" }
+const STARTERS: { label: string; brief: string }[] = [
+  { label: "A health companion", brief: "A wearable companion for people who train hard and want to know whether their body is ready for it. One number every morning and an honest reason behind it. Dark, data-dense, no cheerleading." },
+  { label: "A banking app", brief: "A mobile banking app for people who move money between friends a few times a week. Sending a transfer should take under twenty seconds without ever feeling unsure about what happened. Calm, precise, trustworthy." },
+  { label: "A recipe planner", brief: "A tablet app for planning the week's dinners from recipes you saved. Pick tonight's dish, see what to buy, and cook from a step view you can read across the kitchen. Warm, editorial, unhurried." }
 ];
 
 /** A name from the first words of the brief, so starting a project is one box, not a form. */
@@ -52,11 +52,6 @@ function ExamplePreview({ ex }: { ex: ExampleMeta }) {
       <DeviceFrame src={api.exampleShellUrl(ex.id, ex.firstScreen)} device={device} width={w} />
       {ex.secondScreen && (
         <>
-          <svg className="ex-link" viewBox="0 0 56 44" aria-hidden="true">
-            <path d="M5 10 C 30 10, 26 34, 51 34" fill="none" stroke="currentColor" strokeWidth="2" />
-            <circle cx="5" cy="10" r="4" fill="currentColor" />
-            <circle cx="51" cy="34" r="4" fill="currentColor" />
-          </svg>
           <DeviceFrame src={api.exampleShellUrl(ex.id, ex.secondScreen)} device={device} width={ex.device === "desktop" ? 96 : w} scale={k} align={ex.device === "desktop" ? "right" : "left"} className="second" />
         </>
       )}
@@ -131,61 +126,62 @@ export function ProjectHome() {
       </header>
 
       <div className="inner">
-        <section className="hero">
-          <div className="hero-mark" aria-hidden="true"><Icon name="flow" size={40} strokeWidth={1.6} /></div>
-          <div className="eyebrow"><span>Idea</span><Icon name="arrow-right" size={11} /><span>Screens</span><Icon name="arrow-right" size={11} /><span>Flow</span></div>
-          <h1>Every prototype.<br />Connected to its flow.</h1>
-          <p className="lede">Shape screens and flows together on one canvas.</p>
+        <section className="start">
+          <h1>New prototype</h1>
+          <p className="lede">Describe the product and who it is for. Claude drafts the screens and how they connect.</p>
           {error && <p className="home-error">{error}</p>}
           <div className={`prompt ${busy ? "busy" : ""}`}>
-            <textarea ref={briefRef} rows={3} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="What would you like to prototype?"
+            <textarea ref={briefRef} rows={3} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="A habit tracker for people who keep breaking streaks…"
               onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void create(); }} />
             <div className="prompt-foot">
               <button className="attach" onClick={() => fileRef.current?.click()} title="Images you add here land on the board as references">
-                <Icon name="paperclip" size={16} /> {files.length ? `${files.length} reference${files.length === 1 ? "" : "s"}` : "Add a reference"}
+                <Icon name="paperclip" size={15} /> {files.length ? `${files.length} reference${files.length === 1 ? "" : "s"}` : "Reference"}
               </button>
               <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { setFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
-              <div className="seg mini" role="radiogroup" aria-label="Device">
+              <span className="pf-sep" />
+              <div className="device-pick" role="radiogroup" aria-label="Device">
                 {(["mobile", "tablet", "desktop"] as DeviceKind[]).map((k) => <button key={k} role="radio" aria-checked={device === k} className={device === k ? "on" : ""} onClick={() => setDevice(k)}>{DEVICE_LABEL[k]}</button>)}
               </div>
               <span style={{ flex: 1 }} />
-              <button className="btn primary create" disabled={busy} onClick={create}>Create project <Icon name="arrow-up-right" size={15} /></button>
+              <span className="kbd-hint">⌘ ↵</span>
+              <button className="btn dark create" disabled={busy || !brief.trim()} onClick={create}>Create</button>
             </div>
           </div>
           <div className="starters">
+            <span className="muted">Try</span>
             {STARTERS.map((st) => (
-              <button key={st.label} className="starter" onClick={() => { setBrief(st.brief); briefRef.current?.focus(); }}><Icon name={st.icon} size={15} /> {st.label}</button>
+              <button key={st.label} className="starter" onClick={() => { setBrief(st.brief); briefRef.current?.focus(); }}>{st.label}</button>
             ))}
           </div>
         </section>
 
         <section className="examples">
           <div className="sec-head">
-            <h2>Start with a working example</h2>
+            <h2>Examples</h2>
+            <span className="muted sub">Working prototypes you can open, edit and run.</span>
             <span style={{ flex: 1 }} />
             {kinds.length > 1 && (
-              <div className="seg" role="radiogroup" aria-label="Device filter">
+              <div className="text-tabs" role="radiogroup" aria-label="Device filter">
                 <button role="radio" aria-checked={filter === "all"} className={filter === "all" ? "on" : ""} onClick={() => setFilter("all")}>All</button>
-                {(["mobile", "tablet", "desktop"] as DeviceKind[]).map((k) => <button key={k} role="radio" aria-checked={filter === k} className={filter === k ? "on" : ""} disabled={!kinds.includes(k)} onClick={() => setFilter(k)}>{DEVICE_LABEL[k]}</button>)}
+                {(["mobile", "tablet", "desktop"] as DeviceKind[]).filter((k) => kinds.includes(k)).map((k) => <button key={k} role="radio" aria-checked={filter === k} className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>{DEVICE_LABEL[k]}</button>)}
               </div>
             )}
           </div>
           <div className="ex-grid">
             {shown.map((ex) => (
-              <article key={ex.id} className={`ex ${ex.device}`} onClick={() => loadExample(ex.id)}>
+              <button key={ex.id} className={`ex ${ex.device}`} disabled={busy} onClick={() => loadExample(ex.id)}>
                 <div className="ex-stage"><ExamplePreview ex={ex} /></div>
                 <div className="ex-foot">
                   <div className="ex-text">
-                    <div className="n">{EXAMPLE_TITLE[ex.id] ?? ex.name}</div>
-                    <div className="m">{DEVICE_LABEL[ex.device]} · {ex.screenCount} screens</div>
+                    <div className="n">{ex.name}</div>
+                    <div className="m">{EXAMPLE_TITLE[ex.id] ?? DEVICE_LABEL[ex.device]} · {DEVICE_LABEL[ex.device]} · {ex.screenCount} screens</div>
                   </div>
-                  <button className="open" disabled={busy} onClick={(e) => { e.stopPropagation(); void loadExample(ex.id); }}>Open example <Icon name="arrow-up-right" size={15} /></button>
+                  <span className="open">Open <Icon name="arrow-right" size={14} /></span>
                 </div>
-              </article>
+              </button>
             ))}
           </div>
         </section>
-
       </div>
     </div>
   );

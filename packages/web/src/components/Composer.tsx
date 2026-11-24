@@ -22,6 +22,7 @@ export function Composer() {
   const draft = useFlow((s) => s.composerDraft);
   const setDraft = useFlow((s) => s.setComposerDraft);
   const showToast = useFlow((s) => s.showToast);
+  const panel = useFlow((s) => s.panel);
   const [text, setText] = useState("");
   const [count, setCount] = useState(3);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -57,6 +58,8 @@ export function Composer() {
 
   const placeholder = !hasScreens ? "Ask about the brief, or press Generate" : picked ? `Change ${targetLabel}, or describe variants to explore…` : selectedScreen ? `Change ${selectedScreen.name}, or describe variants to explore…` : "Ask Claude to change something, anywhere in the flow…";
 
+  // With the Claude tab open there is already a place to type: the bar steps aside so there is only one.
+  if (panel === "claude") return null;
   return (
     <div className="composer-bar" onKeyDown={(e) => e.stopPropagation()}>
       <div className="cp-row">

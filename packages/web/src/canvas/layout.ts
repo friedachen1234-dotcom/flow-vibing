@@ -9,7 +9,7 @@ export const SCREEN_CHROME_Y = SCREEN_LABEL_H + 2 * SCREEN_BEZEL;
 export const screenW = (spec: DesignSpec, n: { width?: number }) => (n.width ?? spec.device.width) + 2 * SCREEN_BEZEL;
 export const screenH = (spec: DesignSpec, n: { height?: number }) => (n.height ?? spec.device.height) + SCREEN_CHROME_Y;
 export const EDGE_CASE_W = 240;
-export const EDGE_CASE_H = 226;
+export const EDGE_CASE_H = 168;
 /** Edge cases stack under their screen, shifted right so the rail from the card's corner runs beside them. */
 export const EDGE_CASE_INDENT = 36;
 export const EDGE_CASE_GAP = 14;
