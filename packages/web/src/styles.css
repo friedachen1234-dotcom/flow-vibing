@@ -944,3 +944,22 @@ button.pv-back:hover { background: var(--surface); color: var(--ink); }
 .state-chip:hover { color: var(--ink); border-color: #CBD2DE; }
 .state-chip.on { background: var(--accent-soft); border-color: #C9D4F7; color: var(--accent); font-weight: 600; }
 .inline-text.cap, .ins-title .cap { display: inline-block; }
+
+/* ===== Left rail, Figma-style: one button per group, the choices in its menu ===== */
+.canvas-bar { gap: 4px !important; padding: 6px !important; }
+.rail-tool { position: relative; display: flex; align-items: center; }
+.rail-tool .cb-btn { width: 36px !important; min-width: 36px !important; height: 36px !important; }
+.rail-caret { position: absolute; right: -5px; bottom: 2px; width: 12px; height: 14px; display: grid; place-items: center; border: 0; padding: 0; background: none; color: var(--ink-3); border-radius: 4px; opacity: .7; transition: opacity .15s, color .15s; }
+.rail-tool:hover .rail-caret, .rail-tool.open .rail-caret { opacity: 1; color: var(--ink); }
+.rail-tool.open > .cb-btn { background: var(--surface-2); }
+.cb-zoom-label { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-2); letter-spacing: -.01em; }
+.rail-menu { position: absolute; left: calc(100% + 12px); top: -6px; z-index: var(--z-popover, 60); min-width: 232px; padding: 6px; background: #1B1E24; color: #E8EBF1; border-radius: 12px; box-shadow: 0 12px 32px rgba(10,12,16,.28), 0 0 0 1px rgba(255,255,255,.06); animation: rm-in .18s var(--ease-out-expo); }
+@keyframes rm-in { from { opacity: 0; transform: translateX(-4px); } }
+.rm-group + .rm-group { border-top: 1px solid rgba(255,255,255,.08); margin-top: 6px; padding-top: 6px; }
+.rail-menu button { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 10px 0 6px; border: 0; border-radius: 7px; background: none; color: inherit; font: inherit; font-size: var(--t-13); font-weight: 500; text-align: left; }
+.rail-menu button:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.rail-menu button:hover:not(:disabled) .rm-key { color: rgba(255,255,255,.75); }
+.rail-menu button:disabled { opacity: .4; }
+.rm-check { width: 14px; display: grid; place-items: center; flex: none; }
+.rm-label { flex: 1; white-space: nowrap; }
+.rm-key { color: #8E96A6; font-size: var(--t-12); font-variant-numeric: tabular-nums; }
