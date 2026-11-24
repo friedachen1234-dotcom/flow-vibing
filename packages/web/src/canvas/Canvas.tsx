@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background, BackgroundVariant, MiniMap, ReactFlow, applyEdgeChanges, applyNodeChanges, useReactFlow, useViewport,
-  type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type OnSelectionChangeParams, MarkerType, useUpdateNodeInternals } from "@xyflow/react";
+  type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type OnSelectionChangeParams, MarkerType, useUpdateNodeInternals, useNodesInitialized } from "@xyflow/react";
 import { MAGIC_RELATION_LABELS, classifyTransition, classifyTransitions, hostScreen, mainMoves, type CanvasDoc, type CanvasNode, type DesignSpec, type MagicRelation, type ViewMode } from "@flow/shared";
-import { EDGE_CASE_W, FLOW_CARD_W, edgeCaseStackHeight, flowCardHeight, screenH, screenW, tidyLayout } from "./layout";
+import { EDGE_CASE_H, EDGE_CASE_W, FLOW_CARD_W, edgeCaseStackHeight, flowCardHeight, screenH, screenW, tidyLayout } from "./layout";
 import { Icon } from "../components/Icon";
 import { ToolRail } from "../components/ToolRail";
 import { api } from "../api";
@@ -288,16 +288,46 @@ export function Canvas() {
   // Screens are one size in flow view and another in prototype view, so a layout that is tidy in one can pile up in
   // the other. When a view switch leaves two screens overlapping, tidy for this view rather than show the pile.
   useEffect(() => {
-    const screens = canvas.nodes.filter((n): n is Extract<CanvasNode, { type: "screen" }> => n.type === "screen");
-    const size = (n: (typeof screens)[number]) => view === "flow" ? { w: FLOW_CARD_W, h: flowCardHeight(spec, n.screenId) } : { w: screenW(spec, n), h: screenH(spec, n) };
-    const overlap = screens.some((a, i) => screens.slice(i + 1).some((b) => {
+    // In flow view the edge cases stack under their screens, so a pile-up there counts too.
+    const laid = canvas.nodes.filter((n): n is Extract<CanvasNode, { type: "screen" | "edgeCase" }> => n.type === "screen" || (view === "flow" && showEdgeCases && n.type === "edgeCase"));
+    const size = (n: (typeof laid)[number]) => n.type === "edgeCase" ? { w: EDGE_CASE_W, h: EDGE_CASE_H } : view === "flow" ? { w: FLOW_CARD_W, h: flowCardHeight(spec, n.screenId) } : { w: screenW(spec, n), h: screenH(spec, n) };
+    const overlap = laid.some((a, i) => laid.slice(i + 1).some((b) => {
       const A = size(a), B = size(b);
-      return a.position.x < b.position.x + B.w && b.position.x < a.position.x + A.w && a.position.y < b.position.y + B.h && b.position.y < a.position.y + A.h;
+      return a.position.x < b.position.x + B.w - 4 && b.position.x < a.position.x + A.w - 4 && a.position.y < b.position.y + B.h - 4 && b.position.y < a.position.y + A.h - 4;
     }));
     // When the switch crossfades, the glide waits for it: motion under a crossfade is not seen.
     if (overlap) { const vs = useFlow.getState().viewSwitch; const start = () => glide((c) => tidyLayout(spec, c, view)); if (vs) void vs.then(start); else start(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
+
+  // Cards placed by hand or by an example can land on one another before anyone has seen how tall they render.
+  // Once React Flow has measured them, a free card that overlaps the one above it in its column moves just below it.
+  const measured = useNodesInitialized();
+  const spreadFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!measured || spreadFor.current === projectId) return;
+    spreadFor.current = projectId;
+    // Images settle their height only once decoded, so spread now and again when they have.
+    spread();
+    const imgs = Array.from(document.querySelectorAll<HTMLImageElement>(".react-flow__node img"));
+    let alive = true;
+    void Promise.all(imgs.map((i) => i.decode().catch(() => undefined))).then(() => window.setTimeout(() => { if (alive) spread(); }, 150));
+    return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [measured]);
+  function spread() {
+    const free = rf.getNodes().filter((n) => ["prompt", "note", "inspiration", "skill", "versionPin"].includes(n.type ?? "") && n.measured?.height);
+    const moved = new Map<string, { x: number; y: number }>();
+    const placed: { x: number; y: number; w: number; h: number }[] = [];
+    for (const n of [...free].sort((a, b) => a.position.y - b.position.y)) {
+      const w = n.measured!.width ?? 240, h = n.measured!.height!;
+      let y = n.position.y;
+      for (const r of placed) if (n.position.x < r.x + r.w && r.x < n.position.x + w && y < r.y + r.h + 16 && r.y < y + h) y = r.y + r.h + 20;
+      if (y !== n.position.y) moved.set(n.id, { x: n.position.x, y });
+      placed.push({ x: n.position.x, y, w, h });
+    }
+    if (moved.size) updateCanvas((c) => ({ ...c, nodes: c.nodes.map((n) => (moved.has(n.id) ? { ...n, position: moved.get(n.id)! } : n)) }));
+  }
 
   const [nodes, setNodes] = useState<Node[]>(derived.nodes);
   const [edges, setEdges] = useState<Edge[]>(derived.edges);
@@ -525,23 +555,21 @@ export function Canvas() {
         onPaneClick={onPaneClick}
       >
         <Background variant={BackgroundVariant.Dots} gap={22} size={1.4} color="var(--canvas-dot)" />
-        {showMinimap && <MiniMap pannable zoomable nodeColor={minimapColor} nodeStrokeWidth={0} maskColor="rgba(238,241,246,.7)" />}
+        {showMinimap && <MiniMap pannable zoomable nodeColor={minimapColor} nodeStrokeWidth={0} nodeBorderRadius={6} maskColor="rgba(243,245,250,.72)" />}
       </ReactFlow>
 
-      {view === "flow" && ecCount > 0 && (
-        <div className="ec-toggle tips-down" role="group" aria-label="Edge cases">
-          <button className="ec-btn" onClick={() => setShowEdgeCases(!showEdgeCases)} aria-pressed={showEdgeCases} data-tip="Show or hide edge cases" data-key="E">
-            <Icon name={showEdgeCases ? "eye" : "eye-off"} size={15} /> Edge cases <b>{showEdgeCases ? "Shown" : "Hidden"}</b> <Icon name="chevron-down" size={12} />
-          </button>
-          <div className="legend">
-            <span><i className="ln main" /> Main flow</span>
-            <span><i className="ln alt" /> Other moves</span>
-            <span><i className="ln ec" /> Edge case</span>
-          </div>
+      {view === "flow" && (
+        <div className="flow-key" role="group" aria-label="Legend">
+          <span><i className="ln main" /> Main flow</span>
+          <span><i className="ln alt" /> Other moves</span>
+          {ecCount > 0 && (
+            <button className={`fk-ec ${showEdgeCases ? "on" : ""}`} onClick={() => setShowEdgeCases(!showEdgeCases)} aria-pressed={showEdgeCases} title={`${showEdgeCases ? "Hide" : "Show"} edge cases (E)`}>
+              <i className="ln ec" /> Edge cases <Icon name={showEdgeCases ? "eye" : "eye-off"} size={13} />
+            </button>
+          )}
         </div>
       )}
 
-      {showMinimap && <button className="mm-expand" onClick={fit} title="Fit to content (⇧1)" aria-label="Fit to content"><Icon name="expand" size={13} /></button>}
 
       <Composer />
 

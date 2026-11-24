@@ -112,12 +112,11 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
       <Handle type="source" position={Position.Bottom} id="below" className="ec-port" />
       {/* The label above the device and the bezel around it both pick the frame up, selected or not. */}
       <div className="hdr grab" onDoubleClick={() => select({ kind: "node", id: node.id })}>
-        {showing.id !== screen.id
-          ? <button className="icon nodrag" onClick={() => post({ type: "flow:goto", screenId: screen.id })} title={`Back to ${screen.name}`} aria-label="Back"><Icon name="arrow-left" size={14} /></button>
-          : <span className="icon dim" aria-hidden="true"><Icon name="arrow-left" size={14} /></span>}
-        <span className="name">{showing.id !== screen.id ? showing.name : screen.name}</span>
-        <span className="pill ok live"><span className="pill-dot" /> Live</span>
-        {edgeCases.length > 0 && <button className="pill warn nodrag" title={edgeCases.map((e) => e.scenario).join("\n") + "\n\nClick to inspect"} onClick={inspect}>{edgeCases.length} edge {edgeCases.length === 1 ? "case" : "cases"}</button>}
+        {/* The label is the screen's name and little else: a way back when the prototype has moved on, a dot for edge
+            cases, the state, and two actions that show on hover. */}
+        {showing.id !== screen.id && <button className="icon back nodrag" onClick={() => post({ type: "flow:goto", screenId: screen.id })} title={`Back to ${screen.name}`} aria-label="Back"><Icon name="arrow-left" size={14} /></button>}
+        <span className="name">{showing.id !== screen.id ? <><span className="muted">{screen.name} /</span> {showing.name}</> : screen.name}</span>
+        {edgeCases.length > 0 && <button className="ec-dot nodrag" title={`${edgeCases.length} edge ${edgeCases.length === 1 ? "case" : "cases"}\n` + edgeCases.map((e) => `· ${e.scenario}`).join("\n")} onClick={inspect} aria-label={`${edgeCases.length} edge cases`}>{edgeCases.length}</button>}
         <span style={{ flex: 1 }} />
         {showing.states.length > 0 && (
           <label className="state-select nodrag">
@@ -127,8 +126,10 @@ export const ScreenNode = memo(function ScreenNode({ data, selected }: N<"screen
             <Icon name="chevron-down" size={12} />
           </label>
         )}
-        <button className="icon nodrag" title="Reload" aria-label="Reload" onClick={() => post({ type: "flow:reload" })}><Icon name="rotate-ccw" size={13} /></button>
-        <button className="icon nodrag" title="Inspect" aria-label="Inspect" onClick={inspect}><Icon name="more-horizontal" size={15} /></button>
+        <span className="hdr-actions">
+          <button className="icon nodrag" title="Reload" aria-label="Reload" onClick={() => post({ type: "flow:reload" })}><Icon name="rotate-ccw" size={13} /></button>
+          <button className="icon nodrag" title="Inspect" aria-label="Inspect" onClick={inspect}><Icon name="more-horizontal" size={15} /></button>
+        </span>
       </div>
       {/* Unselected: a veil over the prototype, so the whole frame drags and a click selects. Selected or picking: the prototype takes the pointer.
           It sits outside the nodrag wrapper on purpose; inside it, the node would refuse to drag. */}
@@ -209,9 +210,9 @@ export const ScreenCardNode = memo(function ScreenCardNode({ data, selected }: N
         <div className="hdr-text">
           <div className="name-row"><div className="name">{screen.name}</div><button className="icon nodrag" onClick={inspect} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button></div>
           <div className="purpose">{screen.purpose}</div>
-          <div className="chips">
-            {defaultState && <span className="pill blue">{screen.states.length > 1 ? `${screen.states.length} states` : defaultState.name}</span>}
-            {ecs.length > 0 && <button className="pill warn nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: `edgecase:${ecs[0].id}` }); }} title={ecs.map((e) => e.scenario).join("\n")}>{ecs.length} edge {ecs.length === 1 ? "case" : "cases"}</button>}
+          <div className="meta">
+            {defaultState && <span>{screen.states.length > 1 ? `${screen.states.length} states` : defaultState.name}</span>}
+            {ecs.length > 0 && <button className="meta-ec nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: `edgecase:${ecs[0].id}` }); }} title={ecs.map((e) => e.scenario).join("\n")}><i />{ecs.length} edge {ecs.length === 1 ? "case" : "cases"}</button>}
           </div>
         </div>
       </div>
@@ -244,18 +245,15 @@ export const EdgeCaseNode = memo(function EdgeCaseNode({ data, selected }: N<"ed
       <DropTarget />
       <Handle type="target" position={Position.Left} id="ec-in" className="ec-port" style={{ top: 30 }} />
       <Handle type="target" position={Position.Left} id="in" className="magic" style={{ top: "60%" }} />
-      <div className="hdr">
-        {hostId && <Thumb screenId={hostId} width={56} aspect={1.2} className="dim" />}
-        <div className="hdr-text">
-          <div className="name-row"><div className="name">{ec.scenario}</div><button className="icon nodrag" onClick={inspect} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button></div>
-          <div className="handling">{ec.handling}</div>
-        </div>
+      <div className="ec-top">
+        <span className="sev">{cap(ec.severity)}</span>
+        <span className="ec-on">{via ? `On “${cap(via.trigger)}”` : spec.screens.find((s) => s.id === hostId)?.name ?? "Edge case"}</span>
+        <span style={{ flex: 1 }} />
+        <button className="icon nodrag" onClick={inspect} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={15} /></button>
       </div>
-      <div className="rows">
-        <div className="row"><span className="k">Severity</span><span className={`pill ${ec.severity === "high" ? "err" : ec.severity === "low" ? "grey" : "warn"}`}>{ec.severity}</span></div>
-        <div className="row"><span className="k">{via ? "On" : "Screen"}</span><span className="v">{via ? `${cap(via.trigger)} → ${spec.screens.find((s) => s.id === via.to.screenId)?.name ?? via.to.screenId}` : spec.screens.find((s) => s.id === hostId)?.name ?? "—"}</span></div>
-      </div>
-      <button className="btn ec-btn nodrag" onClick={preview}><Icon name="play" size={12} /> Preview</button>
+      <div className="ec-title">{ec.scenario}</div>
+      <div className="ec-handling">{ec.handling}</div>
+      <button className="ec-preview nodrag" onClick={preview}><Icon name="play" size={11} /> Preview</button>
     </div>
   );
 });
@@ -272,19 +270,18 @@ export const InspirationNode = memo(function InspirationNode({ data, selected }:
       <DropTarget />
       <Handle type="source" position={Position.Right} id="out" className="magic" />
       <Handle type="target" position={Position.Left} id="in" className="magic" />
-      {/* An image reference is the image: it fills the card and its kind sits on it as a chip. Other kinds keep a header row. */}
-      {n.kind === "image" && n.path ? (
-        <div className="media">
-          <img src={api.fileUrl(projectId, n.path)} alt={n.caption || n.title} draggable={false} />
-          <span className="kind-chip"><Icon name="image" size={12} /> {kind}</span>
-          <button className="icon more nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: n.id }); setPanel("inspect"); }} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button>
-        </div>
-      ) : (
-        <div className="hdr"><Icon name={n.kind === "url" ? "share" : n.kind === "text" ? "sticky-note" : "sliders"} size={14} /><span className="kind">{kind}</span><span style={{ flex: 1 }} /><button className="icon nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: n.id }); setPanel("inspect"); }} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={16} /></button></div>
-      )}
+      {/* On a whiteboard an image is just the image: a small label above it, the words under it, no card around it. */}
+      <div className="ref-label">
+        <Icon name={n.kind === "image" ? "image" : n.kind === "url" ? "share" : n.kind === "text" ? "sticky-note" : "sliders"} size={12} /> {kind}
+        <span style={{ flex: 1 }} />
+        <button className="icon more nodrag" onClick={(ev) => { ev.stopPropagation(); select({ kind: "node", id: n.id }); setPanel("inspect"); }} title="Inspect" aria-label="Inspect"><Icon name="more-horizontal" size={15} /></button>
+      </div>
+      {n.kind === "image" && n.path && <div className="media"><img src={api.fileUrl(projectId, n.path)} alt={n.caption || n.title} draggable={false} /></div>}
+      {n.kind !== "image" && <div className="ref-box">
       {n.kind === "style" && n.text && <div className="swatch">{/^#[0-9a-f]{3,8}$/i.test(n.text) && <span className="chip" style={{ background: n.text }} />}<span className="mono">{n.text}</span></div>}
       {n.kind === "text" && <div className="text">{n.text}</div>}
       {n.kind === "url" && <div className="text"><a href={n.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{n.url}</a></div>}
+      </div>}
       <div className="body">
         <div className="title">{n.title}</div>
         {(n.caption || n.description) && <div className="caption">{n.caption || n.description}</div>}
