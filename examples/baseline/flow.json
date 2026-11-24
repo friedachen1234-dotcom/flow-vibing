@@ -2,132 +2,630 @@
   "version": 1,
   "id": "baseline",
   "name": "Baseline",
-  "brief": "A wearable companion for people who train hard and want to know whether their body is ready for it. The whole job is one number every morning and an honest reason behind it. Dark, data-dense, no cheerleading. Numbers are the interface; words only explain them.",
-  "device": { "kind": "mobile", "width": 390, "height": 844 },
+  "brief": "A training program in your pocket. You pick a goal, the program lays out the weeks, and a coach adjusts the plan as life happens. Home answers one question, what should I do this week, with the next session first and the weekly targets beside it. Progress, the plan, the calendar and the coach are one tap away, and any of them can change the plan. Dark, calm, data-forward.",
+  "device": {
+    "kind": "mobile",
+    "width": 390,
+    "height": 844
+  },
   "tokens": {
     "colors": {
-      "bg": "#0A0B0D", "surface": "#141619", "surface-2": "#1C1F24", "ink": "#FFFFFF", "muted": "#8B9099",
-      "dim": "#5A6069", "line": "#24272D", "high": "#16EC06", "mid": "#FFD500", "low": "#FF3B30",
-      "strain": "#0093E7", "sleep": "#7B61FF", "accent": "#16EC06", "accent-ink": "#04140A"
+      "bg": "#101518",
+      "surface": "#202528",
+      "surface-2": "#293238",
+      "ink": "#FFFFFF",
+      "muted": "#B3B5B7",
+      "dim": "#808386",
+      "line": "#25292C",
+      "accent": "#67AEE6",
+      "accent-ink": "#04101A",
+      "recovery": "#00F19F",
+      "strain": "#0093E7",
+      "sleep": "#7BA1BB",
+      "warning": "#FCAC5D",
+      "critical": "#FF0026",
+      "coach": "#8B62FF"
     },
     "type": {
-      "body": "system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', sans-serif",
-      "display": "system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', sans-serif",
-      "mono": "ui-monospace, 'SF Mono', Menlo, monospace"
+      "body": "Figtree, system-ui, -apple-system, sans-serif",
+      "display": "Figtree, system-ui, -apple-system, sans-serif",
+      "mono": "Barlow, ui-monospace, Menlo, monospace"
     },
-    "spacing": { "unit": "8px", "page": "18px" },
-    "radius": { "card": "16px", "control": "10px", "pill": "999px" },
-    "motion": { "fast": "140ms", "base": "220ms" }
+    "spacing": {
+      "unit": "8px",
+      "page": "16px"
+    },
+    "radius": {
+      "card": "16px",
+      "control": "12px",
+      "pill": "999px"
+    },
+    "motion": {
+      "fast": "140ms",
+      "base": "220ms"
+    }
   },
   "components": [
-    { "id": "metric-ring", "name": "Metric ring", "description": "Circular gauge whose colour band carries the verdict, with the figure centred", "usedIn": ["today", "recovery"] },
-    { "id": "stat-tile", "name": "Stat tile", "description": "Uppercase label, large tabular figure, delta against baseline underneath", "usedIn": ["today", "recovery", "sleep", "strain", "activity"] },
-    { "id": "zone-bars", "name": "Zone bars", "description": "Five stacked bars for heart-rate zones, width by time in zone", "usedIn": ["activity"] }
+    {
+      "id": "session-card",
+      "name": "Session card",
+      "description": "Icon tile, name and detail; a check once done. Taps open the session drawer",
+      "usedIn": [
+        "program",
+        "calendar"
+      ]
+    },
+    {
+      "id": "target-ring",
+      "name": "Target ring",
+      "description": "Small ring per weekly target, count inside or beside it",
+      "usedIn": [
+        "program"
+      ]
+    },
+    {
+      "id": "trend-graph",
+      "name": "Trend graph",
+      "description": "Goal line in white, actuals in blue, completion in green",
+      "usedIn": [
+        "progress-tab",
+        "progress"
+      ]
+    },
+    {
+      "id": "ask-bar",
+      "name": "Ask bar",
+      "description": "Docked composer that opens the coach with the current context",
+      "usedIn": [
+        "program",
+        "progress",
+        "plan",
+        "calendar"
+      ]
+    }
   ],
   "screens": [
     {
-      "id": "today",
-      "name": "Today",
-      "purpose": "Answer one question on waking: how ready is the body today",
-      "file": "screens/today.html",
+      "id": "program",
+      "name": "My program",
+      "purpose": "Show this week: what to do next, the weekly targets, and how far into the program you are",
+      "file": "screens/program.html",
       "states": [
-        { "id": "default", "name": "Default", "description": "Recovery, sleep and strain all in", "isDefault": true },
-        { "id": "syncing", "name": "Syncing", "description": "Strap data still uploading; figures replaced by placeholders", "trigger": "app opened before sync finished", "isDefault": false },
-        { "id": "not-worn", "name": "Not worn", "description": "No overnight data at all; explain rather than show a zero", "trigger": "strap off during sleep", "isDefault": false }
+        {
+          "id": "run",
+          "name": "Running",
+          "description": "Half-marathon program, week 6 of 18",
+          "isDefault": true
+        },
+        {
+          "id": "strength",
+          "name": "Strength",
+          "description": "Squat program, week 7 of 16",
+          "isDefault": false
+        },
+        {
+          "id": "health",
+          "name": "Healthspan",
+          "description": "Steady-movement program, week 8 of 16",
+          "isDefault": false
+        },
+        {
+          "id": "sleep",
+          "name": "Sleep",
+          "description": "Sleep-rhythm program, week 6 of 18",
+          "isDefault": false
+        }
       ],
       "elements": [
-        { "id": "recovery-ring", "role": "hero", "label": "Recovery ring" },
-        { "id": "sleep-card", "role": "card", "label": "Sleep card" },
-        { "id": "strain-card", "role": "card", "label": "Strain card" },
-        { "id": "vitals-row", "role": "list", "label": "Vitals row" },
-        { "id": "plan-card", "role": "card", "label": "Today's plan" }
+        {
+          "id": "menu-button",
+          "role": "button",
+          "label": "Adjust"
+        },
+        {
+          "id": "program-title",
+          "role": "header",
+          "label": "Program title and week"
+        },
+        {
+          "id": "progress-tab",
+          "role": "tab",
+          "label": "Progress tab"
+        },
+        {
+          "id": "session",
+          "role": "card",
+          "label": "Next session"
+        },
+        {
+          "id": "full-schedule",
+          "role": "button",
+          "label": "View full schedule"
+        },
+        {
+          "id": "weekly-target",
+          "role": "card",
+          "label": "Weekly target"
+        },
+        {
+          "id": "ask-bar",
+          "role": "input",
+          "label": "Ask the coach"
+        }
       ],
       "provenance": []
     },
     {
-      "id": "recovery",
-      "name": "Recovery",
-      "purpose": "Show what drove the number, so it can be trusted or argued with",
-      "file": "screens/recovery.html",
+      "id": "progress-tab",
+      "name": "Progress",
+      "purpose": "Answer whether the program is working, without leaving home",
+      "file": "screens/progress-tab.html",
       "states": [
-        { "id": "default", "name": "Default", "description": "Green recovery with contributing inputs", "isDefault": true },
-        { "id": "low", "name": "Low recovery", "description": "Red band; the guidance changes and the drivers are ranked by damage", "trigger": "recovery under 34%", "isDefault": false }
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "Goal trend and weekly bars",
+          "isDefault": true
+        }
       ],
       "elements": [
-        { "id": "back-button", "role": "button", "label": "Back" },
-        { "id": "recovery-hero", "role": "hero", "label": "Recovery hero" },
-        { "id": "driver-list", "role": "list", "label": "Contributing inputs" },
-        { "id": "trend-chart", "role": "image", "label": "Fourteen day trend" }
+        {
+          "id": "week-tab",
+          "role": "tab",
+          "label": "This week tab"
+        },
+        {
+          "id": "trend-card",
+          "role": "card",
+          "label": "Goal trend"
+        },
+        {
+          "id": "add-graph",
+          "role": "button",
+          "label": "Add a graph"
+        }
       ],
       "provenance": []
     },
     {
-      "id": "sleep",
-      "name": "Sleep",
-      "purpose": "Compare what the body needed against what it got",
-      "file": "screens/sleep.html",
+      "id": "progress",
+      "name": "My progress",
+      "purpose": "Every graph the program tracks, with what each one means",
+      "file": "screens/progress.html",
       "states": [
-        { "id": "default", "name": "Default", "description": "Performance against need, with stages", "isDefault": true },
-        { "id": "insufficient", "name": "Short sleep", "description": "Well under need; debt is surfaced first", "trigger": "performance under 70%", "isDefault": false }
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "All graphs",
+          "isDefault": true
+        }
       ],
       "elements": [
-        { "id": "back-button", "role": "button", "label": "Back" },
-        { "id": "sleep-hero", "role": "hero", "label": "Sleep performance" },
-        { "id": "stage-bar", "role": "image", "label": "Sleep stages" },
-        { "id": "sleep-stats", "role": "list", "label": "Sleep statistics" }
+        {
+          "id": "back",
+          "role": "button",
+          "label": "Back"
+        },
+        {
+          "id": "add-graph",
+          "role": "button",
+          "label": "Add a graph"
+        }
       ],
       "provenance": []
     },
     {
-      "id": "strain",
-      "name": "Strain",
-      "purpose": "Track load accumulated today against what recovery can afford",
-      "file": "screens/strain.html",
+      "id": "plan",
+      "name": "My plan",
+      "purpose": "The goal, the phases and the coach's notes: the program as a whole",
+      "file": "screens/plan.html",
       "states": [
-        { "id": "default", "name": "Default", "description": "Strain so far with the day's activities", "isDefault": true },
-        { "id": "over", "name": "Over target", "description": "Past the recommended ceiling; the gauge and copy both change", "trigger": "strain above target", "isDefault": false }
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "Current phase open, later ones locked",
+          "isDefault": true
+        }
       ],
       "elements": [
-        { "id": "back-button", "role": "button", "label": "Back" },
-        { "id": "strain-gauge", "role": "hero", "label": "Day strain gauge" },
-        { "id": "activity-list", "role": "list", "label": "Activities" },
-        { "id": "load-stats", "role": "list", "label": "Load statistics" }
+        {
+          "id": "back",
+          "role": "button",
+          "label": "Back"
+        },
+        {
+          "id": "structure-edit",
+          "role": "button",
+          "label": "Edit program structure"
+        }
       ],
       "provenance": []
     },
     {
-      "id": "activity",
-      "name": "Activity",
-      "purpose": "Break one session down into where the time was actually spent",
-      "file": "screens/activity.html",
+      "id": "calendar",
+      "name": "Training calendar",
+      "purpose": "Look ahead week by week; later phases stay locked until the checkpoint",
+      "file": "screens/calendar.html",
       "states": [
-        { "id": "default", "name": "Default", "description": "One logged session with zones", "isDefault": true }
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "This week first",
+          "isDefault": true
+        }
       ],
       "elements": [
-        { "id": "back-button", "role": "button", "label": "Back" },
-        { "id": "session-hero", "role": "hero", "label": "Session summary" },
-        { "id": "zone-bars", "role": "list", "label": "Heart rate zones" },
-        { "id": "session-stats", "role": "list", "label": "Session statistics" }
+        {
+          "id": "back",
+          "role": "button",
+          "label": "Back"
+        },
+        {
+          "id": "week-stepper",
+          "role": "control",
+          "label": "Week stepper"
+        }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "session",
+      "name": "Session",
+      "purpose": "One session up close: what it is, how hard, and starting it",
+      "file": "screens/session.html",
+      "states": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "Today's key run",
+          "isDefault": true
+        }
+      ],
+      "elements": [
+        {
+          "id": "close",
+          "role": "button",
+          "label": "Close"
+        },
+        {
+          "id": "start-now",
+          "role": "button",
+          "label": "Start now"
+        },
+        {
+          "id": "add-activity",
+          "role": "button",
+          "label": "Add activity"
+        }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "menu",
+      "name": "Adjust",
+      "purpose": "Every way to change the program, in one place",
+      "file": "screens/menu.html",
+      "states": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "Menu open over home",
+          "isDefault": true
+        }
+      ],
+      "elements": [
+        {
+          "id": "backdrop",
+          "role": "overlay",
+          "label": "Backdrop"
+        },
+        {
+          "id": "update-schedule",
+          "role": "menuitem",
+          "label": "Update schedule"
+        },
+        {
+          "id": "end-program",
+          "role": "menuitem",
+          "label": "End your program"
+        }
+      ],
+      "provenance": []
+    },
+    {
+      "id": "coach",
+      "name": "Coach",
+      "purpose": "Ask the coach to change the plan in plain words; it answers with the change",
+      "file": "screens/coach.html",
+      "states": [
+        {
+          "id": "default",
+          "name": "Default",
+          "description": "This morning's check-in",
+          "isDefault": true
+        }
+      ],
+      "elements": [
+        {
+          "id": "close",
+          "role": "button",
+          "label": "Close"
+        },
+        {
+          "id": "composer",
+          "role": "input",
+          "label": "Ask the coach"
+        }
       ],
       "provenance": []
     }
   ],
   "transitions": [
-    { "id": "today-to-recovery", "from": { "screenId": "today", "elementId": "recovery-ring" }, "to": { "screenId": "recovery" }, "trigger": "tap the ring", "animation": "push" },
-    { "id": "today-to-sleep", "from": { "screenId": "today", "elementId": "sleep-card" }, "to": { "screenId": "sleep" }, "trigger": "tap sleep", "animation": "push" },
-    { "id": "today-to-strain", "from": { "screenId": "today", "elementId": "strain-card" }, "to": { "screenId": "strain" }, "trigger": "tap strain", "animation": "push" },
-    { "id": "recovery-back", "from": { "screenId": "recovery", "elementId": "back-button" }, "to": { "screenId": "today" }, "trigger": "tap back", "animation": "pop" },
-    { "id": "recovery-low", "from": { "screenId": "recovery", "elementId": "recovery-hero" }, "to": { "screenId": "recovery", "stateId": "low" }, "trigger": "tap the band", "condition": "recovery under 34%", "animation": "none" },
-    { "id": "sleep-back", "from": { "screenId": "sleep", "elementId": "back-button" }, "to": { "screenId": "today" }, "trigger": "tap back", "animation": "pop" },
-    { "id": "strain-back", "from": { "screenId": "strain", "elementId": "back-button" }, "to": { "screenId": "today" }, "trigger": "tap back", "animation": "pop" },
-    { "id": "strain-to-activity", "from": { "screenId": "strain", "elementId": "activity-list" }, "to": { "screenId": "activity" }, "trigger": "tap a session", "animation": "push" },
-    { "id": "activity-back", "from": { "screenId": "activity", "elementId": "back-button" }, "to": { "screenId": "strain" }, "trigger": "tap back", "animation": "pop" }
+    {
+      "id": "program-to-session",
+      "from": {
+        "screenId": "program",
+        "elementId": "session"
+      },
+      "to": {
+        "screenId": "session"
+      },
+      "trigger": "tap a session",
+      "animation": "modal"
+    },
+    {
+      "id": "program-to-progress-tab",
+      "from": {
+        "screenId": "program",
+        "elementId": "progress-tab"
+      },
+      "to": {
+        "screenId": "progress-tab"
+      },
+      "trigger": "tap Progress",
+      "animation": "none"
+    },
+    {
+      "id": "program-to-plan",
+      "from": {
+        "screenId": "program",
+        "elementId": "program-title"
+      },
+      "to": {
+        "screenId": "plan"
+      },
+      "trigger": "tap the program title",
+      "animation": "push"
+    },
+    {
+      "id": "program-to-calendar",
+      "from": {
+        "screenId": "program",
+        "elementId": "full-schedule"
+      },
+      "to": {
+        "screenId": "calendar"
+      },
+      "trigger": "tap View full schedule",
+      "animation": "push"
+    },
+    {
+      "id": "program-to-menu",
+      "from": {
+        "screenId": "program",
+        "elementId": "menu-button"
+      },
+      "to": {
+        "screenId": "menu"
+      },
+      "trigger": "tap the pencil",
+      "animation": "fade"
+    },
+    {
+      "id": "program-to-coach",
+      "from": {
+        "screenId": "program",
+        "elementId": "ask-bar"
+      },
+      "to": {
+        "screenId": "coach"
+      },
+      "trigger": "tap the ask bar",
+      "animation": "modal"
+    },
+    {
+      "id": "progress-tab-to-progress",
+      "from": {
+        "screenId": "progress-tab",
+        "elementId": "trend-card"
+      },
+      "to": {
+        "screenId": "progress"
+      },
+      "trigger": "tap the goal trend",
+      "animation": "push"
+    },
+    {
+      "id": "progress-tab-to-coach",
+      "from": {
+        "screenId": "progress-tab",
+        "elementId": "add-graph"
+      },
+      "to": {
+        "screenId": "coach"
+      },
+      "trigger": "tap Add customized graph",
+      "animation": "modal"
+    },
+    {
+      "id": "progress-tab-to-program",
+      "from": {
+        "screenId": "progress-tab",
+        "elementId": "week-tab"
+      },
+      "to": {
+        "screenId": "program"
+      },
+      "trigger": "tap This week",
+      "animation": "none"
+    },
+    {
+      "id": "progress-to-coach",
+      "from": {
+        "screenId": "progress",
+        "elementId": "add-graph"
+      },
+      "to": {
+        "screenId": "coach"
+      },
+      "trigger": "tap Add customized graph",
+      "animation": "modal"
+    },
+    {
+      "id": "progress-to-progress-tab",
+      "from": {
+        "screenId": "progress",
+        "elementId": "back"
+      },
+      "to": {
+        "screenId": "progress-tab"
+      },
+      "trigger": "tap back",
+      "animation": "pop"
+    },
+    {
+      "id": "plan-to-coach",
+      "from": {
+        "screenId": "plan",
+        "elementId": "structure-edit"
+      },
+      "to": {
+        "screenId": "coach"
+      },
+      "trigger": "tap Edit on the structure",
+      "animation": "modal"
+    },
+    {
+      "id": "plan-to-program",
+      "from": {
+        "screenId": "plan",
+        "elementId": "back"
+      },
+      "to": {
+        "screenId": "program"
+      },
+      "trigger": "tap back",
+      "animation": "pop"
+    },
+    {
+      "id": "calendar-to-program",
+      "from": {
+        "screenId": "calendar",
+        "elementId": "back"
+      },
+      "to": {
+        "screenId": "program"
+      },
+      "trigger": "tap back",
+      "animation": "pop"
+    },
+    {
+      "id": "session-to-coach",
+      "from": {
+        "screenId": "session",
+        "elementId": "add-activity"
+      },
+      "to": {
+        "screenId": "coach"
+      },
+      "trigger": "tap Add activity",
+      "animation": "modal"
+    },
+    {
+      "id": "session-to-program",
+      "from": {
+        "screenId": "session",
+        "elementId": "close"
+      },
+      "to": {
+        "screenId": "program"
+      },
+      "trigger": "tap close",
+      "animation": "pop"
+    },
+    {
+      "id": "menu-to-coach",
+      "from": {
+        "screenId": "menu",
+        "elementId": "update-schedule"
+      },
+      "to": {
+        "screenId": "coach"
+      },
+      "trigger": "tap Update schedule",
+      "animation": "modal"
+    },
+    {
+      "id": "menu-to-program",
+      "from": {
+        "screenId": "menu",
+        "elementId": "backdrop"
+      },
+      "to": {
+        "screenId": "program"
+      },
+      "trigger": "tap outside",
+      "animation": "fade"
+    },
+    {
+      "id": "coach-to-program",
+      "from": {
+        "screenId": "coach",
+        "elementId": "close"
+      },
+      "to": {
+        "screenId": "program"
+      },
+      "trigger": "tap close",
+      "animation": "pop"
+    }
   ],
   "edgeCases": [
-    { "id": "strap-not-worn", "attachedTo": { "screenId": "today" }, "scenario": "Strap was off overnight, so there is no recovery to report", "handling": "Say there is no reading and why, and offer yesterday's figure for context. Never show 0%", "severity": "high" },
-    { "id": "sync-lag", "attachedTo": { "screenId": "today" }, "scenario": "App opens before the strap has finished uploading", "handling": "Syncing state holds the layout with placeholders so nothing jumps when the numbers land", "severity": "medium" },
-    { "id": "nap-not-counted", "attachedTo": { "screenId": "sleep" }, "scenario": "A daytime nap is recorded separately from the main sleep", "handling": "Show the nap as its own row contributing to need, not merged into the night", "severity": "low" },
-    { "id": "strain-over-ceiling", "attachedTo": { "transitionId": "today-to-strain" }, "scenario": "Training pushes strain past what a low recovery can afford", "handling": "Gauge turns and the copy names the risk plainly, without scolding", "severity": "medium" },
-    { "id": "hr-dropout", "attachedTo": { "screenId": "activity" }, "scenario": "Heart rate signal drops mid-session", "handling": "Mark the gap in the zone bars rather than interpolating over it", "severity": "medium" }
+    {
+      "id": "missed-session",
+      "attachedTo": {
+        "screenId": "program"
+      },
+      "scenario": "A key session was missed yesterday",
+      "handling": "Keep it in the schedule, marked missed rather than gone. The coach offers to move it; the week's targets do not reset.",
+      "severity": "medium"
+    },
+    {
+      "id": "first-week",
+      "attachedTo": {
+        "screenId": "progress-tab"
+      },
+      "scenario": "First week of the program: one data point, no trend yet",
+      "handling": "Show the starting point and the goal line only, and say when the first trend will appear. Never draw a flat line as if it were a result.",
+      "severity": "high"
+    },
+    {
+      "id": "end-by-mistake",
+      "attachedTo": {
+        "transitionId": "menu-to-coach"
+      },
+      "scenario": "Someone taps End your program meaning to pause",
+      "handling": "Ending always confirms, and offers Ease off or pause first. Ending keeps the history.",
+      "severity": "high"
+    },
+    {
+      "id": "locked-phase",
+      "attachedTo": {
+        "screenId": "calendar"
+      },
+      "scenario": "Looking at weeks in a phase that is still locked",
+      "handling": "Show the weeks with their shape but no sessions, and say what unlocks them: the checkpoint at the end of this phase.",
+      "severity": "low"
+    }
   ]
 }

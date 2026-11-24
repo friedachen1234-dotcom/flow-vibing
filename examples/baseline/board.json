@@ -4,7 +4,7 @@
       "id": "ref-ring",
       "type": "inspiration",
       "kind": "image",
-      "title": "Recovery ring",
+      "title": "Progress ring",
       "caption": "One band, thick stroke, round caps. The figure sits alone in the middle.",
       "description": "",
       "path": "inspirations/recovery-ring.svg",
@@ -19,7 +19,7 @@
       "type": "inspiration",
       "kind": "image",
       "title": "Type & hierarchy",
-      "caption": "Numeral scale and metric styling for key health data.",
+      "caption": "Numeral scale and metric styling for key figures.",
       "description": "",
       "path": "inspirations/type-hierarchy.svg",
       "position": {
@@ -29,36 +29,30 @@
       "width": 224
     },
     {
-      "id": "vp-recovery-ring",
+      "id": "vp-weekly-target",
       "type": "variantPanel",
       "target": {
-        "screenId": "today",
-        "elementId": "recovery-ring"
+        "screenId": "program",
+        "elementId": "weekly-target"
       },
-      "direction": "Keep the verdict readable",
+      "direction": "Keep every target readable",
       "options": [
         {
-          "id": "full",
-          "label": "Full ring",
-          "rationale": "Same idea, more weight. Reads from further away.",
-          "file": "variants/vp-recovery-ring/full.html"
+          "id": "reuse",
+          "label": "Reuse the ring",
+          "rationale": "The existing progress ring, unchanged. Least to build and already familiar.",
+          "file": "variants/vp-weekly-target/reuse.html"
         },
         {
-          "id": "arc",
-          "label": "Open arc",
-          "rationale": "Frees vertical space for the cards underneath.",
-          "file": "variants/vp-recovery-ring/arc.html"
-        },
-        {
-          "id": "bar",
-          "label": "Minimal bar",
-          "rationale": "Drops the gauge. The figure and a scale carry it.",
-          "file": "variants/vp-recovery-ring/bar.html"
+          "id": "modified",
+          "label": "Ring with a subline",
+          "rationale": "The number moves beside the ring, so long values and units stay readable.",
+          "file": "variants/vp-weekly-target/modified.html"
         }
       ],
       "position": {
-        "x": -143,
-        "y": 964
+        "x": -33,
+        "y": 944
       }
     }
   ],
@@ -67,17 +61,17 @@
       "id": "magic-ref-ring",
       "type": "magic",
       "source": "ref-ring",
-      "target": "screen:today",
-      "targetElementId": "recovery-ring",
+      "target": "screen:program",
+      "targetElementId": "weekly-target",
       "relation": "match-style",
       "note": ""
     },
     {
-      "id": "link-vp-recovery-ring",
+      "id": "link-vp-weekly-target",
       "type": "variantLink",
-      "source": "screen:today",
-      "target": "vp-recovery-ring",
-      "targetElementId": "recovery-ring",
+      "source": "screen:program",
+      "target": "vp-weekly-target",
+      "targetElementId": "weekly-target",
       "note": ""
     }
   ]

@@ -179,9 +179,16 @@ export async function createDemoProject(): Promise<ProjectBundle> {
   return loadProject(id);
 }
 
-export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; width: number; height: number; screenCount: number; firstScreen: string | null; secondScreen: string | null };
+export type ExampleMeta = { id: string; name: string; brief: string; device: DeviceKind; width: number; height: number; screenCount: number; firstScreen: string | null; secondScreen: string | null; firstMove: { trigger: string; from: string; to: string } | null };
 
 /** The screen the first screen leads to: with the first, enough of a flow to preview. */
+/** The first move out of the first screen, with both screens named: enough to draw one step of the flow. */
+export function firstMoveOf(spec: DesignSpec): { trigger: string; from: string; to: string } | null {
+  const first = spec.screens[0];
+  const t = first ? spec.transitions.find((x) => x.from.screenId === first.id && x.to.screenId !== first.id) : undefined;
+  const to = t ? spec.screens.find((x) => x.id === t.to.screenId) : undefined;
+  return first && t && to ? { trigger: t.trigger, from: first.name, to: to.name } : null;
+}
 export function secondScreenOf(spec: DesignSpec): string | null {
   const first = spec.screens[0]?.id;
   if (!first) return null;
@@ -197,7 +204,7 @@ export async function listExamples(): Promise<ExampleMeta[]> {
     if (!e.isDirectory() || !SAFE_ID.test(e.name)) continue;
     try {
       const spec = DesignSpec.parse(JSON.parse(await fs.readFile(path.join(EXAMPLES_DIR, e.name, PROJECT_FILES.spec), "utf8")));
-      out.push({ id: e.name, name: spec.name, brief: spec.brief, device: spec.device.kind, width: spec.device.width, height: spec.device.height, screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null, secondScreen: secondScreenOf(spec) });
+      out.push({ id: e.name, name: spec.name, brief: spec.brief, device: spec.device.kind, width: spec.device.width, height: spec.device.height, screenCount: spec.screens.length, firstScreen: spec.screens[0]?.id ?? null, secondScreen: secondScreenOf(spec), firstMove: firstMoveOf(spec) });
     } catch { /* skip malformed */ }
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
@@ -255,6 +262,9 @@ export async function createProjectFromExample(exampleId: string): Promise<Proje
   }
   const tokens = path.join(src, PROJECT_FILES.tokens);
   if (await exists(tokens)) await fs.copyFile(tokens, safeJoin(id, PROJECT_FILES.tokens));
+  // Shared files the screens link to (a stylesheet, fonts) travel with them.
+  const assets = path.join(src, "assets");
+  if (await exists(assets)) await fs.cp(assets, safeJoin(id, "assets"), { recursive: true });
   await commitVersion(projectDir(id), { kind: "generate", summary: `Loaded example "${spec.name}" with ${spec.screens.length} screens`, screens: spec.screens.map((s) => s.id), pinned: false });
   return loadProject(id);
 }
