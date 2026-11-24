@@ -562,11 +562,7 @@ export function Canvas() {
         <div className="flow-key" role="group" aria-label="Legend">
           <span><i className="ln main" /> Main flow</span>
           <span><i className="ln alt" /> Other moves</span>
-          {ecCount > 0 && (
-            <button className={`fk-ec ${showEdgeCases ? "on" : ""}`} onClick={() => setShowEdgeCases(!showEdgeCases)} aria-pressed={showEdgeCases} title={`${showEdgeCases ? "Hide" : "Show"} edge cases (E)`}>
-              <i className="ln ec" /> Edge cases <Icon name={showEdgeCases ? "eye" : "eye-off"} size={13} />
-            </button>
-          )}
+          {ecCount > 0 && showEdgeCases && <span><i className="ln ec" /> Edge cases</span>}
         </div>
       )}
 
@@ -574,18 +570,9 @@ export function Canvas() {
       <Composer />
 
       <div className="canvas-bar tips-right" role="toolbar" aria-label="Canvas">
-        <ToolRail />
-        <button className="cb-btn" onClick={() => rf.zoomOut({ duration: 300, ease: EASE_OUT_EXPO })} data-tip="Zoom out" data-key="−" aria-label="Zoom out"><Icon name="zoom-out" size={15} /></button>
-        <button className="cb-zoom" onClick={() => void rf.zoomTo(1, { duration: 400, ease: EASE_OUT_EXPO, interpolate: "linear" })} data-tip="Zoom to 100%" data-key="⌘0"><span className="pop" key={Math.round(zoom * 100)}>{Math.round(zoom * 100)}%</span></button>
-        <button className="cb-btn" onClick={() => rf.zoomIn({ duration: 300, ease: EASE_OUT_EXPO })} data-tip="Zoom in" data-key="+" aria-label="Zoom in"><Icon name="zoom-in" size={15} /></button>
-        <span className="cb-sep" />
-        <button className="cb-btn" onClick={fit} data-tip="Fit to content" data-key="⇧1" aria-label="Fit to content"><Icon name="maximize" size={15} /></button>
-        <button className="cb-btn" onClick={() => glide((c) => tidyLayout(spec, c, view))} disabled={spec.screens.length === 0} data-tip="Tidy the layout" aria-label="Tidy layout"><Icon name="layout-grid" size={15} /></button>
-        <span className="cb-sep" />
-        <button className={`cb-btn ${showInfluences ? "on" : ""}`} onClick={() => setShowInfluences(!showInfluences)} data-tip="Show which references shaped each screen" aria-label="Show influences" aria-pressed={showInfluences}><Icon name="sparkles" size={15} /></button>
-        <button className={`cb-btn ${showMinimap ? "on" : ""}`} onClick={() => setShowMinimap(!showMinimap)} data-tip="Minimap" aria-label="Minimap" aria-pressed={showMinimap}><Icon name="map" size={15} /></button>
-        <span className="cb-sep" />
-        <button className={`cb-btn cb-keys ${showKeys ? "on" : ""}`} onClick={() => setShowKeys(!showKeys)} data-tip="Keyboard shortcuts" data-key="?" aria-label="Keyboard shortcuts" aria-pressed={showKeys}>?</button>
+        <ToolRail zoom={zoom} canTidy={spec.screens.length > 0} onKeys={() => setShowKeys(!showKeys)}
+          onZoomIn={() => rf.zoomIn({ duration: 300, ease: EASE_OUT_EXPO })} onZoomOut={() => rf.zoomOut({ duration: 300, ease: EASE_OUT_EXPO })}
+          onZoom100={() => void rf.zoomTo(1, { duration: 400, ease: EASE_OUT_EXPO, interpolate: "linear" })} onFit={fit} onTidy={() => glide((c) => tidyLayout(spec, c, view))} />
       </div>
       {showKeys && (
         <div className="keys-overlay" onClick={() => setShowKeys(false)} role="dialog" aria-label="Keyboard shortcuts">
