@@ -34,7 +34,7 @@ export function AgentPanel() {
   const selectedScreen = selection?.kind === "node" && selection.id.startsWith("screen:") ? spec.screens.find((s) => s.id === selection.id.slice(7)) : undefined;
   const screen = picked ? spec.screens.find((s) => s.id === picked.screenId) : selectedScreen;
   const subject = picked ? `${screen?.name ?? picked.screenId} · ${picked.label || picked.elementId}` : screen?.name ?? null;
-  const clearSubject = () => { setPicked(null); select(null); };
+  const clearSubject = () => setPicked(null);
 
   const refTitles = screen
     ? canvas.edges.filter((e) => e.type === "magic" && e.target === `screen:${screen.id}`).map((e) => canvas.nodes.find((n) => n.id === e.source)).filter((n) => n?.type === "inspiration").map((n) => (n as { title: string }).title)
@@ -59,9 +59,8 @@ export function AgentPanel() {
 
   return (
     <div className="agent">
+      {/* The header above already says what is selected; this row only carries Claude's state and the menu. */}
       <div className="ap-title">
-        <span className="ap-mark"><Icon name="sparkles" size={18} strokeWidth={2} /></span>
-        <span className="ap-name">Edit with Claude</span>
         <span className={`ap-status ${agent.running ? "on" : ""}`}>{agent.running ? <><span className="pulse" /> {agent.status || "Working"}</> : null}</span>
         <span style={{ flex: 1 }} />
         {agent.running && <button className="btn sm danger-soft" onClick={cancel}><Icon name="stop" size={12} /> Stop</button>}
@@ -104,12 +103,8 @@ export function AgentPanel() {
       )}
 
       <div className="composer">
-        {subject ? (
-          <div className="ap-subject"><span>Selected: <b>{subject}</b></span><button className="x" onClick={clearSubject} aria-label="Clear selection"><Icon name="x" size={12} /></button></div>
-        ) : (
-          <div className="ap-subject whole">Whole project <span className="muted">· select a screen to focus</span></div>
-        )}
-        <div className="ap-ask">What would you like to change?</div>
+        {picked && <div className="ap-subject"><Icon name="crosshair" size={13} /><span>Only <b>{subject}</b></span><button className="x" onClick={clearSubject} aria-label="Clear the picked element"><Icon name="x" size={12} /></button></div>}
+        <div className="ap-ask">{screen ? `What should change on ${screen.name}?` : "What should change?"}</div>
         <div className="ap-chips">
           {suggestions.map((sg) => <button key={sg} className="ap-chip" onClick={() => setText(sg)}>{sg}</button>)}
         </div>
@@ -124,7 +119,7 @@ export function AgentPanel() {
           </div>
         </div>
         <button className="btn dark ap-go" disabled={!canSend} onClick={send}>Apply change <Icon name="arrow-right" size={15} className="up" /></button>
-        <div className="ap-note">Changes create a restorable version. Variants live in Inspect.</div>
+        <div className="ap-note">Changes create a restorable version. To compare options, use Explore in Details.</div>
       </div>
     </div>
   );

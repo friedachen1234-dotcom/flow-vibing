@@ -8,6 +8,8 @@ import { IS_STATIC, LOCAL_APP_URL } from "../static";
 const DEVICE_LABEL: Record<DeviceKind, string> = { mobile: "Mobile", tablet: "Tablet", desktop: "Desktop" };
 /** What each example is, for the card; the product name inside stays its own. */
 const EXAMPLE_TITLE: Record<string, string> = { baseline: "Health companion", "lumen-bank": "Everyday banking", plated: "Recipe collection", "relay-desk": "Support inbox" };
+/** Each example's stage takes a tint from its own design, so the gallery has colour without decoration. */
+const EXAMPLE_TINT: Record<string, string> = { baseline: "#16181D", "lumen-bank": "#E6ECFF", plated: "#F5EADF", "relay-desk": "#E3F1EB" };
 const STARTERS: { label: string; brief: string }[] = [
   { label: "A health companion", brief: "A wearable companion for people who train hard and want to know whether their body is ready for it. One number every morning and an honest reason behind it. Dark, data-dense, no cheerleading." },
   { label: "A banking app", brief: "A mobile banking app for people who move money between friends a few times a week. Sending a transfer should take under twenty seconds without ever feeling unsure about what happened. Calm, precise, trustworthy." },
@@ -56,6 +58,44 @@ function ExamplePreview({ ex }: { ex: ExampleMeta }) {
         </>
       )}
     </>
+  );
+}
+
+/**
+ * The right side of the start section: a corner of a real board. Two live screens from an example, the move between
+ * them drawn the way the canvas draws it, a selected frame, and a sticky note. It shows what the tool is by being it.
+ */
+function HeroBoard({ ex }: { ex?: ExampleMeta }) {
+  if (!ex?.firstScreen || !ex.secondScreen || ex.device !== "mobile") return <div className="hero-board empty" aria-hidden="true" />;
+  const device = { kind: ex.device, width: ex.width, height: ex.height };
+  const first = ex.firstScreen, second = ex.secondScreen;
+  const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+  return (
+    <div className="hero-board" aria-hidden="true">
+      <div className="hb-frame" style={{ left: 28, top: 58 }}>
+        <div className="hb-label">{cap(first)}</div>
+        <DeviceFrame src={api.exampleShellUrl(ex.id, first)} device={device} width={160} />
+      </div>
+      <div className="hb-frame selected" style={{ left: 318, top: 26 }}>
+        <div className="hb-label">{cap(second)}</div>
+        <div className="hb-dev">
+          <DeviceFrame src={api.exampleShellUrl(ex.id, second)} device={device} width={160} />
+          <span className="hb-h tl" /><span className="hb-h tr" /><span className="hb-h bl" /><span className="hb-h br" />
+        </div>
+      </div>
+      <svg className="hb-lines" viewBox="0 0 520 440" width="520" height="440">
+        <path d="M 188 196 H 236 Q 248 196 248 184 V 158 Q 248 146 260 146 H 314" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="188" cy="196" r="4" fill="var(--accent)" stroke="#fff" strokeWidth="1.5" />
+        <path d="M 307 141.5 L 314 146 L 307 150.5" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle className="hb-runner" r="3.5" fill="var(--accent)"><animateMotion dur="2.4s" repeatCount="indefinite" path="M 188 196 H 236 Q 248 196 248 184 V 158 Q 248 146 260 146 H 314" /></circle>
+      </svg>
+      <span className="hb-pill" style={{ left: 196, top: 206 }}>Tap the ring</span>
+      <div className="hb-sticky" style={{ left: 236, top: 330 }}>Ring could take more room. Try a full-width version?</div>
+      <div className="hb-cursor" style={{ left: 452, top: 300 }}>
+        <svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 1.5 L13.5 8 L8.3 9.2 L5.6 14 Z" fill="var(--magic)" stroke="#fff" strokeWidth="1.2" strokeLinejoin="round" /></svg>
+        <span>Claude</span>
+      </div>
+    </div>
   );
 }
 
@@ -127,8 +167,9 @@ export function ProjectHome() {
 
       <div className="inner">
         <section className="start">
-          <h1>New prototype</h1>
-          <p className="lede">Describe the product and who it is for. Claude drafts the screens and how they connect.</p>
+          <div className="start-copy">
+          <h1>Describe an app.<br /><span>Get the whole flow.</span></h1>
+          <p className="lede">Claude drafts every screen and the moves between them, on one board you can run, rewire and refine.</p>
           {error && <p className="home-error">{error}</p>}
           <div className={`prompt ${busy ? "busy" : ""}`}>
             <textarea ref={briefRef} rows={3} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="A habit tracker for people who keep breaking streaks…"
@@ -153,6 +194,8 @@ export function ProjectHome() {
               <button key={st.label} className="starter" onClick={() => { setBrief(st.brief); briefRef.current?.focus(); }}>{st.label}</button>
             ))}
           </div>
+          </div>
+          <HeroBoard ex={examples.find((e) => e.id === "baseline") ?? examples.find((e) => e.device === "mobile")} />
         </section>
 
         <section className="examples">
@@ -170,7 +213,7 @@ export function ProjectHome() {
           <div className="ex-grid">
             {shown.map((ex) => (
               <button key={ex.id} className={`ex ${ex.device}`} disabled={busy} onClick={() => loadExample(ex.id)}>
-                <div className="ex-stage"><ExamplePreview ex={ex} /></div>
+                <div className={`ex-stage ${ex.id === "baseline" ? "dark" : ""}`} style={EXAMPLE_TINT[ex.id] ? { background: EXAMPLE_TINT[ex.id] } : undefined}><ExamplePreview ex={ex} /></div>
                 <div className="ex-foot">
                   <div className="ex-text">
                     <div className="n">{ex.name}</div>

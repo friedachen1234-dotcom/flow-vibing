@@ -1,28 +1,132 @@
 import { useEffect, useState } from "react";
-import { MAGIC_RELATION_LABELS, classifyTransition, mainMoves, type CanvasEdge, type CanvasNode, type MagicRelation, type ScreenSpec, type TransitionSpec, type EdgeCaseSpec, type Severity, type Animation } from "@flow/shared";
+import { MAGIC_RELATION_LABELS, classifyTransition, mainMoves, type CanvasDoc, type CanvasEdge, type CanvasNode, type MagicRelation, type ScreenSpec, type TransitionSpec, type EdgeCaseSpec, type Severity, type Animation } from "@flow/shared";
 import { api } from "../api";
 import { useFlow } from "../store";
 import { ask, confirm } from "../components/Dialog";
 import { Icon } from "./Icon";
+import { PreviewPanel } from "./PreviewPanel";
 
 export function Inspector() {
   const bundle = useFlow((s) => s.bundle)!;
   const selection = useFlow((s) => s.selection);
   const { spec, canvas } = bundle;
+  const view = useFlow((s) => s.view);
+  // In flow view the cards are too small to read a screen, so Details opens with it running.
+  const previewable = view === "flow" && selection?.kind === "node" && (selection.id.startsWith("screen:") || selection.id.startsWith("edgecase:"));
+  void spec; void canvas;
+  return <div className="inspector">{previewable && <div className="ins-preview"><PreviewPanel embedded /></div>}<InspectorBody /></div>;
+}
 
-  if (!selection) return <div className="inspector"><ProjectOverview /></div>;
+/**
+ * The top of the panel, the same for every tab: a way back, where you are, and what is selected. The tabs below are
+ * views of this one subject, so none of them repeats it.
+ */
+export function PanelHeader({ onClose }: { onClose: () => void }) {
+  const bundle = useFlow((s) => s.bundle)!;
+  const selection = useFlow((s) => s.selection);
+  const select = useFlow((s) => s.select);
+  const addChange = useFlow((s) => s.addChange);
+  const { spec, canvas } = bundle;
+  const screenName = (id?: string) => spec.screens.find((x) => x.id === id)?.name;
+  const cap = (t: string) => (t ? t[0].toUpperCase() + t.slice(1) : t);
+  const deviceIcon = spec.device.kind === "desktop" ? "frame" : spec.device.kind === "tablet" ? "square" : "smartphone";
+  // Subject: icon, title, one line, an optional control on the right, and the screen it belongs to (for the breadcrumb).
+  let head: { icon: string; tone?: string; title: React.ReactNode; sub: string; right?: React.ReactNode; parent?: string } = { icon: "hexagon", title: spec.name, sub: `Project · ${cap(spec.device.kind)} · ${spec.device.width} × ${spec.device.height}` };
+  if (selection?.kind === "transition") {
+    const t = spec.transitions.find((x) => x.id === selection.id);
+    if (t) head = { icon: "arrow-right", title: <InlineText className="cap" value={t.trigger} onCommit={(trigger) => addChange({ op: "update-transition", transitionId: t.id, patch: { trigger } })} />, sub: `Connection · ${screenName(t.from.screenId)} → ${screenName(t.to.screenId)}`, parent: t.from.screenId };
+  } else if (selection?.kind === "edge") {
+    const e = canvas.edges.find((x) => x.id === selection.id);
+    if (e) head = { icon: "sparkles", tone: "magic", title: e.type === "magic" ? "Reference line" : "Exploration link", sub: "Line" };
+  } else if (selection?.kind === "node") {
+    const n = canvas.nodes.find((x) => x.id === selection.id);
+    if (n?.type === "screen") {
+      const sc = spec.screens.find((x) => x.id === n.screenId);
+      if (sc) {
+        head = {
+          icon: deviceIcon, title: <InlineText value={sc.name} onCommit={(name) => addChange({ op: "rename-screen", screenId: sc.id, name })} />, sub: `Screen · ${cap(spec.device.kind)} · ${spec.device.width} × ${spec.device.height}`
+        };
+      }
+    } else if (n?.type === "edgeCase") {
+      const ec = spec.edgeCases.find((x) => x.id === n.edgeCaseId);
+      const host = ec ? ec.attachedTo.screenId ?? spec.transitions.find((t) => t.id === ec.attachedTo.transitionId)?.from.screenId : undefined;
+      if (ec) head = { icon: "alert", tone: ec.severity === "high" ? "err" : ec.severity === "low" ? "grey" : "warn", title: ec.scenario, sub: `Edge case · ${cap(ec.severity)}`, parent: host };
+    } else if (n?.type === "inspiration") head = { icon: "image", tone: "magic", title: n.title, sub: `Reference · ${n.kind === "image" ? "Image" : cap(n.kind)}` };
+    else if (n?.type === "skill") head = { icon: "sticky-note", tone: "magic", title: n.title, sub: "Skill" };
+    else if (n?.type === "variantPanel") head = { icon: "sparkles", title: `${n.target.token ? `Tokens · ${n.target.token}` : spec.screens.find((x) => x.id === n.target.screenId)?.elements.find((e) => e.id === n.target.elementId)?.label ?? n.target.elementId ?? screenName(n.target.screenId) ?? "Project"}`, sub: `Exploration · ${n.options.length} variant${n.options.length === 1 ? "" : "s"}`, parent: n.target.screenId };
+    else if (n?.type === "prompt") head = { icon: "sticky-note", title: n.kind === "brief" ? "Brief" : n.kind === "record" ? "Generation record" : "Instruction", sub: n.kind === "brief" ? spec.name : "Prompt" };
+    else if (n?.type === "note") head = { icon: "sticky-note", tone: "warn", title: "Note", sub: "Sticky note" };
+    else if (n?.type === "versionPin") head = { icon: "pin", tone: "grey", title: n.label, sub: "Pinned version" };
+    else if (n?.type === "group") head = { icon: "frame", tone: "grey", title: "Group", sub: "Group" };
+  }
+  const parentName = head.parent ? screenName(head.parent) : undefined;
+  return (
+    <div className="ph">
+      <div className="ph-nav">
+        <BackLink />
+        <nav className="ph-crumbs" aria-label="Where you are">
+          {selection ? <button className="crumb" onClick={() => select(null)}>{spec.name}</button> : <span className="crumb here">{spec.name}</span>}
+          {parentName && <><Icon name="chevron-right" size={12} className="sep" /><button className="crumb" onClick={() => select({ kind: "node", id: `screen:${head.parent}` })}>{parentName}</button></>}
+        </nav>
+        <span style={{ flex: 1 }} />
+        <button className="rp-close" onClick={onClose} data-tip="Hide panel" data-key="I" aria-label="Hide panel"><Icon name="x" size={18} strokeWidth={2} /></button>
+      </div>
+      <Head icon={head.icon} tone={head.tone} title={head.title} sub={head.sub} right={head.right} />
+    </div>
+  );
+}
+
+/** What a selection is called, for the way back. */
+function selectionName(sel: ReturnType<typeof useFlow.getState>["selection"], spec: ReturnType<typeof useFlow.getState>["bundle"] extends infer B ? B extends { spec: infer S } ? S : never : never, canvas: CanvasDoc): string | null {
+  if (!sel) return spec.name;
+  if (sel.kind === "transition") { const t = spec.transitions.find((x) => x.id === sel.id); return t ? t.trigger[0].toUpperCase() + t.trigger.slice(1) : null; }
+  if (sel.kind === "edge") return canvas.edges.some((e) => e.id === sel.id) ? "Line" : null;
+  const n = canvas.nodes.find((x) => x.id === sel.id);
+  if (!n) return null;
+  if (n.type === "screen") return spec.screens.find((x) => x.id === n.screenId)?.name ?? null;
+  if (n.type === "edgeCase") return spec.edgeCases.find((e) => e.id === n.edgeCaseId)?.scenario ?? null;
+  if (n.type === "inspiration" || n.type === "skill") return n.title;
+  if (n.type === "variantPanel") return `${n.target.elementId ?? n.target.screenId ?? "Project"} exploration`;
+  if (n.type === "prompt") return "Brief";
+  if (n.type === "note") return "Note";
+  return null;
+}
+
+/** Back to what was inspected before: the last stop on the trail that still exists. */
+function BackLink() {
+  const trail = useFlow((s) => s.trail);
+  const back = useFlow((s) => s.back);
+  const { spec, canvas } = useFlow((s) => s.bundle)!;
+  // Skip stops that were deleted since.
+  let i = trail.length - 1;
+  while (i >= 0 && !selectionName(trail[i], spec, canvas)) i--;
+  if (i < 0) return null;
+  const go = () => { const st = useFlow.getState(); for (let k = trail.length - 1; k > i; k--) st.back(); st.back(); };
+  return (
+    <button className="ph-back" onClick={go} data-tip={`Back to ${selectionName(trail[i], spec, canvas)}`} aria-label="Back">
+      <Icon name="arrow-left" size={15} />
+    </button>
+  );
+}
+
+function InspectorBody() {
+  const bundle = useFlow((s) => s.bundle)!;
+  const selection = useFlow((s) => s.selection);
+  const { spec, canvas } = bundle;
+
+  if (!selection) return <ProjectOverview />;
   if (selection.kind === "transition") {
     const t = spec.transitions.find((x) => x.id === selection.id);
-    return <div className="inspector">{t ? <TransitionPanel t={t} /> : <div className="empty">That transition no longer exists.</div>}</div>;
+    return t ? <TransitionPanel t={t} /> : <div className="empty">That transition no longer exists.</div>;
   }
   if (selection.kind === "edge") {
     const e = canvas.edges.find((x) => x.id === selection.id);
-    return <div className="inspector">{e ? <EdgePanel e={e} /> : <div className="empty">That line no longer exists.</div>}</div>;
+    return e ? <EdgePanel e={e} /> : <div className="empty">That line no longer exists.</div>;
   }
   const n = canvas.nodes.find((x) => x.id === selection.id);
-  if (!n) return <div className="inspector"><div className="empty">Nothing selected.</div></div>;
+  if (!n) return <div className="empty">Nothing selected.</div>;
   return (
-    <div className="inspector">
+    <>
       {n.type === "screen" && <ScreenPanel node={n} />}
       {n.type === "edgeCase" && <EdgeCasePanel node={n} />}
       {n.type === "inspiration" && <InspirationPanel node={n} />}
@@ -32,7 +136,7 @@ export function Inspector() {
       {n.type === "note" && <GenericPanel title="Note" node={n} />}
       {n.type === "versionPin" && <VersionPinPanel node={n} />}
       {n.type === "group" && <GenericPanel title="Group" node={n} />}
-    </div>
+    </>
   );
 }
 
@@ -123,7 +227,6 @@ function ProjectOverview() {
   const { spec } = bundle;
   return (
     <>
-      <Head icon="hexagon" title={spec.name} sub={`Project · ${spec.device.kind} · ${spec.device.width} × ${spec.device.height}`} />
       <Section title="Screens" count={spec.screens.length}>
         {spec.screens.map((sc) => <Row key={sc.id} mark={<span className="mark accent" />} onClick={() => select({ kind: "node", id: `screen:${sc.id}` })}>{sc.name}</Row>)}
         {spec.screens.length === 0 && <div className="ins-empty">No screens yet.</div>}
@@ -164,17 +267,18 @@ function ScreenPanel({ node }: { node: Extract<CanvasNode, { type: "screen" }> }
   const refIds = Array.from(new Set([...canvas.edges.filter((e) => e.type === "magic" && e.target === node.id).map((e) => e.source), ...screen.provenance.map((p) => p.sourceNodeId)]));
   const nameOf = (id: string) => spec.screens.find((s) => s.id === id)?.name ?? id;
   const stateId = frame?.stateId ?? screen.states.find((st) => st.isDefault)?.id ?? screen.states[0]?.id ?? "";
-  const states = screen.states.length > 0 && (
-    <label className="ins-select">
-      <select value={stateId} onChange={(e) => window.dispatchEvent(new CustomEvent("flow:set-state", { detail: { screenId: screen.id, stateId: e.target.value } }))} title="State">
-        {screen.states.map((st) => <option key={st.id} value={st.id}>{st.isDefault ? "Default state" : st.name}</option>)}
-      </select>
-      <Icon name="chevron-down" size={14} />
-    </label>
-  );
+
   return (
     <>
-      <Head icon={spec.device.kind === "desktop" ? "frame" : spec.device.kind === "tablet" ? "square" : "smartphone"} title={<InlineText value={screen.name} onCommit={(name) => addChange({ op: "rename-screen", screenId: screen.id, name })} />} sub={`Screen · ${spec.device.width} × ${spec.device.height}`} right={states || undefined} />
+      {screen.states.length > 1 && (
+        <Section title="State" count={screen.states.length}>
+          <div className="state-chips">
+            {screen.states.map((st) => (
+              <button key={st.id} className={`state-chip ${(frame?.stateId ?? screen.states.find((x) => x.isDefault)?.id) === st.id ? "on" : ""}`} onClick={() => window.dispatchEvent(new CustomEvent("flow:set-state", { detail: { screenId: screen.id, stateId: st.id } }))} title={st.description || st.name}>{st.name}</button>
+            ))}
+          </div>
+        </Section>
+      )}
       <Section title="Connections" count={outs.length}>
         {outs.map((t) => {
           const back = classifyTransition(t) === "back";
@@ -232,30 +336,30 @@ function TransitionPanel({ t }: { t: TransitionSpec }) {
   const from = spec.screens.find((s) => s.id === t.from.screenId);
   const to = spec.screens.find((s) => s.id === t.to.screenId);
   const ecs = spec.edgeCases.filter((e) => e.attachedTo.transitionId === t.id);
+  const addEdgeCase = async () => { const sc = await ask("Edge case", { placeholder: "What could go wrong here?" }); if (!sc?.trim()) return; const h = (await ask("Handling", { placeholder: "How does the design answer it?" })) ?? ""; addChange({ op: "add-edge-case", attachedTo: { transitionId: t.id }, scenario: sc.trim(), handling: h.trim(), severity: "medium" }); };
   return (
     <>
-      <Head icon="arrow-right" title={<InlineText className="cap" value={t.trigger} onCommit={(trigger) => addChange({ op: "update-transition", transitionId: t.id, patch: { trigger } })} />} sub={<>{from?.name} → {to?.name}{t.to.stateId ? ` · ${t.to.stateId}` : ""}</>} />
-      <div className="sec">
-        <div className="row"><span className="muted">From</span><span className="grow" style={{ cursor: "pointer" }} onClick={() => from && select({ kind: "node", id: `screen:${from.id}` })}>{from?.name}{t.from.elementId && <span className="mono muted"> · {t.from.elementId}</span>}</span></div>
-        <div className="row"><span className="muted">To</span><span className="grow" style={{ cursor: "pointer" }} onClick={() => to && select({ kind: "node", id: `screen:${to.id}` })}>{to?.name}{t.to.stateId && <span className="mono muted"> #{t.to.stateId}</span>}</span></div>
-        <div className="row"><span className="muted">Condition</span><span className="grow"><InlineText allowEmpty value={t.condition ?? ""} placeholder="none · click to add a branch condition" onCommit={(condition) => addChange({ op: "update-transition", transitionId: t.id, patch: { condition: condition || null } })} /></span></div>
-        <div className="row"><span className="muted">Animation</span>
-          <select className="input" style={{ width: 110 }} value={t.animation} onChange={(e) => addChange({ op: "update-transition", transitionId: t.id, patch: { animation: e.target.value as Animation } })}>
-            {["push", "pop", "fade", "modal", "none"].map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
+      <Section title="Route">
+        <Row mark={<span className="mark grey" />} onClick={() => from && select({ kind: "node", id: `screen:${from.id}` })} trailing={<span className="row-k">From</span>}>{from?.name}</Row>
+        <Row mark={<span className="mark accent" />} onClick={() => to && select({ kind: "node", id: `screen:${to.id}` })} trailing={<span className="row-k">To</span>}>{to?.name}{t.to.stateId ? ` · ${t.to.stateId}` : ""}</Row>
+      </Section>
+      <Section title="Behaviour">
+        <div className="kv"><span className="k">Only if</span><span className="v"><InlineText allowEmpty value={t.condition ?? ""} placeholder="Always. Add a condition to make it a branch." onCommit={(condition) => addChange({ op: "update-transition", transitionId: t.id, patch: { condition: condition || null } })} /></span></div>
+        <div className="kv"><span className="k">Animation</span>
+          <label className="ins-select small"><select value={t.animation} onChange={(e) => addChange({ op: "update-transition", transitionId: t.id, patch: { animation: e.target.value as Animation } })}>{["push", "pop", "fade", "modal", "none"].map((a) => <option key={a} value={a}>{a[0].toUpperCase() + a.slice(1)}</option>)}</select><Icon name="chevron-down" size={13} /></label>
         </div>
-      </div>
-      <div className="sec">
-        <div className="row"><h3 style={{ flex: 1, margin: 0 }}>Edge cases</h3><button className="btn sm ghost" onClick={async () => { const sc = await ask("Edge case", { placeholder: "Scenario" }); if (!sc?.trim()) return; const h = (await ask("Handling", { placeholder: "How is it handled?" })) ?? ""; addChange({ op: "add-edge-case", attachedTo: { transitionId: t.id }, scenario: sc.trim(), handling: h.trim(), severity: "medium" }); }}>+ Add</button></div>
-        <div className="list">{ecs.map((e) => <div key={e.id} className="item clickable" onClick={() => select({ kind: "node", id: `edgecase:${e.id}` })}><span className={`pill ${e.severity === "high" ? "err" : "warn"}`}>{e.severity}</span><span style={{ flex: 1 }}>{e.scenario}</span></div>)}{ecs.length === 0 && <div className="muted small">None.</div>}</div>
-      </div>
-      {isForward && (
-        <div className="sec">
-          {isMain ? <div className="muted small">This is the main move from {from?.name}. It is drawn on the map; the others show when the screen is focused.</div>
-            : <button className="btn" style={{ width: "100%" }} onClick={() => updateCanvas((c) => ({ ...c, primaryMoves: { ...c.primaryMoves, [t.from.screenId]: t.id } }))}>Make this the main move from {from?.name}</button>}
-        </div>
-      )}
-      <div className="ins-foot"><button className="link quiet" onClick={() => addChange({ op: "remove-transition", transitionId: t.id })}>Remove transition</button></div>
+        {isForward && (
+          <div className="kv"><span className="k">Main move</span>
+            {isMain ? <span className="v muted">Yes, drawn on the map</span>
+              : <button className="ins-action" onClick={() => updateCanvas((c) => ({ ...c, primaryMoves: { ...c.primaryMoves, [t.from.screenId]: t.id } }))}>Make main</button>}
+          </div>
+        )}
+      </Section>
+      <Section title="Edge cases" count={ecs.length} action={<button className="ins-action" onClick={addEdgeCase}><Icon name="plus" size={13} /> Add</button>}>
+        {ecs.map((e) => <Row key={e.id} mark={<span className={`mark ${e.severity === "high" ? "err" : e.severity === "low" ? "grey" : "warn"}`} />} onClick={() => select({ kind: "node", id: `edgecase:${e.id}` })}>{e.scenario}</Row>)}
+        {ecs.length === 0 && <div className="ins-empty">None yet.</div>}
+      </Section>
+      <div className="ins-foot"><button className="link quiet" onClick={() => addChange({ op: "remove-transition", transitionId: t.id })}>Remove connection</button></div>
     </>
   );
 }
@@ -266,16 +370,23 @@ function EdgeCasePanel({ node }: { node: Extract<CanvasNode, { type: "edgeCase" 
   const select = useFlow((s) => s.select);
   const ec = spec.edgeCases.find((e) => e.id === node.edgeCaseId) as EdgeCaseSpec | undefined;
   if (!ec) return <div className="empty">Edge case missing.</div>;
-  const edit = async (field: "scenario" | "handling") => { const v = await ask(field === "scenario" ? "Scenario" : "Handling", { initial: ec[field], multiline: true }); if (v && v.trim() && v !== ec[field]) addChange({ op: "update-edge-case", edgeCaseId: ec.id, patch: { [field]: v.trim() } }); };
+  const via = ec.attachedTo.transitionId ? spec.transitions.find((t) => t.id === ec.attachedTo.transitionId) : undefined;
+  const host = ec.attachedTo.screenId ?? via?.from.screenId;
   return (
     <>
-      <Head icon="alert" tone={ec.severity === "high" ? "err" : ec.severity === "low" ? "grey" : "warn"} title={ec.scenario} sub={`Edge case · ${ec.severity} severity`} />
-      <div className="sec">
-        <div className="row"><span className="muted">Scenario</span><span className="grow" style={{ whiteSpace: "normal" }}>{ec.scenario}</span><button className="btn sm ghost" onClick={() => edit("scenario")}>Edit</button></div>
-        <div className="row"><span className="muted">Handling</span><span className="grow" style={{ whiteSpace: "normal" }}>{ec.handling}</span><button className="btn sm ghost" onClick={() => edit("handling")}>Edit</button></div>
-        <div className="row"><span className="muted">Severity</span><select className="input" style={{ width: 100 }} value={ec.severity} onChange={(e) => addChange({ op: "update-edge-case", edgeCaseId: ec.id, patch: { severity: e.target.value as Severity } })}>{["low", "medium", "high"].map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
-        <div className="row"><span className="muted">Attached to</span><span className="grow" style={{ cursor: "pointer" }} onClick={() => ec.attachedTo.screenId ? select({ kind: "node", id: `screen:${ec.attachedTo.screenId}` }) : ec.attachedTo.transitionId && select({ kind: "transition", id: ec.attachedTo.transitionId })}>{ec.attachedTo.screenId ? spec.screens.find((s) => s.id === ec.attachedTo.screenId)?.name : `transition ${ec.attachedTo.transitionId}`}</span></div>
-      </div>
+      <Section title="What happens">
+        <div className="ins-text"><InlineText multiline value={ec.scenario} onCommit={(v) => addChange({ op: "update-edge-case", edgeCaseId: ec.id, patch: { scenario: v } })} /></div>
+      </Section>
+      <Section title="How the design answers">
+        <div className="ins-text"><InlineText multiline value={ec.handling} placeholder="Not decided yet" onCommit={(v) => addChange({ op: "update-edge-case", edgeCaseId: ec.id, patch: { handling: v } })} /></div>
+      </Section>
+      <Section title="Details">
+        <div className="kv"><span className="k">Severity</span>
+          <label className="ins-select small"><select value={ec.severity} onChange={(e) => addChange({ op: "update-edge-case", edgeCaseId: ec.id, patch: { severity: e.target.value as Severity } })}>{["low", "medium", "high"].map((x) => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}</select><Icon name="chevron-down" size={13} /></label>
+        </div>
+        {via ? <Row mark={<span className="mark accent" />} onClick={() => select({ kind: "transition", id: via.id })} trailing={<span className="row-k">On</span>}>{via.trigger[0].toUpperCase() + via.trigger.slice(1)}</Row>
+          : host ? <Row mark={<span className="mark accent" />} onClick={() => select({ kind: "node", id: `screen:${host}` })} trailing={<span className="row-k">Screen</span>}>{spec.screens.find((x) => x.id === host)?.name}</Row> : null}
+      </Section>
       <div className="ins-foot"><button className="link quiet" onClick={() => addChange({ op: "remove-edge-case", edgeCaseId: ec.id })}>Remove edge case</button></div>
     </>
   );
@@ -294,7 +405,6 @@ function InspirationPanel({ node }: { node: Extract<CanvasNode, { type: "inspira
   const targets = canvas.edges.filter((e) => e.type === "magic" && e.source === node.id);
   return (
     <>
-      <Head icon="image" tone="magic" title={node.title} sub={`Reference · ${node.kind}`} />
       {node.kind === "image" && node.path && <div className="ins-media"><img src={api.fileUrl(projectId, node.path)} alt="" /></div>}
       <div className="sec"><div className="field"><label>Caption</label><textarea className="input" value={caption} onChange={(e) => setCaption(e.target.value)} onBlur={save} placeholder="What you like about it, in your words" /></div></div>
       <div className="sec">
@@ -318,7 +428,6 @@ function SkillPanel({ node }: { node: Extract<CanvasNode, { type: "skill" }> }) 
   useEffect(() => { fetch(api.fileUrl(projectId, node.path)).then((r) => r.text()).then(setText).catch(() => setText("")); }, [projectId, node.path]);
   return (
     <>
-      <div className="sec"><span className="pill magic">Skill</span><h2 style={{ marginTop: 6 }}>{node.title}</h2><div className="mono muted">{node.path}</div></div>
       <div className="sec"><pre className="mono" style={{ whiteSpace: "pre-wrap", margin: 0, maxHeight: 400, overflow: "auto", color: "var(--ink-2)" }}>{text}</pre></div>
       <div className="sec"><button className="btn danger ghost" style={{ width: "100%" }} onClick={() => { updateCanvas((c) => ({ ...c, nodes: c.nodes.filter((n) => n.id !== node.id), edges: c.edges.filter((e) => e.source !== node.id && e.target !== node.id) })); useFlow.getState().select(null); }}>Remove from canvas</button></div>
     </>
@@ -330,7 +439,6 @@ function PromptPanel({ node }: { node: Extract<CanvasNode, { type: "prompt" }> }
   const spec = useFlow((s) => s.bundle!.spec);
   return (
     <>
-      <div className="sec"><span className="pill">{node.kind}</span><h2 style={{ marginTop: 6 }}>{node.kind === "brief" ? "Project brief" : node.kind === "record" ? "Generation record" : "Instruction"}</h2></div>
       <div className="sec small" style={{ lineHeight: 1.5, color: "var(--ink-2)", whiteSpace: "pre-wrap" }}>{node.text}</div>
       {node.kind === "brief" && spec.screens.length > 0 && <div className="sec"><button className="btn" style={{ width: "100%" }} onClick={() => addChange({ op: "update-brief", brief: spec.brief })}>Queue a full regeneration from this brief</button><div className="muted small" style={{ marginTop: 6 }}>Rewrites every screen. Use sparingly; prefer targeted changes.</div></div>}
     </>
@@ -348,7 +456,6 @@ function VariantPanel({ node }: { node: Extract<CanvasNode, { type: "variantPane
   const [dir, setDir] = useState(node.direction);
   return (
     <>
-      <Head icon="sparkles" title={`${node.target.token ? `Tokens · ${node.target.token}` : node.target.elementId ?? screenName} exploration`} sub={`${node.options.length} variant${node.options.length === 1 ? "" : "s"}${node.appliedId ? ` · ${node.options.find((o) => o.id === node.appliedId)?.label ?? "one"} applied` : ""}`} />
       <Section title="Direction">
         <input className="input" value={dir} onChange={(e) => setDir(e.target.value)} placeholder="warmer, denser, more editorial…" />
         <button className="btn dark sm" style={{ marginTop: 10 }} disabled={running} onClick={() => run("variants", { target: node.target, count: 3, direction: dir, nodeId: node.id }, `More variants: ${dir || "same direction"}`)}>Three more <Icon name="sparkles" size={13} /></button>
@@ -364,7 +471,6 @@ function VersionPinPanel({ node }: { node: Extract<CanvasNode, { type: "versionP
   const restoreVersion = useFlow((s) => s.restoreVersion);
   return (
     <>
-      <div className="sec"><span className="pill">Pinned version</span><h2 style={{ marginTop: 6 }}>{node.label}</h2><div className="mono muted">{node.versionId}</div></div>
       <div className="sec" style={{ display: "grid", gap: 6 }}><button className="btn" onClick={() => setPreviewVersion(node.versionId)}>Preview</button><button className="btn" onClick={async () => (await confirm("Restore this version?", "The current state stays in history as its own version.")) && restoreVersion(node.versionId)}>Restore</button></div>
     </>
   );
@@ -374,7 +480,6 @@ function GenericPanel({ title, node }: { title: string; node: CanvasNode }) {
   const updateCanvas = useFlow((s) => s.updateCanvas);
   return (
     <>
-      <div className="sec"><span className="pill grey">{title}</span></div>
       <div className="sec"><button className="btn danger ghost" style={{ width: "100%" }} onClick={() => { updateCanvas((c) => ({ ...c, nodes: c.nodes.filter((n) => n.id !== node.id), edges: c.edges.filter((e) => e.source !== node.id && e.target !== node.id) })); useFlow.getState().select(null); }}>Remove</button></div>
     </>
   );
@@ -390,7 +495,6 @@ function EdgePanel({ e }: { e: CanvasEdge }) {
   const patch = (p: Partial<CanvasEdge>) => updateCanvas((c) => ({ ...c, edges: c.edges.map((x) => (x.id === e.id ? { ...x, ...p } : x)) }));
   return (
     <>
-      <div className="sec"><span className={`pill ${e.type === "magic" ? "magic" : ""}`}>{e.type === "magic" ? "Magic line" : "Variant link"}</span><h2 style={{ marginTop: 6 }}>{name(src)} → {name(tgt)}{e.targetElementId ? ` · ${e.targetElementId}` : ""}</h2></div>
       {e.type === "magic" && (
         <div className="sec">
           <div className="field"><label>Relation</label><select className="input" value={e.relation ?? "free-text"} onChange={(ev) => patch({ relation: ev.target.value as MagicRelation })}>{(Object.keys(MAGIC_RELATION_LABELS) as MagicRelation[]).map((r) => <option key={r} value={r}>{MAGIC_RELATION_LABELS[r].label}</option>)}</select></div>
