@@ -34,15 +34,15 @@ function RailMenu({ groups, onClose }: { groups: Group[]; onClose: () => void })
   );
 }
 
-/** A rail button that opens a menu. With `split`, the button itself acts and the chevron beside it opens the menu. */
-function MenuButton({ icon, label, tip, keyHint, on, split, onAct, groups, children }: { icon?: string; label: string; tip: string; keyHint?: string; on?: boolean; split?: boolean; onAct?: () => void; groups: Group[]; children?: React.ReactNode }) {
+/** A rail button that opens a menu. The whole button is the target; the chevron in its corner only says so. */
+function MenuButton({ icon, label, tip, keyHint, on, groups, children }: { icon?: string; label: string; tip: string; keyHint?: string; on?: boolean; groups: Group[]; children?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`rail-tool ${open ? "open" : ""}`}>
-      <button className={`cb-btn ${on ? "on" : ""}`} onClick={() => (split && onAct ? onAct() : setOpen(!open))} data-tip={open ? undefined : tip} data-key={open ? undefined : keyHint} aria-label={label} aria-haspopup={!split} aria-expanded={!split ? open : undefined}>
-        {children ?? (icon && <Icon name={icon} size={16} />)}
+      <button className={`cb-btn ${on ? "on" : ""}`} onClick={() => setOpen(!open)} data-tip={open ? undefined : tip} data-key={open ? undefined : keyHint} aria-label={label} aria-haspopup="menu" aria-expanded={open}>
+        {children ?? (icon && <Icon name={icon} size={18} />)}
+        <span className="rail-caret" aria-hidden><Icon name="chevron-down" size={9} strokeWidth={2.6} /></span>
       </button>
-      <button className="rail-caret" onClick={() => setOpen(!open)} aria-label={`${label} options`} aria-haspopup aria-expanded={open}><Icon name="chevron-right" size={10} strokeWidth={2.4} /></button>
       {open && <RailMenu groups={groups} onClose={() => setOpen(false)} />}
     </div>
   );
@@ -103,7 +103,7 @@ export function ToolRail({ zoom, onZoomIn, onZoomOut, onZoom100, onFit, onTidy, 
 
   return (
     <>
-      <MenuButton icon={modeIcon} label="Pointer" tip={modeTip} keyHint={modeKey} on split onAct={() => setMode(mode)} groups={[[
+      <MenuButton icon={modeIcon} label="Pointer" tip={modeTip} keyHint={modeKey} on groups={[[
         { icon: "mouse-pointer", label: "Select", key: "V", checked: mode === "select", onClick: () => setMode("select") },
         { icon: "hand", label: "Hand", key: "H", checked: mode === "hand", onClick: () => setMode("hand") },
         { icon: "crosshair", label: "Pick an element", key: "P", checked: mode === "pick", disabled: spec.screens.length === 0, onClick: () => setMode("pick") }
