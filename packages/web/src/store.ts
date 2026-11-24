@@ -30,6 +30,9 @@ export interface FlowState {
   error: string | null;
   view: ViewMode;
   selection: Selection;
+  /** Where the selection has been, newest last: the panel's way back. */
+  trail: Selection[];
+  back(): void;
   pendingChanges: ChangeRequest[];
   agent: { running: boolean; runId: string | null; intent: AgentIntent | null; items: AgentItem[]; streaming: string; status: string; totalCost: number };
   frames: Record<string, FrameState>;
@@ -115,6 +118,7 @@ export const useFlow = create<FlowState>((set, get) => ({
   error: null,
   view: "prototype",
   selection: null,
+  trail: [],
   pendingChanges: [],
   agent: { running: false, runId: null, intent: null, items: [], streaming: "", status: "", totalCost: 0 },
   frames: {},
@@ -143,7 +147,7 @@ export const useFlow = create<FlowState>((set, get) => ({
   setHoverEdge(hoverEdge) { if (get().hoverEdge !== hoverEdge) set({ hoverEdge }); },
 
   async openProject(id) {
-    set({ loading: true, error: null, projectId: id, selection: null, pendingChanges: [], frames: {}, agent: { running: false, runId: null, intent: null, items: [], streaming: "", status: "", totalCost: 0 } });
+    set({ loading: true, error: null, projectId: id, selection: null, trail: [], pendingChanges: [], frames: {}, agent: { running: false, runId: null, intent: null, items: [], streaming: "", status: "", totalCost: 0 } });
     try {
       const bundle = await api.getProject(id);
       const agent = { ...get().agent, running: bundle.running };
@@ -158,7 +162,7 @@ export const useFlow = create<FlowState>((set, get) => ({
   closeProject() {
     const id = get().projectId;
     if (id) flushCanvas(id);
-    set({ projectId: null, bundle: null, selection: null, pendingChanges: [], savedAt: null, saving: false });
+    set({ projectId: null, bundle: null, selection: null, trail: [], pendingChanges: [], savedAt: null, saving: false });
     history.replaceState(null, "", "#");
   },
   async refresh() {
@@ -183,11 +187,20 @@ export const useFlow = create<FlowState>((set, get) => ({
   select(selection) {
     const cur = get().selection;
     if (cur === selection || (cur && selection && cur.kind === selection.kind && cur.id === selection.id)) return;
-    set({ selection });
-    if (!selection || get().panel === "claude") return;
-    const previewable = selection.kind === "node" && (selection.id.startsWith("screen:") || selection.id.startsWith("edgecase:"));
-    if (get().view === "flow" && previewable) get().setPanel("preview");
-    else if (get().panel !== "preview" || !previewable) get().setPanel("inspect");
+    // Remember where we were, so the panel can step back. Consecutive repeats collapse; the trail keeps twenty.
+    // The project overview (no selection) is a stop too, so the way back leads out to it.
+    const trail = get().trail;
+    const same = (a: Selection, b: Selection) => a === b || (!!a && !!b && a.kind === b.kind && a.id === b.id);
+    const next = trail.length && same(trail[trail.length - 1], cur) ? trail : [...trail, cur].slice(-20);
+    set({ selection, trail: next });
+    showSelection(selection);
+  },
+  back() {
+    const trail = [...get().trail];
+    if (!trail.length) return;
+    const prev = trail.pop() ?? null;
+    set({ selection: prev, trail });
+    showSelection(prev);
   },
   updateCanvas(fn, persist = true) {
     const { bundle, projectId } = get();
@@ -344,3 +357,10 @@ socket.connect();
 export const useSpec = () => useFlow((s) => s.bundle?.spec ?? null);
 export const useCanvas = () => useFlow((s) => s.bundle?.canvas ?? null);
 export const useHeadVersion = () => useFlow((s) => s.bundle?.versions[0]?.id ?? "none");
+
+/** Bring the right panel tab to what was just selected: the live preview for a screen in flow view, else Inspect. */
+function showSelection(selection: Selection) {
+  const st = useFlow.getState();
+  if (!selection || st.panel === "claude") return;
+  if (st.panel !== "history") st.setPanel("inspect");
+}

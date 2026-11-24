@@ -9,7 +9,7 @@ const FRAME_W = 300;
  * The selected screen running at reading size, beside the flow view where the cards cannot show it.
  * An edge case previews its host screen with the handling text underneath, so the two readings stay side by side.
  */
-export function PreviewPanel() {
+export function PreviewPanel({ embedded = false }: { embedded?: boolean } = {}) {
   const bundle = useFlow((s) => s.bundle)!;
   const projectId = useFlow((s) => s.projectId)!;
   const selection = useFlow((s) => s.selection);
@@ -42,6 +42,22 @@ export function PreviewPanel() {
   const scale = FRAME_W / spec.device.width;
   const frameH = Math.round(Math.min(spec.device.height, spec.device.width * 2.05) * scale);
 
+  if (embedded) {
+    const w = 236, k2 = w / spec.device.width, h2 = Math.round(Math.min(spec.device.height, spec.device.width * 1.9) * k2);
+    return (
+      <div className="preview embedded">
+        <div className="pv-stage">
+          <div className="pv-device" style={{ width: w, height: h2 }}>
+            <iframe ref={ref} key={`${head}:${reloadKey}`} title={screen.name} src={api.shellUrl(projectId, screen.id)} style={{ width: spec.device.width, height: spec.device.height, transform: `scale(${k2})` }} />
+          </div>
+        </div>
+        <div className="pv-under">
+          <span className="muted">{showing.id !== screen.id ? <>Now on <b>{showing.name}</b></> : <>Live · tap through it here</>}</span>
+          <button className="link quiet" onClick={() => setReloadKey((x) => x + 1)}><Icon name="rotate-ccw" size={12} /> Reset</button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="preview">
       <div className="pv-crumbs">
